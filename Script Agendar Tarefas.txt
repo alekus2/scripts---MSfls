@@ -1,0 +1,4 @@
+
+local do executavel python: \\TS-FOREST01AMC\c$\Python\Python311\python.exe
+
+local arquivo script python: \\TS-FOREST01AMC\c$\Users\alex_santos4\Desktop
