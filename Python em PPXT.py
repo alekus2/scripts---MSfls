@@ -1,201 +1,110 @@
+import requests
+import pandas as pd
+from datetime import datetime
 
-import logging
-import os
-import openpyxl
+datetime_now = datetime.now()
+full_list_url='https://finance.yahoo.com/currencies'
+header = {'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_11_5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/50.0.2661.102 Safari/537.36'}
+full_list_page = requests.get(full_list_url, headers=header)
+df = pd.read_html(full_list_page.text)[0].drop_duplicates()
+df['pct_change'] = df['% Change'].str.slice(stop=-1).astype(float)
+
+top_df = df.sort_values(['pct_change'], ascending=False).reset_index(drop=True)[:5]
+top_df = top_df[['Name', 'Last Price', 'Change', '% Change']]
+
+bottom_df = df.sort_values(['pct_change'], ascending=True).reset_index(drop=True)[:5]
+bottom_df = bottom_df[['Name', 'Last Price', 'Change', '% Change']]
+
 from pptx import Presentation
-from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE
-from pptx.util import Pt
-from pptx.dml.color import RGBColor
-from pptx.enum.text import PP_ALIGN
+from pptx.util import Inches
 
-# Setup logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
+# Open the PPT
+currencies_ppt = Presentation('Currencies.pptx')
 
-class Shape:
-    def __init__(self, config):
-        self.name = config['shape_name']
-        self.object_name = config['object_name']
-        self.data_sheet = config['data_sheet']
-        self.cell = config['cell']
-        self.font_size = config['font_size']
-        self.font_type = config['font_type']
-        self.bold = config['bold']
-        self.color = config['color'].lstrip('#')
-        self.alignment = config['alignment']
-        self.text_case = config['text_case'].lower()
-        self.add_percentage = config['add_percentage']
-        self.decimal_places = config['decimal_places']
+# Select the slide to be editted
+slide = currencies_ppt.slides[0]
 
-    def update(self, shape, value):
-        try:
-            float_value = float(value)
-            is_numeric = True
-        except ValueError:
-            float_value = value
-            is_numeric = False
+# Remove the old figures
+shapes = slide.shapes
+for shape in shapes:
+    #print(shape.shape_type)
+    if shape.shape_type == 13: # 13 = PICTURE
+        shapes.element.remove(shape.element)
 
-        if is_numeric:
-            text = f"{float_value:.{self.decimal_places}f}" if self.decimal_places is not None else str(value)
-        else:
-            text = str(value)
+# Add the new figures
+top_img_path = 'top.png'
+bottom_img_path = 'bottom.png'
+top_pic = slide.shapes.add_picture(top_img_path, Inches(0.40), Inches(4.85), width=Inches(5.30))
+bottom_pic = slide.shapes.add_picture(bottom_img_path, Inches(5.25), Inches(4.85), width=Inches(5.30))
 
-        if self.text_case == 'uppercase':
-            text = text.upper()
-        elif self.text_case == 'lowercase':
-            text = text.lower()
-        elif self.text_case == 'titlecase':
-            text = text.title()
+# Send the figures to the back
+ref_element = slide.shapes[0]._element
+ref_element.addprevious(top_pic._element)
+ref_element.addprevious(bottom_pic._element)
 
-        if self.add_percentage and is_numeric:
-            text = f"{text}%"
+# Separate text box and table
+shapes = slide.shapes
+text_box_list = []
+auto_shape_list = []
+table_list = []
+for shape_idx in range(len(shapes)):
+    shape = shapes[shape_idx]
+    if shape.shape_type == 17: # TEXT_BOX
+        text_box_list.append(shape_idx)
+    if shape.shape_type == 1: # AUTO_SHAPE
+        auto_shape_list.append(shape_idx)
+    if shape.shape_type == 19: # TABLE
+        table_list.append(shape_idx)
 
-        shape.text_frame.text = text
-        paragraph = shape.text_frame.paragraphs[0]
-        paragraph.font.size = Pt(self.font_size)
-        paragraph.font.name = self.font_type
-        paragraph.font.bold = self.bold
-        paragraph.font.color.rgb = RGBColor.from_string(self.color)
-        paragraph.alignment = getattr(PP_ALIGN, self.alignment.upper())
+# Last update date shape index
+last_update_date_textbox_height = max([shapes[shape_idx].height for shape_idx in text_box_list])
+last_update_date_idx = [shape_idx for shape_idx in text_box_list if shapes[shape_idx].height == last_update_date_textbox_height][0]
 
-class Chart:
-    def __init__(self, config):
-        self.name = config['chart_name']
-        self.object_name = config['object_name']
-        self.data_sheet = config['data_sheet']
-        self.data_range = config['data_range']
-        self.columns = [config[f'column_{i}'] for i in range(1, 3) if config[f'column_{i}']]
-        self.chart_type = config['chart_type']
-        self.colors = [config[f'color_{i}'] for i in range(1, 3) if config[f'color_{i}']]
+# Top 5 figure label shape index
+top_label_left = min([shapes[shape_idx].left for shape_idx in auto_shape_list])
+top_label_idx = [shape_idx for shape_idx in auto_shape_list if shapes[shape_idx].left == top_label_left][0]
+auto_shape_list.remove(top_label_idx)
 
-    def update(self, chart, data):
-        chart_data = CategoryChartData()
-        categories = [row[0] for row in data[1:]]
-        chart_data.categories = categories
+# Bottom 5 figure label shape index
+bottom_label_idx = auto_shape_list[0]
 
-        for i, col_name in enumerate(self.columns):
-            col_index = data[0].index(col_name)
-            series_values = [row[col_index] for row in data[1:]]
-            chart_data.add_series(col_name, series_values)
+# Top 5 table shape index
+top_table_left = min([shapes[shape_idx].left for shape_idx in table_list])
+top_table_idx = [shape_idx for shape_idx in table_list if shapes[shape_idx].left == top_table_left][0]
+table_list.remove(top_table_idx)
 
-        chart.replace_data(chart_data)
+# Bottom 5 table shape index
+bottom_table_idx = table_list[0]
 
-        if self.chart_type.lower() == 'line' and self.colors:
-            for i, series in enumerate(chart.series):
-                if i < len(self.colors):
-                    color = RGBColor.from_string(self.colors[i].lstrip('#'))
-                    series.format.line.color.rgb = color
+# Update last update date
+paragraph = shapes[last_update_date_idx].text_frame.paragraphs[0]
+paragraph.runs[4].text = datetime_now.strftime("%#d %b %Y %H:%M")
 
-class ReportingSystem:
-    def __init__(self, ppt_template, excel_file):
-        self.ppt_template = ppt_template
-        self.excel_file = excel_file
-        self.charts = []
-        self.shapes = []
+# Update top 5 figure label
+paragraph = shapes[top_label_idx].text_frame.paragraphs[0]
+paragraph.runs[0].text = top_df['Name'][0].replace('/', ' / ')
 
-    def load_configuration(self):
-		wb = openpyxl.load_workbook(self.excel_file, data_only=True)
+# Update bottom 5 figure label
+paragraph = shapes[bottom_label_idx].text_frame.paragraphs[0]
+paragraph.runs[0].text = bottom_df['Name'][0].replace('/', ' / ')
 
-    # Alterar os nomes das planilhas aqui
-		charts_sheet = wb['Grafico']  # Novo nome da planilha de gráficos
-		for row in charts_sheet.iter_rows(min_row=2, values_only=True):
-			if row[0]:
-				chart_config = {
-					'chart_name': row[0],
-					'object_name': row[1],
-					'data_sheet': row[2],
-					'data_range': row[3],
-					'column_1': row[4],
-					'column_2': row[5],
-					'chart_type': row[6],
-					'color_1': row[7] if len(row) > 7 else None,
-					'color_2': row[8] if len(row) > 8 else None,
-				}
-				self.charts.append(Chart(chart_config))
+# Update top table
+top_table = shapes[top_table_idx].table
+for i in range(5):
+    for j in range(4):
+        cell = top_table.cell(i+1, j)
+        paragraph = cell.text_frame.paragraphs[0]
+        run = paragraph.runs[0]
+        run.text = str(top_df.iloc[i, j])
 
-		shapes_sheet = wb['Formas']  # Novo nome da planilha de formas
-		for row in shapes_sheet.iter_rows(min_row=2, values_only=True):
-			if row[0]:
-				shape_config = {
-					'shape_name': row[0],
-					'object_name': row[1],
-					'data_sheet': row[2],
-					'cell': row[3],
-					'font_size': int(row[4]),
-					'font_type': row[5],
-					'bold': row[6],
-					'color': row[7],
-					'alignment': row[8],
-					'text_case': row[9] if len(row) > 9 else 'default',
-					'add_percentage': row[10] if len(row) > 10 else False,
-					'decimal_places': int(row[11]) if len(row) > 11 and row[11] is not None else None 
-				}
-				self.shapes.append(Shape(shape_config))
-
-		wb.close()
-		logging.info(f"Loaded {len(self.charts)} charts and {len(self.shapes)} shapes from configuration")
-
-    def generate_report(self, output_file):
-        # Load the presentation template
-        prs = Presentation(self.ppt_template)
-
-        for shape in self.shapes:
-            data = self.load_data(shape.data_sheet, shape.cell)
-            if data:
-                shape_name = shape.object_name
-                ppt_shape = self.find_shape(prs, shape_name)
-                if ppt_shape:
-                    shape.update(ppt_shape, data)
-
-        for chart in self.charts:
-            data = self.load_data(chart.data_sheet, chart.data_range)
-            if data:
-                chart_name = chart.object_name
-                ppt_chart = self.find_chart(prs, chart_name)
-                if ppt_chart:
-                    chart.update(ppt_chart, data)
-
-        prs.save(output_file)
-        logging.info(f"Report generated and saved to {output_file}")
-
-    def load_data(self, sheet_name, cell_range):
-        wb = openpyxl.load_workbook(self.excel_file, data_only=True)
-        sheet = wb[sheet_name]
-        data = sheet[cell_range]
-        return [[cell.value for cell in row] for row in data]
-
-    def find_shape(self, prs, shape_name):
-        for slide in prs.slides:
-            for shape in slide.shapes:
-                if shape.name == shape_name:
-                    return shape
-        return None
-
-    def find_chart(self, prs, chart_name):
-        for slide in prs.slides:
-            for shape in slide.shapes:
-                if shape.name == chart_name and shape.has_chart:
-                    return shape.chart
-        return None
-
-# Path definitions
-template_path = r"/report_template.pptx"
-data_path = r"/reporting_data.xlsx"
-output_path = r"/output.pptx"
-
-logging.info("Started report generation")
-
-# Check for the files
-if not os.path.exists(template_path):
-    raise FileNotFoundError(f"Template file is missing: {template_path}")
-
-if not os.path.exists(data_path):
-    raise FileNotFoundError(f"Data file is missing: {data_path}")
-
-try:
-    reporting_system = ReportingSystem(template_path, data_path)
-    reporting_system.load_configuration()
-    reporting_system.generate_report(output_path)
-except Exception as e:
-    logging.error(f"An error occurred while generating the report: {str(e)}")
-    raise 
+# Update bottom table
+bottom_table = shapes[bottom_table_idx].table
+for i in range(5):
+    for j in range(4):
+        cell = bottom_table.cell(i+1, j)
+        paragraph = cell.text_frame.paragraphs[0]
+        run = paragraph.runs[0]
+        run.text = str(bottom_df.iloc[i, j])
+        
+# Save the PPT
+currencies_ppt.save('New_Currencies.pptx')
