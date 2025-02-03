@@ -1,9 +1,16 @@
-def autoIncrement(index, count):
-    if count == 3:
-        return 1
-    return 1 if index % 2 != 0 else 0
-
-# Aplicar a função no Field Calculator
-autoIncrement(!Index!, !Count!)
-
-
+2025-02-03 08:34:36.504 [error] Error: End of central directory record signature not found. Either not a zip file, or file is truncated.
+    at b0 (file:///c:/Users/alex_santos4/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-utility/sharedProcess/sharedProcessMain.js:77:23620)
+    at file:///c:/Users/alex_santos4/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-utility/sharedProcess/sharedProcessMain.js:77:24948
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\index.js:40:7
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\index.js:190:5
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\index.js:712:5
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\fd-slicer.js:33:7
+    at FSReqCallback.wrapper [as oncomplete] (node:fs:684:5)
+2025-02-03 08:34:36.543 [error] End of central directory record signature not found. Either not a zip file, or file is truncated.: Error: End of central directory record signature not found. Either not a zip file, or file is truncated.
+    at b0 (file:///c:/Users/alex_santos4/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-utility/sharedProcess/sharedProcessMain.js:77:23620)
+    at file:///c:/Users/alex_santos4/AppData/Local/Programs/Microsoft%20VS%20Code/resources/app/out/vs/code/electron-utility/sharedProcess/sharedProcessMain.js:77:24948
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\index.js:40:7
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\index.js:190:5
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\index.js:712:5
+    at c:\Users\alex_santos4\AppData\Local\Programs\Microsoft VS Code\resources\app\node_modules\yauzl\fd-slicer.js:33:7
+    at FSReqCallback.wrapper [as oncomplete] (node:fs:684:5)
