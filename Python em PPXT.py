@@ -1,3 +1,4 @@
+
 import logging
 import os
 import openpyxl
@@ -93,45 +94,46 @@ class ReportingSystem:
         self.shapes = []
 
     def load_configuration(self):
-        wb = openpyxl.load_workbook(self.excel_file, data_only=True)
+		wb = openpyxl.load_workbook(self.excel_file, data_only=True)
 
-        charts_sheet = wb['Charts']
-        for row in charts_sheet.iter_rows(min_row=2, values_only=True):
-            if row[0]:
-                chart_config = {
-                    'chart_name': row[0],
-                    'object_name': row[1],
-                    'data_sheet': row[2],
-                    'data_range': row[3],
-                    'column_1': row[4],
-                    'column_2': row[5],
-                    'chart_type': row[6],
-                    'color_1': row[7] if len(row) > 7 else None,
-                    'color_2': row[8] if len(row) > 8 else None,
-                }
-                self.charts.append(Chart(chart_config))
+    # Alterar os nomes das planilhas aqui
+		charts_sheet = wb['Grafico']  # Novo nome da planilha de gráficos
+		for row in charts_sheet.iter_rows(min_row=2, values_only=True):
+			if row[0]:
+				chart_config = {
+					'chart_name': row[0],
+					'object_name': row[1],
+					'data_sheet': row[2],
+					'data_range': row[3],
+					'column_1': row[4],
+					'column_2': row[5],
+					'chart_type': row[6],
+					'color_1': row[7] if len(row) > 7 else None,
+					'color_2': row[8] if len(row) > 8 else None,
+				}
+				self.charts.append(Chart(chart_config))
 
-        shapes_sheet = wb['Shapes']
-        for row in shapes_sheet.iter_rows(min_row=2, values_only=True):
-            if row[0]:
-                shape_config = {
-                    'shape_name': row[0],
-                    'object_name': row[1],
-                    'data_sheet': row[2],
-                    'cell': row[3],
-                    'font_size': int(row[4]),
-                    'font_type': row[5],
-                    'bold': row[6],
-                    'color': row[7],
-                    'alignment': row[8],
-                    'text_case': row[9] if len(row) > 9 else 'default',
-                    'add_percentage': row[10] if len(row) > 10 else False,
-                    'decimal_places': int(row[11]) if len(row) > 11 and row[11] is not None else None 
-                }
-                self.shapes.append(Shape(shape_config))
+		shapes_sheet = wb['Formas']  # Novo nome da planilha de formas
+		for row in shapes_sheet.iter_rows(min_row=2, values_only=True):
+			if row[0]:
+				shape_config = {
+					'shape_name': row[0],
+					'object_name': row[1],
+					'data_sheet': row[2],
+					'cell': row[3],
+					'font_size': int(row[4]),
+					'font_type': row[5],
+					'bold': row[6],
+					'color': row[7],
+					'alignment': row[8],
+					'text_case': row[9] if len(row) > 9 else 'default',
+					'add_percentage': row[10] if len(row) > 10 else False,
+					'decimal_places': int(row[11]) if len(row) > 11 and row[11] is not None else None 
+				}
+				self.shapes.append(Shape(shape_config))
 
-        wb.close()
-        logging.info(f"Loaded {len(self.charts)} charts and {len(self.shapes)} shapes from configuration")
+		wb.close()
+		logging.info(f"Loaded {len(self.charts)} charts and {len(self.shapes)} shapes from configuration")
 
     def generate_report(self, output_file):
         # Load the presentation template
@@ -196,52 +198,4 @@ try:
     reporting_system.generate_report(output_path)
 except Exception as e:
     logging.error(f"An error occurred while generating the report: {str(e)}")
-    raise
-    
-    
-    
-    
-    
-    
-    
-    def load_configuration(self):
-    wb = openpyxl.load_workbook(self.excel_file, data_only=True)
-
-    # Alterar os nomes das planilhas aqui
-    charts_sheet = wb['Grafico']  # Novo nome da planilha de gráficos
-    for row in charts_sheet.iter_rows(min_row=2, values_only=True):
-        if row[0]:
-            chart_config = {
-                'chart_name': row[0],
-                'object_name': row[1],
-                'data_sheet': row[2],
-                'data_range': row[3],
-                'column_1': row[4],
-                'column_2': row[5],
-                'chart_type': row[6],
-                'color_1': row[7] if len(row) > 7 else None,
-                'color_2': row[8] if len(row) > 8 else None,
-            }
-            self.charts.append(Chart(chart_config))
-
-    shapes_sheet = wb['Formas']  # Novo nome da planilha de formas
-    for row in shapes_sheet.iter_rows(min_row=2, values_only=True):
-        if row[0]:
-            shape_config = {
-                'shape_name': row[0],
-                'object_name': row[1],
-                'data_sheet': row[2],
-                'cell': row[3],
-                'font_size': int(row[4]),
-                'font_type': row[5],
-                'bold': row[6],
-                'color': row[7],
-                'alignment': row[8],
-                'text_case': row[9] if len(row) > 9 else 'default',
-                'add_percentage': row[10] if len(row) > 10 else False,
-                'decimal_places': int(row[11]) if len(row) > 11 and row[11] is not None else None 
-            }
-            self.shapes.append(Shape(shape_config))
-
-    wb.close()
-    logging.info(f"Loaded {len(self.charts)} charts and {len(self.shapes)} shapes from configuration")
+    raise 
