@@ -58,3 +58,21 @@ p.font.size = Pt(14)
 
 # Salvando a apresentação
 ppt.save("Acompanhamento_Semanal_LEBATEC.pptx")
+
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+<ipython-input-11-0932db5d1e9c> in <cell line: 0>()
+     44 meta = 300
+     45 
+---> 46 line = slide2.shapes.add_shape(MSO_SHAPE.LINE, x, y + altura.inches + 0.2, largura, 0)
+     47 line.line.color.rgb = RGBColor(0, 0, 255)  # Azul
+     48 
+
+/usr/lib/python3.11/enum.py in __getattr__(cls, name)
+    784             return cls._member_map_[name]
+    785         except KeyError:
+--> 786             raise AttributeError(name) from None
+    787 
+    788     def __getitem__(cls, name):
+
+AttributeError: LINE
