@@ -1,36 +1,43 @@
-!pip install pandas
-
-import pandas as pd
-import matplotlib.pyplot as plt
 from pptx import Presentation
 from pptx.util import Inches
 
-file_path = "dados.xlsx"  # Nome do arquivo Excel
-df = pd.read_excel(file_path)
+def atualizar_apresentacao(arquivo_modelo, titulo, dados_grafico, arquivo_saida):
+    prs = Presentation(arquivo_modelo)
+    
+    # Supondo que o gráfico esteja no primeiro slide
+    slide = prs.slides[0]
 
-plt.figure(figsize=(8, 5))
-plt.bar(df["Equipe"], color="green", alpha=0.7)
-plt.xlabel("Equipes", fontsize=12, color="green")
-plt.ylabel("Realizados", fontsize=12, color="green")
-plt.title("Acompanhamento Semanal - LEBATEC", fontsize=14, color="green")
-plt.xticks(rotation=30)
-plt.grid(axis="y", linestyle="--", alpha=0.5)
-graph_path = "grafico_barras.png"
-plt.savefig(graph_path, bbox_inches="tight", dpi=300, facecolor="white")
-plt.close()
+    # Atualizar título
+    for shape in slide.shapes:
+        if shape.has_text_frame:
+            shape.text = titulo  # Substitui o texto do primeiro placeholder encontrado
+            break
 
-try:
-    ppt = Presentation("/content/Modelo_ppt_Inventario_edit.pptx")  # Carregar modelo existente
-except FileNotFoundError:
-    ppt = Presentation()  # Criar um novo PowerPoint
-slide_layout = ppt.slide_layouts[5]  # Layout em branco
-slide = ppt.slides.add_slide(slide_layout)
+    # Atualizar gráfico
+    for shape in slide.shapes:
+        if shape.has_chart:
+            chart = shape.chart
+            chart_data = chart.chart_data
 
-title_shape = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(8), Inches(1))
-text_frame = title_shape.text_frame
-text_frame.text = "Inventário Florestal - Gráfico de Volume"
-slide.shapes.add_picture(graph_path, Inches(1), Inches(2), width=Inches(8))
+            # Limpa os dados antigos
+            categorias = list(dados_grafico.keys())
+            valores = list(dados_grafico.values())
 
-ppt.save("Inventario_Florestal.pptx")
+            chart_data.categories = categorias
+            serie = chart_data.series[0]  # Supondo uma única série
+            serie.values = valores
+            
+            break
 
-print("PowerPoint atualizado com sucesso!")
+    # Salvar a nova apresentação
+    prs.save(arquivo_saida)
+
+# Exemplo de uso
+dados = {
+    "Categoria 1": 10,
+    "Categoria 2": 20,
+    "Categoria 3": 15,
+    "Categoria 4": 25
+}
+
+atualizar_apresentacao("modelo.pptx", "Meu Gráfico Personalizado", dados, "apresentacao_final.pptx")
