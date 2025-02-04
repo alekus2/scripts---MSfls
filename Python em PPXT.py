@@ -3,11 +3,7 @@ from pptx.util import Inches
 
 def atualizar_apresentacao(arquivo_modelo, titulo, dados_grafico, arquivo_saida):
     prs = Presentation(arquivo_modelo)
-    
-    # Supondo que o gráfico esteja no primeiro slide
-    slide = prs.slides[0]
-
-    # Atualizar título
+    slide = prs.slides[3]
     for shape in slide.shapes:
         if shape.has_text_frame:
             shape.text = titulo  # Substitui o texto do primeiro placeholder encontrado
@@ -34,10 +30,10 @@ def atualizar_apresentacao(arquivo_modelo, titulo, dados_grafico, arquivo_saida)
 
 # Exemplo de uso
 dados = {
-    "Categoria 1": 10,
-    "Categoria 2": 20,
-    "Categoria 3": 15,
-    "Categoria 4": 25
+    "1": 0,
+    "2": 00,
+    "3": 200,
+    "4": 100
 }
 
-atualizar_apresentacao("modelo.pptx", "Meu Gráfico Personalizado", dados, "apresentacao_final.pptx")
+atualizar_apresentacao("/content/Modelo_ppt_Inventario_edit.pptx", "Acompanhamento Semanal -LEBATEC", dados, "Acompanhamento Semanal -LEBATEC.pptx")
