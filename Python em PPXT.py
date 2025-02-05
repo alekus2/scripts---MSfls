@@ -1,6 +1,7 @@
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
+from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.util import Inches
 from pptx.dml.color import RGBColor
 
@@ -42,9 +43,13 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, dados_grafi
     series_meta.format.line.color.rgb = RGBColor(0, 0, 255)  # Azul
     series_meta.format.line.width = Inches(0.1)  # Largura da linha
 
+    # Adicionar marcadores à linha da meta
+    series_meta.marker.style = XL_CHART_TYPE.LINE_MARKER  # Define o estilo do marcador
+    series_meta.marker.size = 5  # Tamanho dos marcadores
+
     # Adicionar legenda
     chart.has_legend = True
-    chart.legend.position = xl
+    chart.legend.position = XL_LEGEND_POSITION.RIGHT  # Posição da legenda à direita
     chart.legend.include_in_layout = False
 
     # Salvar a apresentação com as alterações
@@ -55,27 +60,3 @@ dados = {"1": 0, "2": 10, "3": 200, "4": 100}
 meta = [300, 300, 300, 300]  # Valores da linha "Meta"
 
 adicionar_grafico_em_modelo("/content/Modelo_ppt_Inventario_edit.pptx", 3, "Acompanhamento Semanal - LEBATEC", dados, meta, "modelo_editado.pptx")
-
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-<ipython-input-9-7c77cb2ea02e> in <cell line: 0>()
-     55 meta = [300, 300, 300, 300]  # Valores da linha "Meta"
-     56 
----> 57 adicionar_grafico_em_modelo("/content/Modelo_ppt_Inventario_edit.pptx", 3, "Acompanhamento Semanal - LEBATEC", dados, meta, "modelo_editado.pptx")
-
-1 frames
-<ipython-input-9-7c77cb2ea02e> in adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, dados_grafico, meta_valores, arquivo_saida)
-     45     # Adicionar legenda
-     46     chart.has_legend = True
----> 47     chart.legend.position = XL_CHART_TYPE.RIGHT
-     48     chart.legend.include_in_layout = False
-     49 
-
-/usr/lib/python3.11/enum.py in __getattr__(cls, name)
-    784             return cls._member_map_[name]
-    785         except KeyError:
---> 786             raise AttributeError(name) from None
-    787 
-    788     def __getitem__(cls, name):
-
-AttributeError: RIGHT
