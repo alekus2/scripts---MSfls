@@ -5,44 +5,48 @@ from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.util import Inches
 from pptx.dml.color import RGBColor
 
-def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, dados_grafico, meta_valores, arquivo_saida):
+def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, categorias, valores_realizados, valores_meta, arquivo_saida):
     prs = Presentation(arquivo_modelo)
-    
     slide = prs.slides[slide_index]
 
+    # Alterar o título do slide, se houver
     for shape in slide.shapes:
         if shape.has_text_frame:
             shape.text = titulo
             break
 
-    x, y, cx, cy = Inches(2), Inches(1.5), Inches(2), Inches(2)
+    # Posição e tamanho do gráfico
+    x, y, cx, cy = Inches(2), Inches(1.5), Inches(5), Inches(3)
+
+    # Criando os dados do gráfico
     dados_grafico = CategoryChartData()
-   
-    dados_grafico.categories = dados
-    dados_grafico.add_series("Realizados", dados_nome)  # Nome da série de realizados
-    dados_grafico.add_series("Meta", meta_valores)      # Nome da série de meta
+    dados_grafico.categories = categorias
+    dados_grafico.add_series("Realizados", valores_realizados)  # Série de barras
+    dados_grafico.add_series("Meta", valores_meta)  # Série de linha
+
+    # Adicionando o gráfico ao slide
     graphic_frame = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, dados_grafico)
+    chart = graphic_frame.chart
 
-    dados_do_grafico = graphic_frame.chart
-
-    # Formatação da série realizada
-    series_realizado = dados_do_grafico.series[0]
+    # Formatação da série "Realizados" (barras verdes)
+    series_realizado = chart.series[0]
     series_realizado.format.fill.solid()
     series_realizado.format.fill.fore_color.rgb = RGBColor(0, 128, 0)  # Verde
 
-    # Formatação da série de meta
-    series_meta = dados_do_grafico.series[1]
-    series_meta.chart_type = XL_CHART_TYPE.LINE  # Definindo como gráfico de linha
+    # Formatação da série "Meta" (linha azul com pontos)
+    series_meta = chart.series[1]
+    series_meta.chart_type = XL_CHART_TYPE.LINE_MARKERS  # Linha com pontos
     series_meta.format.line.fill.solid()
     series_meta.format.line.fill.fore_color.rgb = RGBColor(0, 0, 255)  # Azul
+    series_meta.marker.style = 2  # Adicionando marcadores nos pontos
 
-    dados_do_grafico.has_legend = True
-    dados_do_grafico.legend.position = XL_LEGEND_POSITION.RIGHT  # Posição da legenda à direita
+    # Configuração da legenda
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.RIGHT
 
+    # Salvando a apresentação editada
     prs.save(arquivo_saida)
 
 # Exemplo de uso
-dados = ["1", "2", "3", "4"]
-dados_nome = [200, 300, 200, 300]
-meta = [250, 250, 250, 250]  # Definindo os valores da meta
-adicionar_grafico_em_modelo("/content/Modelo_ppt_Inventario_edit.pptx", 3, "Modelo de acompanhamento.", dados, meta, "modelo_editado.pptx")
+categorias = ["1", "2", "3", "4"]
+val
