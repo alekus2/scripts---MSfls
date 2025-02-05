@@ -5,7 +5,7 @@ from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.util import Inches
 from pptx.dml.color import RGBColor
 
-def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, categorias, valores_realizados, valores_meta, arquivo_saida):
+def adicionar_grafico_com_linha_meta(arquivo_modelo, slide_index, titulo, categorias, valores_realizados, valor_meta, arquivo_saida):
     prs = Presentation(arquivo_modelo)
     slide = prs.slides[slide_index]
 
@@ -22,7 +22,10 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, categorias,
     dados_grafico = CategoryChartData()
     dados_grafico.categories = categorias
     dados_grafico.add_series("Realizados", valores_realizados)  # Série de barras
-    dados_grafico.add_series("Meta", valores_meta)  # Série de linha
+    
+    # Criando uma série de linha que cubra todas as categorias
+    valores_meta = [valor_meta] * len(categorias)  # Repete o mesmo valor para todas as colunas
+    dados_grafico.add_series("Meta", valores_meta)  
 
     # Adicionando o gráfico ao slide
     graphic_frame = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, dados_grafico)
@@ -33,12 +36,11 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, categorias,
     series_realizado.format.fill.solid()
     series_realizado.format.fill.fore_color.rgb = RGBColor(0, 128, 0)  # Verde
 
-    # Formatação da série "Meta" (linha azul com pontos)
+    # Formatação da série "Meta" (linha azul contínua)
     series_meta = chart.series[1]
-    series_meta.chart_type = XL_CHART_TYPE.LINE_MARKERS  # Linha com pontos
+    series_meta.chart_type = XL_CHART_TYPE.LINE  # Linha contínua
     series_meta.format.line.fill.solid()
     series_meta.format.line.fill.fore_color.rgb = RGBColor(0, 0, 255)  # Azul
-    series_meta.marker.style = 2  # Adicionando marcadores nos pontos
 
     # Configuração da legenda
     chart.has_legend = True
@@ -49,4 +51,7 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, categorias,
 
 # Exemplo de uso
 categorias = ["1", "2", "3", "4"]
-val
+valores_realizados = [200, 300, 200, 300]
+valor_meta = 250  # Valor da linha meta (fixo)
+
+adicionar_grafico_com_linha_meta("Modelo_ppt_Inventario_edit.pptx", 3, "Modelo de acompanhamento.", categorias, valores_realizados, valor_meta, "modelo_editado.pptx")
