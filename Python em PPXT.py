@@ -1,6 +1,5 @@
 from pptx import Presentation
 from pptx.dml.fill import FillFormat
-from pptx.dml.line import LineFormat
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.chart import XL_LEGEND_POSITION
@@ -32,10 +31,10 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, dados_grafi
     series_realizado.format.fill.fore_color.rgb = RGBColor(0, 128, 0)  # Verde
 
     # Adicionando a linha de meta
-    series_meta = dados_do_grafico.series.add_series("Meta", meta_valores)
-    series_meta.format.line.fill.solid()
-    series_meta.format.line.fill.fore_color.rgb = RGBColor(0, 0, 255)  # Azul
-    series_meta.chart_type = XL_CHART_TYPE.LINE  # Definindo como gráfico de linha
+    meta_series = dados_do_grafico.series.add_series("Meta", meta_valores)
+    meta_series.chart_type = XL_CHART_TYPE.LINE  # Definindo como gráfico de linha
+    meta_series.format.line.fill.solid()
+    meta_series.format.line.fill.fore_color.rgb = RGBColor(0, 0, 255)  # Azul
 
     dados_do_grafico.has_legend = True
     dados_do_grafico.legend.position = XL_LEGEND_POSITION.RIGHT  # Posição da legenda à direita
