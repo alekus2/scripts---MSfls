@@ -1,43 +1,3 @@
-# from os import remove
-# import pandas as pd
-# import matplotlib.pyplot as plt
-# from pptx import Presentation
-# from pptx.util import Inches
-
-# file_path = "/content/dados.xlsx"  
-# df = pd.read_excel(file_path)
-
-# plt.figure(figsize=(8, 5))
-# plt.bar(df["Equipe"],df["Realizados"], color="green", alpha=0.7)
-# plt.xlabel("Equipes", fontsize=12, color="green")
-# plt.ylabel("Realizados", fontsize=12, color="green")
-# plt.title("Acompanhamento Semanal - LEBATEC", fontsize=14, color="green")
-# plt.xticks(rotation=30)
-# plt.grid(axis="y", linestyle="--", alpha=0.5)
-# graph_path = "grafico_barras.png"
-# plt.savefig(graph_path, bbox_inches="tight", dpi=300, facecolor="white")
-# plt.close()
-
-# def remove_slides (ppt,slide_index):
-#   xml_slides=ppt.slides._sldIdLst
-#   slides=list(xml_slides)
-#   if 0 <= slide_index <len(slides):
-#     xml_slides.remove(slides[slide_index])
-#   else:
-#     print("lascouse")
-# try:
-#     ppt = Presentation("/content/Modelo_ppt_Inventario_edit.pptx")  # Carregar modelo existente
-#     remove_slides(ppt, 3)
-# except FileNotFoundError:
-#     ppt = Presentation()  # Criar um novo PowerPoint
-# slide_layout = ppt.slide_layouts[5]  # Layout em branco
-# slide = ppt.slides.add_slide(slide_layout)
-# title_shape = slide.shapes.add_textbox(Inches(1), Inches(0.5), Inches(8), Inches(1))
-# text_frame = title_shape.text_frame
-# text_frame.text = "Modelo de acompanhamento:"
-
-
-
 from pptx import Presentation
 from pptx.chart.data import CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
@@ -62,7 +22,7 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, dados_grafi
     valores = list(dados_grafico.values())
 
     chart_data.categories = categorias
-    chart_data.add_series("Valores", valores)  # Barras do gráfico
+    chart_data.add_series("Realizado", valores, fill=True)  # Barras do gráfico
     chart_data.add_series("Meta", meta_valores)  # Linha de meta
 
     # Adicionar gráfico ao slide
@@ -71,10 +31,23 @@ def adicionar_grafico_em_modelo(arquivo_modelo, slide_index, titulo, dados_grafi
         XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, chart_data
     )
 
-    # Estilizar a linha da "Meta"
+    # Estilizar a série "Realizado" (barras verdes)
     chart = graphic_frame.chart
+    series_realizado = chart.series[0]
+    series_realizado.format.fill.solid()
+    series_realizado.format.fill.fore_color.rgb = RGBColor(0, 128, 0)  # Verde
+
+    # Estilizar a linha da "Meta" (linha azul com pontos)
     series_meta = chart.series[1]
     series_meta.format.line.color.rgb = RGBColor(0, 0, 255)  # Azul
+    series_meta.format.line.width = Inches(0.1)  # Largura da linha
+    series_meta.marker.style = XL_CHART_TYPE.LINE_MARKER  # Adiciona marcadores
+    series_meta.marker.size = 5  # Tamanho dos marcadores
+
+    # Adicionar legenda
+    chart.has_legend = True
+    chart.legend.position = XL_CHART_TYPE.RIGHT
+    chart.legend.include_in_layout = False
 
     # Salvar a apresentação com as alterações
     prs.save(arquivo_saida)
