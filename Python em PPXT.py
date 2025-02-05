@@ -1,55 +1,65 @@
+import matplotlib.pyplot as plt
 from pptx import Presentation
-from pptx.chart.data import CategoryChartData
-from pptx.enum.chart import XL_CHART_TYPE
-from pptx.enum.chart import XL_LEGEND_POSITION
 from pptx.util import Inches
 from pptx.dml.color import RGBColor
+import os
 
+# --- Parte 1: Criar o gráfico com Matplotlib ---
 
-import matplotlib.pyplot as plt
+# Dados do gráfico
+categorias = ['1', '2', '3', '4']
+valores = [300, 200, 300, 200]
 
+# Criação da figura e eixos
 fig, ax = plt.subplots()
 
-fruits = ['1', '2', '3', '4']
-counts = [300, 200, 300, 200]
-bar_labels = ['Realizados','','','']
-bar_colors = ['tab:green']
+# Plot das barras
+ax.bar(categorias, valores, color='tab:green', label='Realizados')
 
-ax.bar(fruits, counts, label=bar_labels, color=bar_colors)
+# Adiciona uma linha horizontal azul em y=300
+ax.axhline(300, color='blue', linestyle='-', linewidth=2, label='Meta 300')
 
+# Configura título e legenda
 ax.set_title('Acompanhamento Semanal - LEBATEC')
 ax.legend(title='Legenda')
 
-plt.show()
+# Salva a figura como imagem (PNG)
+imagem_grafico = "grafico.png"
+fig.savefig(imagem_grafico, bbox_inches="tight")
+plt.close(fig)  # Fecha a figura para liberar memória
 
+# --- Parte 2: Inserir a imagem no slide do PowerPoint ---
 
-def adicionar_grafico_com_linha_meta(arquivo_modelo, slide_index, titulo, categorias, valores_realizados, arquivo_saida):
+def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, arquivo_saida):
+    # Abre a apresentação modelo
     prs = Presentation(arquivo_modelo)
+    
+    # Seleciona o slide desejado (usando o índice, que inicia em 0)
     slide = prs.slides[slide_index]
 
+    # Atualiza o título do slide (caso haja um shape com text frame)
     for shape in slide.shapes:
         if shape.has_text_frame:
             shape.text = titulo
             break
 
-    x, y, cx, cy = Inches(2), Inches(1.5), Inches(5), Inches(3)
-
-    dados_grafico = CategoryChartData()
-    dados_grafico.categories = categorias
-    dados_grafico.add_series("Realizados", valores_realizados)  # Série de barras
+    # Define posição e tamanho para a imagem (ajuste conforme necessário)
+    x = Inches(2)
+    y = Inches(1.5)
+    cx = Inches(5)
+    cy = Inches(3)
     
-    graphic_frame = slide.shapes.add_chart(XL_CHART_TYPE.COLUMN_CLUSTERED, x, y, cx, cy, dados_grafico)
-    chart = graphic_frame.chart
-
-    series_realizado = chart.series[0]
-    series_realizado.format.fill.solid()
-    series_realizado.format.fill.fore_color.rgb = RGBColor(0, 128, 0)  # Verde
-
-    chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.RIGHT
+    # Adiciona a imagem ao slide
+    slide.shapes.add_picture(imagem_path, x, y, cx, cy)
+    
+    # Salva a apresentação modificada
     prs.save(arquivo_saida)
 
-categorias = ["1", "2", "3", "4"]
-valores_realizados = [200, 300, 200, 300]
+# Parâmetros de exemplo
+arquivo_modelo = "Modelo_ppt_Inventario_edit.pptx"  # Apresentação modelo existente
+slide_index = 3  # Por exemplo, insere no 4º slide (índice 3)
+titulo_slide = "Modelo de acompanhamento."
+arquivo_saida = "modelo_editado.pptx"
 
-adicionar_grafico_com_linha_meta("Modelo_ppt_Inventario_edit.pptx", 3, "Modelo de acompanhamento.", categorias, valores_realizados, "modelo_editado.pptx")
+# Chama a função para inserir a imagem no slide
+adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo_slide, imagem_grafico, arquivo_saida)
