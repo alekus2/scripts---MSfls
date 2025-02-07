@@ -6,19 +6,26 @@ import numpy as np
 
 # --- Parte 1: Ler os dados do Excel ---
 
-df = pd.read_excel('TesteExcel.xlsx',sheet_name=0)
+# Lê os dados da planilha 'TesteExcel.xlsx'
+df = pd.read_excel('TesteExcel.xlsx', sheet_name=0)
+
+# Exibe as primeiras linhas do DataFrame
 print(df.head())
 
+# Converte as colunas relevantes em listas
 categorias = df['Semanas'].astype(str).tolist() 
-valores = df{'Porcentagem SOF': valores}.to_dict()
+valores_sof = df['Porcentagem SOF'].values  # Obtém os valores de Porcentagem SOF
+valores_vpd = df['Porcentagem VPD'].values  # Obtém os valores de Porcentagem VPD
 
 # --- Parte 2: Criar o gráfico com Matplotlib usando os dados lidos ---
 
-semanas = ('Semana 1', 'Semana 2', 'Semana 3', 'Semana 4')
+# Definindo as semanas com base nos dados lidos
+semanas = categorias  
 quantidade_realizada = {
-    'SOF': np.array([32, 31, 66, 44]),  
-    'VPD': np.array([36, 42, 49, 48]),
+    'SOF': valores_sof,  
+    'VPD': valores_vpd,
 }
+
 width = 0.6 
 
 fig, ax = plt.subplots()
@@ -27,18 +34,23 @@ bottom = np.zeros(len(semanas))
 # Cores das barras
 cores = ['#548235', '#A9D18E'] 
 
+# Criando as barras empilhadas
 for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
     p = ax.bar(semanas, valores, width, label=quantidade, bottom=bottom, color=cores[i])
     bottom += valores
-    ax.bar_label(p, label_type='center',fmt='%.0f%%')
+    ax.bar_label(p, label_type='center', fmt='%.0f%%')
 
+# Adicionando a linha de meta
 meta = 100
 ax.axhline(meta, color='darkgrey', linewidth=2, linestyle='--', label='Meta')
 
+# Configurações do gráfico
 ax.set_title('ACOMPANHAMENTO CICLO SOF - Bloco 05 - Janeiro/Fevereiro')
 ax.set_ylim(0, 200) 
 ax.set_yticks([])
 ax.legend()
+
+# Exibindo o gráfico
 plt.show()
 
 # --- Parte 1: Ler os dados do Excel ---
