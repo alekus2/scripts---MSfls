@@ -34,26 +34,34 @@ import numpy as np
 # fig.savefig(imagem_grafico, bbox_inches="tight")
 # plt.show()
 
-semanas = ('Semana 1', 'Semana 2', 'Semana 3','Semana 4')
+
+semanas = ('Semana 1', 'Semana 2', 'Semana 3', 'Semana 4')
 quantidade_realizada = {
-    'Male': np.array(["73%", "34%", "61%"]),
-    'Female': np.array(["73%", "34%", "58%"]),
+    'Male': np.array([73, 34, 61]),  # Convertendo para inteiros
+    'Female': np.array([73, 34, 58]),  # Convertendo para inteiros
 }
 width = 0.6 
-
 
 fig, ax = plt.subplots()
 bottom = np.zeros(3)
 
-for quantidade, quantidade_realizada in quantidade_realizada.items():
-    p = ax.bar(semanas, quantidade_realizada, width, label=quantidade, bottom=bottom)
-    bottom += quantidade_realizada
+# Cores das barras
+cores = ['#006400', '#90EE90']  # Verde escuro e verde claro
 
+for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
+    p = ax.bar(semanas, valores, width, label=quantidade, bottom=bottom, color=cores[i])
+    bottom += valores
     ax.bar_label(p, label_type='center')
 
-ax.set_title('ACOMPANHAMENTO CICLO SOF -Bloco 05- Janeiro/fevereiro ')
+# Adicionando linha de meta
+meta = 40
+ax.axhline(meta, color='darkgrey', linewidth=2, linestyle='--', label='Meta de 40%')
+
+ax.set_title('ACOMPANHAMENTO CICLO SOF - Bloco 05 - Janeiro/Fevereiro')
+ax.set_ylim(0, 100)  # Definindo limites do eixo Y
 ax.legend()
 
+plt.ylabel('Porcentagem (%)')  # Adicionando rótulo ao eixo Y
 plt.show()
 
 # --- Parte 3: Inserir a imagem no slide do PowerPoint ---
