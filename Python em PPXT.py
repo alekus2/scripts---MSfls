@@ -1,3 +1,4 @@
+
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np 
@@ -43,9 +44,15 @@ for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
             ax.text(rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2, f'{valor:.0f}%', 
                     ha='center', va='center', fontsize=10, color='white')
 
-# Adicionando a linha de meta
+# **Definir até onde a linha da meta deve ir**
 meta = 100
-ax.axhline(meta, color='darkgrey', linewidth=2, linestyle='--', label='Meta')
+
+# Encontrar a última semana com valores em SOF ou VPD
+indices_com_valores = np.where((valores_sof > 0) | (valores_vpd > 0))[0]
+
+if len(indices_com_valores) > 0:
+    ultima_semana_idx = indices_com_valores[-1]  # Última posição com valores
+    ax.plot([0, ultima_semana_idx + 0.5], [meta, meta], color='darkgrey', linewidth=2, linestyle='--', label='Meta')
 
 # Configurações do gráfico
 ax.set_title('ACOMPANHAMENTO CICLO SOF - Bloco 05 - Janeiro/Fevereiro', fontsize=14)
