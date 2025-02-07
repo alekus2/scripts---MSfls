@@ -13,7 +13,9 @@ df = pd.read_excel('TesteExcel.xlsx', sheet_name=0)
 print(df.head())
 
 # Converte as colunas relevantes em listas
-categorias = df['Semanas'].astype(str).tolist() 
+# Formata as semanas para "Semana X"
+categorias = ['Semana ' + str(int(semana)) if isinstance(semana, (int, float)) else str(semana) for semana in df['Semanas']]
+
 valores_sof = df['Porcentagem SOF'].values  # Obtém os valores de Porcentagem SOF
 valores_vpd = df['Porcentagem VPD'].values  # Obtém os valores de Porcentagem VPD
 
