@@ -1,19 +1,17 @@
-
 import pandas as pd
 import matplotlib.pyplot as plt
+from pptx import Presentation
+from pptx.util import Inches
 import numpy as np 
 
 # --- Parte 1: Ler os dados do Excel ---
-df = pd.read_excel('TesteExcel.xlsx', sheet_name=0)
+df = pd.read_excel('TesteExcel.xlsx', sheet_name=2)
 
-# Formata as semanas para "Semana X"
 categorias = ['Semana ' + str(int(semana)) if isinstance(semana, (int, float)) else str(semana) for semana in df['Semanas']]
-
-# Substitui NaN por 0
+nome = df['Nome']
 valores_sof = df['Porcentagem SOF'].fillna(0).values  
 valores_vpd = df['Porcentagem VPD'].fillna(0).values  
 
-# Se ambos os arrays estiverem vazios, garantir que ao menos as categorias sejam mantidas
 if not any(valores_sof) and not any(valores_vpd):
     valores_sof = np.zeros(len(categorias))
     valores_vpd = np.zeros(len(categorias))
@@ -28,42 +26,36 @@ quantidade_realizada = {
 
 width = 0.6 
 
-# Ajusta o tamanho da figura para dar mais espaço aos rótulos
 fig, ax = plt.subplots(figsize=(12, 6))  
 
 bottom = np.zeros(len(semanas))  
 cores = ['#548235', '#A9D18E'] 
 
-# Criando as barras empilhadas (somente se houver valores)
 for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
     p = ax.bar(semanas, valores, width, label=quantidade, bottom=bottom, color=cores[i])
     bottom += valores
-    # Adiciona rótulos apenas se o valor for maior que 0
     for rect, valor in zip(p, valores):
         if valor > 0:
             ax.text(rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2, f'{valor:.0f}%', 
                     ha='center', va='center', fontsize=10, color='white')
 
-# **Definir até onde a linha da meta deve ir**
 meta = 100
 
-# Encontrar a última semana com valores em SOF ou VPD
 indices_com_valores = np.where((valores_sof > 0) | (valores_vpd > 0))[0]
 
 if len(indices_com_valores) > 0:
     ultima_semana_idx = indices_com_valores[-1]  # Última posição com valores
     ax.plot([0, ultima_semana_idx + 0.5], [meta, meta], color='darkgrey', linewidth=2, linestyle='--', label='Meta')
 
-# Configurações do gráfico
 ax.set_title('ACOMPANHAMENTO CICLO SOF - Bloco 05 - Janeiro/Fevereiro', fontsize=14)
 ax.set_ylim(0, 200) 
 ax.set_yticks([])
 ax.legend()
 
-# Rotaciona os rótulos do eixo X para evitar sobreposição
+
 plt.xticks(rotation=30, ha='right')
 
-# Exibindo o gráfico
+plt.savefig(nome,format='png')
 plt.show()
 
 
