@@ -64,6 +64,25 @@ ax.legend()
 plt.ylabel('Porcentagem (%)')  # Adicionando rótulo ao eixo Y
 plt.show()
 
+
+ValueError                                Traceback (most recent call last)
+<ipython-input-10-1fc3322eb9a3> in <cell line: 0>()
+     47 
+     48 for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
+---> 49     p = ax.bar(semanas, valores, width, label=quantidade, bottom=bottom, color=cores[i])
+     50     bottom += valores
+     51     ax.bar_label(p, label_type='center')
+
+3 frames
+/usr/local/lib/python3.11/dist-packages/numpy/lib/stride_tricks.py in _broadcast_shape(*args)
+    420     # use the old-iterator because np.nditer does not handle size 0 arrays
+    421     # consistently
+--> 422     b = np.broadcast(*args[:32])
+    423     # unfortunately, it cannot handle 32 or more arguments directly
+    424     for pos in range(32, len(args), 31):
+
+ValueError: shape mismatch: objects cannot be broadcast to a single shape.  Mismatch is between arg 0 with shape (4,) and arg 1 with shape (3,).
+
 # --- Parte 3: Inserir a imagem no slide do PowerPoint ---
 
 # def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, arquivo_saida):
