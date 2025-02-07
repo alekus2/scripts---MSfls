@@ -58,8 +58,24 @@ plt.xticks(rotation=30, ha='right')
 plt.savefig(nome,format='png')
 plt.show()
 
-nome_arquivo = str(df['Nome'].iloc[0]) + ".png"
+# Obtém o primeiro nome da coluna e converte para string, se existir
+if 'Nome' in df.columns and not df['Nome'].isnull().all():
+    nome_arquivo = str(df['Nome'].iloc[0]).strip()  # Remove espaços extras
+    nome_arquivo = nome_arquivo.replace(" ", "_")  # Substitui espaços por "_"
+    nome_arquivo = "".join(c for c in nome_arquivo if c.isalnum() or c in "_-.")  # Remove caracteres inválidos
+    if nome_arquivo == "":
+        nome_arquivo = "grafico"  # Nome padrão se ficar vazio
+else:
+    nome_arquivo = "grafico"
+
+nome_arquivo += ".png"  # Garante a extensão correta
+
+# Salva o gráfico com o nome tratado
 plt.savefig(nome_arquivo, format='png', dpi=300)
+
+# Exibe o gráfico
+plt.show()
+
 
 
 
