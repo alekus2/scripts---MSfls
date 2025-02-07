@@ -5,23 +5,25 @@ from pptx.util import Inches
 import numpy as np 
 
 # --- Parte 1: Ler os dados do Excel ---
-
-# Lê os dados da planilha 'TesteExcel.xlsx'
 df = pd.read_excel('TesteExcel.xlsx', sheet_name=0)
 
 # Exibe as primeiras linhas do DataFrame
 print(df.head())
 
-# Converte as colunas relevantes em listas
 # Formata as semanas para "Semana X"
 categorias = ['Semana ' + str(int(semana)) if isinstance(semana, (int, float)) else str(semana) for semana in df['Semanas']]
 
-valores_sof = df['Porcentagem SOF'].values  # Obtém os valores de Porcentagem SOF
-valores_vpd = df['Porcentagem VPD'].values  # Obtém os valores de Porcentagem VPD
+# Obtém os valores das colunas, garantindo que valores vazios sejam tratados como 0
+valores_sof = df['Porcentagem SOF'].fillna(0).values  
+valores_vpd = df['Porcentagem VPD'].fillna(0).values  
 
-# --- Parte 2: Criar o gráfico com Matplotlib usando os dados lidos ---
+# Se ambos os arrays estiverem vazios, garantir que ao menos as categorias sejam mantidas
+if not any(valores_sof) and not any(valores_vpd):
+    valores_sof = np.zeros(len(categorias))
+    valores_vpd = np.zeros(len(categorias))
 
-# Definindo as semanas com base nos dados lidos
+# --- Parte 2: Criar o gráfico ---
+
 semanas = categorias  
 quantidade_realizada = {
     'SOF': valores_sof,  
@@ -29,18 +31,17 @@ quantidade_realizada = {
 }
 
 width = 0.6 
-
 fig, ax = plt.subplots()
 bottom = np.zeros(len(semanas))  
 
-# Cores das barras
 cores = ['#548235', '#A9D18E'] 
 
-# Criando as barras empilhadas
+# Criando as barras empilhadas (se houver valores)
 for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
     p = ax.bar(semanas, valores, width, label=quantidade, bottom=bottom, color=cores[i])
     bottom += valores
-    ax.bar_label(p, label_type='center', fmt='%.0f%%')
+    if any(valores):  # Só adiciona rótulos se houver valores
+        ax.bar_label(p, label_type='center', fmt='%.0f%%')
 
 # Adicionando a linha de meta
 meta = 100
@@ -54,6 +55,7 @@ ax.legend()
 
 # Exibindo o gráfico
 plt.show()
+
 
 # --- Parte 1: Ler os dados do Excel ---
 
