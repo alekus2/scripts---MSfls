@@ -58,6 +58,9 @@ plt.xticks(rotation=30, ha='right')
 plt.savefig(nome,format='png')
 plt.show()
 
+nome_arquivo = str(df['Nome'].iloc[0]) + ".png"
+plt.savefig(nome_arquivo, format='png', dpi=300)
+
 
 
 # --- Parte 1: Ler os dados do Excel ---
