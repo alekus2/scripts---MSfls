@@ -35,15 +35,18 @@ import numpy as np
 # plt.show()
 
 
+import numpy as np
+import matplotlib.pyplot as plt
+
 semanas = ('Semana 1', 'Semana 2', 'Semana 3', 'Semana 4')
 quantidade_realizada = {
-    'Male': np.array([73, 34, 61]),  # Convertendo para inteiros
-    'Female': np.array([73, 34, 58]),  # Convertendo para inteiros
+    'Male': np.array([73, 34, 61, 45]),  # Adicionando um valor para a quarta semana
+    'Female': np.array([73, 34, 58, 50]),  # Adicionando um valor para a quarta semana
 }
 width = 0.6 
 
 fig, ax = plt.subplots()
-bottom = np.zeros(3)
+bottom = np.zeros(len(semanas))  # Alterado para corresponder ao número de semanas
 
 # Cores das barras
 cores = ['#006400', '#90EE90']  # Verde escuro e verde claro
