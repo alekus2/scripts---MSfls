@@ -124,7 +124,22 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         y = Inches(1.5)
         cx = Inches(5)
         cy = Inches(3)
-        slide.shapes.add_picture(imagem_path, x, y, cx, cy)
+        slide.shapes.add_picture(imagem_path, x, y, cx, cy)# Percorre todos os shapes do slide para encontrar a caixa de texto
+for shape in slide.shapes:
+    if shape.has_text_frame and shape.text.strip() != "":
+        caixa_texto_encontrada = shape
+        break  # Assume que há apenas uma caixa de texto relevante
+
+if caixa_texto_encontrada:
+    # Copia a formatação existente
+    text_frame = caixa_texto_encontrada.text_frame
+    paragrafo = text_frame.paragraphs[0]  # Mantém a formatação do primeiro parágrafo
+    
+    # Modifica o texto mantendo a formatação original
+    paragrafo.text = novo_texto
+else:
+    print("Nenhuma caixa de texto encontrada para modificar.")
+
 
         # Salva o PowerPoint atualizado
         prs.save(arquivo_saida)
