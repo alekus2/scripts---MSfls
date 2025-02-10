@@ -30,7 +30,17 @@ autoIncrement <- function(parcela, count) {
 OUTRO CODIGO
 
 # Instale o pacote arcgisbinding se ainda não o tiver instalado
-# install.packages("arcgisbinding")
+
+Installing package into ‘/usr/local/lib/R/site-library’
+(as ‘lib’ is unspecified)
+
+Warning message:
+“package ‘arcgisbinding’ is not available for this version of R
+
+A version of this package for your version of R might be available elsewhere,
+see the ideas at
+https://cran.r-project.org/doc/manuals/r-patched/R-admin.html#Installing-packages”
+
 
 library(arcgisbinding)
 
