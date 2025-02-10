@@ -49,7 +49,6 @@ try:
                 ax.text(rect.get_x() + rect.get_width() / 2, rect.get_y() + rect.get_height() / 2, f'{valor:.0f}%', 
                         ha='center', va='center', fontsize=10, color='white')
 
-    # Adicionando a linha da meta
     meta = 100
     ax.plot([-0.5, len(semanas) - 0.5], [meta, meta], color='darkgrey', linewidth=2, linestyle='--', label='Meta')
 
@@ -57,7 +56,6 @@ try:
     ax.set_ylim(0, 200)  
     ax.legend()
 
-    # Nome do arquivo para salvar o gráfico
     nome_arquivo = "".join(c for c in nome if c.isalnum() or c in "_-.").strip()
     nome_arquivo = nome_arquivo if nome_arquivo else "grafico"
     nome_arquivo += ".png"
@@ -83,32 +81,17 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
             raise IndexError(f"Erro: O slide de índice {slide_index} não existe na apresentação.")
 
         slide = prs.slides[slide_index]
-
-        # Removendo qualquer caixa de texto existente
-        shapes_para_remover = []
-        for shape in slide.shapes:
-            if shape.has_text_frame:
-                if shape.text_frame.text.strip() != "":
-                    shape.text_frame.text = titulo
-                else:
-                    shapes_para_remover.append(shape)
-
-        # Excluindo as caixas de texto indesejadas
-        for shape in shapes_para_remover:
-            slide.shapes._spTree.remove(shape._element)
-
-        # Adicionando imagem ao slide
+        slide.shapes.add
         x = Inches(0.5)
-        y = Inches(1.0)
+        y = Inches(0.6)
         cx = Inches(9)
-        cy = Inches(5)
+        cy = Inches(3.3)
         slide.shapes.add_picture(imagem_path, x, y, cx, cy)
 
-        # Criando uma nova caixa de texto no mesmo local
         x_text = Inches(0.5)
-        y_text = Inches(6.5)
-        cx_text = Inches(9)
-        cy_text = Inches(1)
+        y_text = Inches(3.9)
+        cx_text = Inches(9.5)
+        cy_text = Inches(1.8)
         caixa_texto = slide.shapes.add_textbox(x_text, y_text, cx_text, cy_text)
         text_frame = caixa_texto.text_frame
         text_frame.text = "Resumo da Semana"
@@ -119,12 +102,9 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
             p.space_after = Inches(0.1)
             p.level = 0
 
-        # Alterando a cor de fundo da nova caixa de texto
         fill = caixa_texto.fill
         fill.solid()
-        fill.fore_color.rgb = RGBColor(255, 255, 0)  # Amarelo
-
-        # Salvando a apresentação
+        fill.fore_color.rgb = RGBColor(251, 229, 214)  
         prs.save(arquivo_saida)
         print(f"Arquivo PowerPoint atualizado salvo como: {arquivo_saida}")
 
