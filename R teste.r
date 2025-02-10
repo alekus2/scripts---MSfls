@@ -31,15 +31,12 @@ OUTRO CODIGO
 
 # Instale o pacote arcgisbinding se ainda não o tiver instalado
 
-Installing package into ‘/usr/local/lib/R/site-library’
-(as ‘lib’ is unspecified)
+install.packages(c("httr", "jsonlite", "curl", "xml2"))
 
-Warning message:
-“package ‘arcgisbinding’ is not available for this version of R
+library(devtools)
+install_github("Esri/arcgis-r-pkg")
 
-A version of this package for your version of R might be available elsewhere,
-see the ideas at
-https://cran.r-project.org/doc/manuals/r-patched/R-admin.html#Installing-packages”
+install.packages("caminho/para/o/arcgis-r-pkg", repos = NULL, type = "source")
 
 
 library(arcgisbinding)
