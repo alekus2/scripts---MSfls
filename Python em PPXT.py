@@ -56,7 +56,7 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         fill.solid()
         fill.fore_color.rgb = RGBColor(251, 229, 214)  
 
-        # Lista de informações com marcadores de seleção ✅
+        # Lista de informações com marcadores personalizados
         informacoes = [
             "Programado: XXX,X mil ha",
             "Meta semanal: XX,X mil ha",
@@ -66,11 +66,13 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         for item in informacoes:
             partes = item.split(":")
             if len(partes) > 1:
-                # Criar um parágrafo com marcador de seleção
+                # Criar um parágrafo com marcador nativo do PowerPoint
                 p = text_frame2.add_paragraph()
-                p.text = "✅ " + partes[0] + ": "
-                p.space_after = Inches(0.1)
-                p.level = 0  # Define o nível de marcador (nível principal)
+                p.level = 0  # Define o nível de marcador
+                p.text = partes[0] + ": "
+
+                # Definir marcador ✔ (código Unicode: 0x2713)
+                p.bullet.character = chr(0x2713)  
 
                 # Criar a segunda parte (negrito e fundo amarelo)
                 run2 = p.add_run()
