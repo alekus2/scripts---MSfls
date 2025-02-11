@@ -66,14 +66,14 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         for item in informacoes:
             partes = item.split(":")
             if len(partes) > 1:
-                # Criar um parágrafo com marcador nativo do PowerPoint
+                # Criar um parágrafo com marcador do PowerPoint
                 p = text_frame2.add_paragraph()
-                p.level = 0  # Define o nível de marcador
-                p.text = partes[0] + ": "
-
-                # Definir marcador ✔ (código Unicode: 0x2713)
-                p.bullet.character = chr(0x2713)  
-
+                p.level = 0  # Define o nível de marcador (ativa marcadores padrão do PowerPoint)
+                
+                # Adicionar a parte antes dos ":"
+                run1 = p.add_run()
+                run1.text = "✔ " + partes[0] + ": "  # Adiciona manualmente ✔ como marcador
+                
                 # Criar a segunda parte (negrito e fundo amarelo)
                 run2 = p.add_run()
                 run2.text = partes[1].strip()
