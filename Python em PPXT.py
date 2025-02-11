@@ -1,4 +1,3 @@
-
 import pandas as pd
 import matplotlib.pyplot as plt
 from pptx import Presentation
@@ -88,21 +87,30 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         cy = Inches(3.3)
         slide.shapes.add_picture(imagem_path, x, y, cx, cy)
 
-        x_text = Inches(0.5)
-        y_text = Inches(3.9)
-        cx_text = Inches(9.5)
-        cy_text = Inches(1.8)
+        x_text = Inches(0)
+        y_text = Inches(0)
+        cx_text = Inches(4)
+        cy_text = Inches(0.6)
         caixa_texto = slide.shapes.add_textbox(x_text, y_text, cx_text, cy_text)
         text_frame = caixa_texto.text_frame
-        text_frame.text = "Resumo da Semana"
+        text_frame.text = titulo
+        text_frame.margin_top(1)
+
+        x_text = Inches(0)
+        y_text = Inches(3.8)
+        cx_text = Inches(9.4)
+        cy_text = Inches(1.6)
+        caixa_texto2 = slide.shapes.add_textbox(x_text, y_text, cx_text, cy_text)
+        text_frame2 = caixa_texto2.text_frame
+        text_frame2.text = "Resumo da Semana"
 
         for item in ["Programado: XXX,X mil ha", "Meta semanal: XX,X mil ha", "Realizado última semana: XX,X mil ha"]:
-            p = text_frame.add_paragraph()
+            p = text_frame2.add_paragraph()
             p.text = item
             p.space_after = Inches(0.1)
             p.level = 0
 
-        fill = caixa_texto.fill
+        fill = caixa_texto2.fill
         fill.solid()
         fill.fore_color.rgb = RGBColor(251, 229, 214)  
         prs.save(arquivo_saida)
@@ -110,7 +118,7 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
 
     except Exception as e:
         print(f"Erro ao modificar o PowerPoint: {e}")
-        sys.exit(1)
+
 
 arquivo_modelo = "Acompanhamento semanal_04_edit.pptx"
 slide_index = 2
