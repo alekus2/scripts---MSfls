@@ -14,9 +14,9 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
 
         slide = prs.slides[slide_index]
         
-        # Remover a última caixa de texto do slide
+        # Remover o título existente antes de adicionar um novo
         for shape in reversed(slide.shapes):
-            if shape.has_text_frame:
+            if shape.has_text_frame and shape.text_frame.text.strip() == titulo.strip():
                 slide.shapes._spTree.remove(shape._element)
                 break  
 
@@ -27,7 +27,7 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         cy = Inches(3.3)
         slide.shapes.add_picture(imagem_path, x, y, cx, cy)
 
-        # Adicionar título
+        # Adicionar novo título
         x_text = Inches(0)
         y_text = Inches(0)
         cx_text = Inches(9)
@@ -58,23 +58,34 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         ]
 
         for item in informacoes:
-            p = text_frame2.add_paragraph()
             partes = item.split(":")
-            
             if len(partes) > 1:
+                # Criar a primeira parte (normal)
+                p = text_frame2.add_paragraph()
                 run1 = p.add_run()
-                run1.text = partes[0] + ": "  
+                run1.text = partes[0] + ": "
                 run1.font.bold = False  
 
-                run2 = p.add_run()
-                run2.text = " " + partes[1].strip() + " "  # Adiciona espaços para realçar o fundo
-                run2.font.bold = True  
+                # Criar um novo textbox APENAS para a parte que precisa de fundo amarelo
+                x_destaque = x_text + Inches(3)  # Ajuste de posição
+                y_destaque = y_text + Inches(0.3) + (len(text_frame2.paragraphs) * Inches(0.4))
+                cx_destaque = Inches(2)
+                cy_destaque = Inches(0.3)
                 
-                # Simular fundo amarelo adicionando um espaçamento visual
-                run2.font.highlight_color = RGBColor(255, 255, 0)
+                caixa_destaque = slide.shapes.add_textbox(x_destaque, y_destaque, cx_destaque, cy_destaque)
+                text_frame_destaque = caixa_destaque.text_frame
+                text_frame_destaque.word_wrap = True
+                
+                # Definir fundo amarelo no novo textbox
+                fill_destaque = caixa_destaque.fill
+                fill_destaque.solid()
+                fill_destaque.fore_color.rgb = RGBColor(255, 255, 0)
 
-            p.space_after = Inches(0.1)
-            p.level = 0
+                # Adicionar o texto com negrito no novo textbox
+                p_destaque = text_frame_destaque.add_paragraph()
+                run_destaque = p_destaque.add_run()
+                run_destaque.text = partes[1].strip()
+                run_destaque.font.bold = True  
 
         prs.save(arquivo_saida)
         print(f"Arquivo PowerPoint atualizado salvo como: {arquivo_saida}")
