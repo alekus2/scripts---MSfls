@@ -1,3 +1,7 @@
+from pptx import Presentation
+from pptx.util import Inches
+from pptx.dml.color import RGBColor
+
 def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, arquivo_saida):
     try:
         if not os.path.exists(arquivo_modelo):
@@ -60,13 +64,14 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
             if len(partes) > 1:
                 run1 = p.add_run()
                 run1.text = partes[0] + ": "  
+                run1.font.bold = False  
 
                 run2 = p.add_run()
-                run2.text = partes[1].strip()  
-                run2.bold = True  
-
-                # Aplicar cor de fundo **somente no texto após ":"**
-                run2.font.highlight_color = RGBColor(255, 255, 0)  # Destacar fundo amarelo no texto
+                run2.text = " " + partes[1].strip() + " "  # Adiciona espaços para realçar o fundo
+                run2.font.bold = True  
+                
+                # Simular fundo amarelo adicionando um espaçamento visual
+                run2.font.highlight_color = RGBColor(255, 255, 0)
 
             p.space_after = Inches(0.1)
             p.level = 0
