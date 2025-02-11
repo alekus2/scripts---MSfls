@@ -32,7 +32,7 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         text_frame = caixa_texto.text_frame
         text_frame.text = titulo
 
-        # Criar a nova caixa de texto com os dados formatados
+        # Criar a nova caixa de texto com fundo na cor 251,229,214
         x_text = Inches(0)
         y_text = Inches(3.8)
         cx_text = Inches(9.4)
@@ -40,6 +40,11 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         nova_caixa_texto = slide.shapes.add_textbox(x_text, y_text, cx_text, cy_text)
         text_frame2 = nova_caixa_texto.text_frame
         text_frame2.text = "Resumo da Semana"
+
+        # Definir a cor de fundo da nova caixa de texto
+        fill = nova_caixa_texto.fill
+        fill.solid()
+        fill.fore_color.rgb = RGBColor(251, 229, 214)  
 
         # Lista de informações
         informacoes = [
@@ -55,15 +60,13 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
             if len(partes) > 1:
                 run1 = p.add_run()
                 run1.text = partes[0] + ": "  
-                
+
                 run2 = p.add_run()
                 run2.text = partes[1].strip()  
                 run2.bold = True  
 
                 # Aplicar cor de fundo **somente no texto após ":"**
-                highlight = run2.font
-                highlight.fill.solid()
-                highlight.fill.fore_color.rgb = RGBColor(255, 255, 0)  
+                run2.font.highlight_color = RGBColor(255, 255, 0)  # Destacar fundo amarelo no texto
 
             p.space_after = Inches(0.1)
             p.level = 0
