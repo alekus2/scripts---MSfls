@@ -18,3 +18,12 @@ def autoIncrement(parcela, count):
     return 1 if parcela % 2 != 0 else 0
 
 autoIncrement(!nm_parcela!, !CONTADOR!)
+
+
+def matizador(area):
+    talhoes_parcelas = {}
+    valores = [int(row[1]) for row in arcpy.da.SearchCursor("piracicaba_talhão", ["AREA_HA"]) if row[0] == valores]
+    talhoes_parcelas[area] = valores/5
+    return talhoes_parcelas[area]
+
+matizador(!AREA_HA!)
