@@ -21,17 +21,16 @@ autoIncrement(!nm_parcela!, !CONTADOR!)
 
 
 def matizador(area):
-    # Utilize um dicionário para armazenar os talhões e suas parcelas
-    talhoes_parcelas = {}
-    
     # Obtenha os valores da área da tabela "piracicaba_talhão"
-    valores = [row[0] for row in arcpy.da.SearchCursor("piracicaba_talhão", ["AREA_HA"])]
+    parcelas = []
     
-    # Calcule a quantidade de parcelas, que é a soma das áreas dividida por 5
-    total_area = sum(valores)
-    talhoes_parcelas[area] = total_area / 5
+    # Busque as áreas da tabela
+    for row in arcpy.da.SearchCursor("piracicaba_talhão", ["AREA_HA"]):
+        # Divida cada área por 5 e armazene o resultado
+        parcelas.append(row[0] / 5)
     
-    return talhoes_parcelas[area]
+    # Retorne a quantidade de parcelas para a área atual
+    return parcelas
 
 # Chame a função passando o valor da área atual
 matizador(!AREA_HA!)
