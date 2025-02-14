@@ -27,5 +27,6 @@ alocar_parcelas <- function(tabela_nome) {
 
 alocar_parcelas("piracicaba_talhão.shp")
 > source("f:\\Qualidade_Florestal\\02- MATO GROSSO DO SUL\\11- Administrativo $
-Error in setwd("f:\\Qualidade_Florestal\\02- MATO GROSSO DO SUL\\11- Administrativo Qualidade MS\\00- Colaboradores\\17 - Alex Vinicius\\bds\\MyProject3\\Pto_Parcelas_QLD.shp") : 
-  não é possível mudar o diretório de trabalho
+*** Please call arc.check_product() to define a desktop license.
+Error in .call_proxy("dataset.open", .Object, path) : 
+  Classe não registrada
