@@ -13,3 +13,7 @@ alocar_parcelas <- function(tabela_nome) {
 }
 
 alocar_parcelas("piracicaba_talhão.shp")
+
+> source("f:\\Qualidade_Florestal\\02- MATO GROSSO DO SUL\\11- Administrativo $
+*** Please call arc.check_product() to define a desktop license.
+Error in .call_proxy("dataset.open", .Object, path) : cannot open dataset
