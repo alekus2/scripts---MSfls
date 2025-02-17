@@ -16,10 +16,11 @@ alocar_parcelas <- function(tabela_nome) {
   df <- arc.select(tabela)
 
   # Verifica se existe a coluna 'nm_parcela'
-  if ("nm_parcela" %in% colnames(df)) {
-    
-    # Converte para numérico (evita erro com fatores)
-    df$nm_parcela <- as.numeric(as.character(df$nm_parcela))
+ if ("NM_PARCELA" %in% colnames(df) && nrow(df) > 0) {
+    df$nm_parcela <- as.numeric(as.character(df$NM_PARCELA))
+} else {
+    stop("A coluna 'NM_PARCELA' não existe ou está vazia.")
+}
     
     # Verifica se existem talhões
     if ("talhao" %in% colnames(df) && length(unique(df$talhao)) > 0) {
