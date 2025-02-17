@@ -27,9 +27,10 @@ alocar_parcelas <- function(tabela_nome) {
       
       # Cria a nova coluna 'contador' com a lógica de contagem
       df$contador <- ifelse(df$nm_parcela %% 2 != 0, 1, 0)
-      
-      # Filtra apenas as linhas onde 'contador' é 1
-      df <- df[df$contador != 0, ]
+df <- df[df$contador != 0, ]
+if (nrow(df) == 0) {
+    stop("Após o filtro, não há linhas restantes no dataframe.")
+}
       
       # Converte de volta para um formato espacial, se necessário
       df_spatial <- arc.data2sp(df)
