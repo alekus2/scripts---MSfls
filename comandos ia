@@ -1,14 +1,12 @@
-Bom dia, Leticia, Como está?
+**Assunto:** Atualização sobre o Alocador de Parcelas no ArcGIS Pro  
 
-Após uma semana, consegui um jeito do alocador de parcelas funcionar dentro do ArcGis PRO com suas demandas, mas no caso, conclui que o uso do R não funcionaria para este tipo de código pois requer permissões do sistema para o salvamento do arquivo.
+Olá Leticia, bom dia! Tudo bem?  
 
-Entretanto, depois de algumas horas pesquisando e com ajuda do @Jean Rodrigo Jacob Da Silva descobri o fator “Toolbox Python”, onde nele pude criar um código que fosse como aquele que fizemos em calculadora mas agora com o próprio ArcGis em função disso.
+Após uma semana de trabalho, consegui encontrar uma solução para que o alocador de parcelas funcionasse dentro do ArcGIS Pro, atendendo às suas demandas. Durante os testes, percebi que a abordagem em R não seria a mais adequada para esse tipo de código, pois há restrições de permissão do sistema para o salvamento dos arquivos.  
 
-Então se precisar que eu edite o código para alguma função extra e ficaria bem mais fácil de editar e assim poderíamos ir ajustando conforme o que desejar.
+Após algumas horas de pesquisa e com o apoio do @Jean Rodrigo Jacob Da Silva, identifiquei que a melhor alternativa seria utilizar o **Python Toolbox**. Com essa ferramenta, consegui desenvolver um código que realiza as mesmas operações que fizemos anteriormente na calculadora, mas agora de forma integrada ao ArcGIS. Além disso, essa abordagem torna futuras edições e ajustes muito mais simples e eficientes.  
 
-Mas se caso preferir que eu continue em R, eu continuarei tentando achar alguma forma de funcionar.
+Caso precise de alguma funcionalidade extra ou queira realizar ajustes no código, estou à disposição para implementá-los. Mas, se preferir que eu continue explorando uma solução em R, posso seguir tentando novas abordagens.  
 
-Obrigado e Boas Férias.
+Aproveite as férias e fico no aguardo do seu retorno!  
 
-Atenciosamente,
-Alex Aprendiz.
