@@ -46,3 +46,37 @@ alocar_parcelas <- function(tabela_nome) {
 
 # Executa a função
 alocar_parcelas("Pto_Parcelas_QLD.shp")
+
+> if (!requireNamespace("arcgisbinding", quietly = TRUE)) {
++   install.packages("arcgisbinding", repos="https://r.esri.com")
++ }
+> if (!requireNamespace("arcgisbinding", quietly = TRUE)) {
++   install.packages("arcgisbinding", repos="https://r.esri.com")
++ }
+> library(arcgisbinding)
+*** Please call arc.check_product() to define a desktop license.
+> arc.check_product()
+product: ArcGIS Pro (12.9.5.32739)
+license: Advanced
+version: 1.0.1.311 
+> alocar_parcelas <- function(tabela_nome) {
++   arc.check_product()
++   tabela <- arc.open(tabela_nome)
++   df <- arc.select(tabela)
++   if ("NM_PARCELA" %in% colnames(df)) {
++     df$nm_parcela <- as.numeric(as.character(df$nm_parcela))
++     if ("CD_USO_SOL" %in% colnames(df) && length(unique(df$talhao)) > 0) {
++       df$contador <- ifelse(df$nm_parcela %% 2 != 0, 1, 0)
++       df <- df[df$contador != 0, ]
++       df_spatial <- arc.data2sp(df)
++       arc.write(tabela_nome, df_spatial, overwrite = TRUE)
++     } else {
++       stop("Nenhum talhão encontrado na tabela.")
++     }
++   } else {
++     stop("A coluna 'nm_parcela' não existe na tabela.")
++   }
++ }
+> alocar_parcelas("Pto_Qualidade_Parcelas_Piracicaba.shp")
+Error in `$<-.data.frame`(`*tmp*`, "nm_parcela", value = numeric(0)) :
+replacement has 0 rows, data has 196
