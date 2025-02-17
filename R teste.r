@@ -13,7 +13,7 @@ class ProcessShapefile(object):
     def __init__(self):
         """Define a ferramenta."""
         self.label = "Processar Shapefile"
-        self.description = "Verifica NM_PARCELA, conta CD_USO_SOL e marca registros a excluir."
+        self.description = "Verifica NM_PARCELA, conta CD_USO_SOL e remove registros pares."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -67,4 +67,10 @@ class ProcessShapefile(object):
                 row[2] = excluir_value
                 cursor.updateRow(row)
 
-        arcpy.AddMessage("Processamento concluído com sucesso.")
+        # Remove as linhas onde EXCLUIR == 0
+        with arcpy.da.UpdateCursor(shapefile_path, ["EXCLUIR"]) as cursor:
+            for row in cursor:
+                if row[0] == 0:
+                    cursor.deleteRow()
+
+        arcpy.AddMessage("Processamento concluído com sucesso. Registros pares foram removidos.")
