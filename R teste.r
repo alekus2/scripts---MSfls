@@ -1,36 +1,73 @@
-library(arcgisbinding)
-library(sp)
-library(dplyr)
+import arcpy
+import os
+import matplotlib.pyplot as plt
 
-arc.check_product()
+class Toolbox(object):
+    def __init__(self):
+        """Define a toolbox."""
+        self.label = "Shapefile Processing Toolbox"
+        self.alias = "shapefile_toolbox"
+        self.tools = [ProcessShapefile]
 
-shapefile_path <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/bds/teste/Pto_Qualidade_Parcelas_Piracicaba.shp"
+class ProcessShapefile(object):
+    def __init__(self):
+        """Define a ferramenta."""
+        self.label = "Processar Shapefile"
+        self.description = "Abre, verifica e processa um shapefile dentro do ArcGIS Pro."
+        self.canRunInBackground = False
 
-if (!arc.exists(shapefile_path)) {
-  stop("Erro: O arquivo não foi encontrado.")
-}
+    def getParameterInfo(self):
+        """Define os parâmetros da ferramenta."""
+        param_shapefile = arcpy.Parameter(
+            displayName="Shapefile de Entrada",
+            name="shapefile_path",
+            datatype="DEFeatureClass",
+            parameterType="Required",
+            direction="Input"
+        )
 
-tabela <- arc.open(shapefile_path)
+        return [param_shapefile]
 
-df <- arc.select(tabela, where_clause = "1=1")
+    def execute(self, parameters, messages):
+        """Executa o processamento."""
+        shapefile_path = parameters[0].valueAsText
 
-if (!"Shape" %in% colnames(df)) {
-  stop("Erro: A coluna 'Shape' não está presente no shapefile.")
-}
+        # Verifica se o arquivo existe
+        if not arcpy.Exists(shapefile_path):
+            arcpy.AddError(f"Erro: O shapefile {shapefile_path} não foi encontrado.")
+            return
 
-df <- df %>% filter(!is.na(Shape))
+        # Abre o shapefile como FeatureClass
+        fields = ["Shape", "POINT_X", "POINT_Y"]
+        with arcpy.da.SearchCursor(shapefile_path, fields) as cursor:
+            data = [row for row in cursor]
 
-if (!all(c("POINT_X", "POINT_Y") %in% colnames(df))) {
-  stop("Erro: As colunas 'POINT_X' e 'POINT_Y' não foram encontradas.")
-}
+        if not data:
+            arcpy.AddError("Erro: O shapefile está vazio ou não contém os campos necessários.")
+            return
 
-coordinates(df) <- ~POINT_X+POINT_Y
-proj4string(df) <- CRS("+init=epsg:31982")
+        # Verifica se há colunas necessárias
+        field_names = [f.name for f in arcpy.ListFields(shapefile_path)]
+        if not all(field in field_names for field in ["POINT_X", "POINT_Y"]):
+            arcpy.AddError("Erro: As colunas 'POINT_X' e 'POINT_Y' não foram encontradas.")
+            return
 
-if (nrow(df) != length(df$Shape)) {
-  stop("Erro: Número de registros e pontos espaciais não coincidem.")
-}
+        # Filtra dados inválidos (exemplo: valores nulos)
+        valid_data = [(x, y) for _, x, y in data if x is not None and y is not None]
 
-plot(df)
+        if not valid_data:
+            arcpy.AddError("Erro: Nenhum dado válido encontrado após filtragem.")
+            return
 
-arc.write(shapefile_path, df, overwrite = TRUE)
+        # Plotando os pontos
+        x_vals, y_vals = zip(*valid_data)
+        plt.scatter(x_vals, y_vals, c="blue", label="Pontos")
+        plt.xlabel("Longitude")
+        plt.ylabel("Latitude")
+        plt.title("Pontos do Shapefile")
+        plt.legend()
+        plt.show()
+
+        # Atualizando os dados no ArcGIS (aqui apenas um exemplo de operação)
+        arcpy.AddMessage(f"Processamento concluído. {len(valid_data)} pontos válidos encontrados.")
+
