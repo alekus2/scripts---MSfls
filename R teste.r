@@ -1,6 +1,6 @@
 import arcpy
 import os
-import matplotlib.pyplot as plt
+from collections import Counter
 
 class Toolbox(object):
     def __init__(self):
@@ -13,7 +13,7 @@ class ProcessShapefile(object):
     def __init__(self):
         """Define a ferramenta."""
         self.label = "Processar Shapefile"
-        self.description = "Abre, verifica e processa um shapefile dentro do ArcGIS Pro."
+        self.description = "Verifica NM_PARCELA, conta CD_USO_SOL e marca registros a excluir."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -37,37 +37,34 @@ class ProcessShapefile(object):
             arcpy.AddError(f"Erro: O shapefile {shapefile_path} não foi encontrado.")
             return
 
-        # Abre o shapefile como FeatureClass
-        fields = ["Shape", "POINT_X", "POINT_Y"]
-        with arcpy.da.SearchCursor(shapefile_path, fields) as cursor:
-            data = [row for row in cursor]
-
-        if not data:
-            arcpy.AddError("Erro: O shapefile está vazio ou não contém os campos necessários.")
-            return
-
-        # Verifica se há colunas necessárias
+        # Verifica se os campos necessários existem
         field_names = [f.name for f in arcpy.ListFields(shapefile_path)]
-        if not all(field in field_names for field in ["POINT_X", "POINT_Y"]):
-            arcpy.AddError("Erro: As colunas 'POINT_X' e 'POINT_Y' não foram encontradas.")
+        if "NM_PARCELA" not in field_names:
+            arcpy.AddError("Erro: A coluna 'NM_PARCELA' não foi encontrada no shapefile.")
+            return
+        if "CD_USO_SOL" not in field_names:
+            arcpy.AddError("Erro: A coluna 'CD_USO_SOL' não foi encontrada no shapefile.")
             return
 
-        # Filtra dados inválidos (exemplo: valores nulos)
-        valid_data = [(x, y) for _, x, y in data if x is not None and y is not None]
+        # Adiciona os campos se não existirem
+        if "CONTADOR" not in field_names:
+            arcpy.AddField_management(shapefile_path, "CONTADOR", "LONG")
+        if "EXCLUIR" not in field_names:
+            arcpy.AddField_management(shapefile_path, "EXCLUIR", "SHORT")
 
-        if not valid_data:
-            arcpy.AddError("Erro: Nenhum dado válido encontrado após filtragem.")
-            return
+        # Dicionário para contar valores repetidos em "CD_USO_SOL"
+        uso_sol_counter = Counter()
+        with arcpy.da.SearchCursor(shapefile_path, ["CD_USO_SOL"]) as cursor:
+            for row in cursor:
+                uso_sol_counter[row[0]] += 1
 
-        # Plotando os pontos
-        x_vals, y_vals = zip(*valid_data)
-        plt.scatter(x_vals, y_vals, c="blue", label="Pontos")
-        plt.xlabel("Longitude")
-        plt.ylabel("Latitude")
-        plt.title("Pontos do Shapefile")
-        plt.legend()
-        plt.show()
+        # Atualiza os campos CONTADOR e EXCLUIR
+        with arcpy.da.UpdateCursor(shapefile_path, ["CD_USO_SOL", "CONTADOR", "EXCLUIR"]) as cursor:
+            for row in cursor:
+                count_value = uso_sol_counter[row[0]]
+                excluir_value = 1 if count_value % 2 != 0 else 0
+                row[1] = count_value
+                row[2] = excluir_value
+                cursor.updateRow(row)
 
-        # Atualizando os dados no ArcGIS (aqui apenas um exemplo de operação)
-        arcpy.AddMessage(f"Processamento concluído. {len(valid_data)} pontos válidos encontrados.")
-
+        arcpy.AddMessage("Processamento concluído com sucesso.")
