@@ -1,28 +1,16 @@
-library(arcgisbinding)
-library(sp)
-library(dplyr)
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/bds/teste/teste.R", echo=TRUE)
 
-# Ativar o ArcGIS binding
-arc.check_product()
+> library(arcgisbinding)
 
-# Caminho do shapefile
-tabela <- arc.open("Pto_Qualidade_Parcelas_Piracicaba.shp")
+> library(sp)
 
-# Selecionar os dados garantindo que todos os registros sejam carregados
-df <- arc.select(tabela, where_clause = "1=1")  # Retorna todos os registros
+> library(dplyr)
 
-# Verificar se a coluna de geometria está presente
-if (!"Shape" %in% colnames(df)) {
-  stop("Erro: A coluna 'Shape' não está presente no shapefile.")
-}
-df <- df %>% filter(!is.na(Shape))
-if (!all(c("POINT_X", "POINT_Y") %in% colnames(df))) {
-  stop("Erro: As colunas de coordenadas 'POINT_X' e 'POINT_Y' não foram encontradas no shapefile.")
-}
-coordinates(df) <- ~POINT_X+POINT_Y
-proj4string(df) <- CRS("+init=epsg:31982")
-if (nrow(df) != length(df$Shape)) {
-  stop("Erro: Número de registros no dataframe e pontos espaciais não coincidem.")
-}
-plot(df)
-arc.write("Pto_Qualidade_Parcelas_Piracicaba_corrigido.shp", df, overwrite = TRUE)
+> arc.check_product()
+product: ArcGIS Pro (12.9.5.32739)
+license: Advanced
+version: 1.0.1.311 
+
+> tabela <- arc.open("Pto_Qualidade_Parcelas_Piracicaba.shp")
+Error in .call_proxy("dataset.open", .Object, path) : cannot open dataset
+> 
