@@ -1,7 +1,14 @@
-PS F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python>  & 'c:\Users\alex_santos4\AppData\Local\Programs\Python\Python313\python.exe' 'c:\Users\alex_santos4\.vscode\extensions\ms-python.debugpy-2025.0.0-win32-x64\bundled\libs\debugpy\launcher' '59083' '--' 'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Python - Automatizador de apresentação - INV FLORESTAL.py' 
-F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Python - Automatizador de apresentação - INV FLORESTAL.py:12: SyntaxWarning: invalid escape sequence '\Q'
-  arquivo_excel = 'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Pasta exemplos a serem usados\TesteExcel.xlsx'
-F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Python - Automatizador de apresentação - INV FLORESTAL.py:162: SyntaxWarning: invalid escape sequence '\Q'
-  arquivo_modelo = 'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Pasta exemplos a serem usados\Acompanhamento semanal_04_edit.pptx'
-Erro ao processar o Excel: Erro: O arquivo 'F:\Qualidade_Florestal☻- MATO GROSSO DO SUL - Administrativo Qualidade MS- Colaboradores - Alex Vinicius\Pasta exemplos a serem usados\TesteExcel.xlsx' não foi encontrado no diretório atual.
-Backend tkagg is interactive backend. Turning interactive mode on.
+Bom dia, Leticia, Como está?
+
+Após uma semana, consegui um jeito do alocador de parcelas funcionar dentro do ArcGis PRO com suas demandas, mas no caso, conclui que o uso do R não funcionaria para este tipo de código pois requer permissões do sistema para o salvamento do arquivo.
+
+Entretanto, depois de algumas horas pesquisando e com ajuda do @Jean Rodrigo Jacob Da Silva descobri o fator “Toolbox Python”, onde nele pude criar um código que fosse como aquele que fizemos em calculadora mas agora com o próprio ArcGis em função disso.
+
+Então se precisar que eu edite o código para alguma função extra e ficaria bem mais fácil de editar e assim poderíamos ir ajustando conforme o que desejar.
+
+Mas se caso preferir que eu continue em R, eu continuarei tentando achar alguma forma de funcionar.
+
+Obrigado e Boas Férias.
+
+Atenciosamente,
+Alex Aprendiz.
