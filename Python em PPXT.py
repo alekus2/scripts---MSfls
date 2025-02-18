@@ -9,7 +9,7 @@ from pptx.dml.color import RGBColor
 
 # --- Parte 1: Ler os dados do Excel ---
 try:
-    arquivo_excel = 'TesteExcel.xlsx'
+    arquivo_excel = r'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Pasta exemplos a serem usados\TesteExcel.xlsx'
 
     if not os.path.exists(arquivo_excel):
         raise FileNotFoundError(f"Erro: O arquivo '{arquivo_excel}' não foi encontrado no diretório atual.")
@@ -94,8 +94,8 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         
         x = Inches(0.5)
         y = Inches(0.5)
-        cx = Inches(6)
-        cy = Inches(3.2)
+        cx = Inches(8)
+        cy = Inches(3.4)
         slide.shapes.add_picture(imagem_path, x, y, cx, cy)
         
         #TITULO DO NO TOPO SLIDE
@@ -134,9 +134,13 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
         fill.fore_color.rgb = RGBColor(251, 229, 214)  
 
         informacoes = [
-            "Programado: XXX,X mil ha",
-            "Meta semanal: XX,X mil ha",
-            "Realizado última semana: XX,X mil ha"
+            "Programado: XXX mil ha."
+            "Meta semanal: XXX mil ha."
+            "Realizado última semana: XXX mil ha."
+            "Semana atual: XXX mil ha"
+            "Percentual de realização: XX%"
+            "Fechamento do Bloco: XX/XX/XXXX." 
+            "Última Semana: XXXXXXXXXXXXXXXXXXXXXX XXXX XXXXXXXXXXXX"   
         ]
 
         for item in informacoes:
@@ -144,8 +148,6 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
             if len(partes) > 1:
                 p = text_frame2.add_paragraph()
                 p.level = 0  
-                
-               
                 run1 = p.add_run()
                 run1.text = "✔ " + partes[0] + ": " 
                 
@@ -154,12 +156,15 @@ def adicionar_imagem_ao_slide(arquivo_modelo, slide_index, titulo, imagem_path, 
                 run2.font.bold = True  
                 run2.font.highlight_color = 3  
 
+                run3 = p.add_run()
+                run3.text = partes[0,1]
+                run3.font.size = Pt(10)
         prs.save(arquivo_saida)
         print(f"Arquivo PowerPoint atualizado salvo como: {arquivo_saida}")
 
     except Exception as e:
         print(f"Erro ao modificar o PowerPoint: {e}")
-arquivo_modelo = "Acompanhamento semanal_04_edit.pptx"
+arquivo_modelo = r'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Pasta exemplos a serem usados\Acompanhamento semanal_04_edit.pptx'
 slide_index = 2
 arquivo_saida = "Acompanhamento semanal_04_atualizado.pptx"
 imagem_grafico = nome_arquivo
