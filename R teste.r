@@ -54,17 +54,29 @@ class ProcessShapefile(object):
 
         # Dicionário para contar valores repetidos em "CD_USO_SOL"
         uso_sol_counter = Counter()
-        with arcpy.da.SearchCursor(shapefile_path, ["CD_USO_SOL"]) as cursor:
+        nm_parcela_dict = {}
+
+        with arcpy.da.SearchCursor(shapefile_path, ["CD_USO_SOL", "NM_PARCELA"]) as cursor:
             for row in cursor:
-                uso_sol_counter[row[0]] += 1
+                cd_uso_sol, nm_parcela = row
+                uso_sol_counter[cd_uso_sol] += 1
+                if cd_uso_sol not in nm_parcela_dict:
+                    nm_parcela_dict[cd_uso_sol] = []
+                nm_parcela_dict[cd_uso_sol].append(nm_parcela)
 
         # Atualiza os campos CONTADOR e EXCLUIR
-        with arcpy.da.UpdateCursor(shapefile_path, ["CD_USO_SOL", "CONTADOR", "EXCLUIR"]) as cursor:
+        with arcpy.da.UpdateCursor(shapefile_path, ["CD_USO_SOL", "NM_PARCELA", "CONTADOR", "EXCLUIR"]) as cursor:
             for row in cursor:
-                count_value = uso_sol_counter[row[0]]
+                cd_uso_sol, nm_parcela = row[0], row[1]
+                count_value = uso_sol_counter[cd_uso_sol]
+
+                # Se NM_PARCELA for menor que 3, define contador como 1
+                if nm_parcela < 3:
+                    count_value = 1
+
                 excluir_value = 1 if count_value % 2 != 0 else 0
-                row[1] = count_value
-                row[2] = excluir_value
+                row[2] = count_value  # Atualiza CONTADOR
+                row[3] = excluir_value  # Atualiza EXCLUIR
                 cursor.updateRow(row)
 
         # Remove as linhas onde EXCLUIR == 0
