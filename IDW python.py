@@ -3,107 +3,117 @@ from arcpy.sa import *
 import os
 import pandas as pd
 
-def getParameterInfo(self):
-    params = [
-        arcpy.Parameter(displayName="Power",
-                        name="power",
-                        datatype="GPDouble",
-                        parameterType="Required",
-                        direction="Input"),
-        arcpy.Parameter(displayName="Cell Size",
-                        name="cell_size",
-                        datatype="GPDouble",
-                        parameterType="Required",
-                        direction="Input")
-    ]
-    return params
+class IDWToolbox(object):
+    def __init__(self):
+        self.label = "IDW Toolbox"
+        self.description = "Toolbox para executar IDW com dados de entrada em CSV."
 
-def execute(self, parameters, messages):
-    csv_file = parameters[0].valueAsText
-    output_folder = parameters[1].valueAsText
+    def getParameterInfo(self):
+        params = [
+            arcpy.Parameter(displayName="Arquivo CSV",
+                            name="csv_file",
+                            datatype="DEFile",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Pasta de Saída",
+                            name="output_folder",
+                            datatype="DEFolder",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Power",
+                            name="power",
+                            datatype="GPDouble",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Cell Size",
+                            name="cell_size",
+                            datatype="GPDouble",
+                            parameterType="Required",
+                            direction="Input")
+        ]
+        return params
 
-    if not os.path.exists(csv_file):
-        raise FileNotFoundError(f"Erro: O arquivo '{csv_file}' não foi encontrado.")
+    def execute(self, parameters, messages):
+        csv_file = parameters[0].valueAsText
+        output_folder = parameters[1].valueAsText
+        power = parameters[2].value
+        cellSize = parameters[3].value  
 
-    df = pd.read_csv(csv_file) 
+        if not os.path.exists(csv_file):
+            raise FileNotFoundError(f"Erro: O arquivo '{csv_file}' não foi encontrado.")
 
-    colunas_esperadas = ['Name', 'Parcela', 'F_Sobreviv']
-    for coluna in colunas_esperadas:
-        if coluna not in df.columns:
-            raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo.")
+        df = pd.read_csv(csv_file) 
 
-    df['F_Sobreviv'] = df['F_Sobreviv'].fillna(0) * 100
+        colunas_esperadas = ['Name', 'Parcela', 'F_Sobreviv']
+        for coluna in colunas_esperadas:
+            if coluna not in df.columns:
+                raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo.")
 
-    power = parameters[2].value
-    cellSize = parameters[3].value  
-    
-    barrier = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/WetlandBarrier/"
-    rhaPoints = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/RHA_Waypoints"
-    habitatData = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/habitatDetails"
-    rasterPath = os.path.join(output_folder, "Rasters")
+        df['F_Sobreviv'] = df['F_Sobreviv'].fillna(0) * 100
+
+        barrier = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/WetlandBarrier/"
+        rhaPoints = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/RHA_Waypoints"
+        habitatData = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/habitatDetails"
+        rasterPath = os.path.join(output_folder, "Rasters")
         
-    rhaField = "IDENT"
-    habitatField = "PointName"
-    rhaUnit = "ModelUnit"
-    barrierUnit = "ModelUnit"
+        rhaField = "IDENT"
+        habitatField = "PointName"
+        rhaUnit = "ModelUnit"
+        barrierUnit = "ModelUnit"
+        unitList = [1, 2, 3, 4, 5, 6, 7, 8]
 
-    unitList = [1, 2, 3, 4, 5, 6, 7, 8]
-
-    try:
+        try:
             print("Juntando waypoints com dados de habitat...")
             arcpy.MakeFeatureLayer_management(rhaPoints, "rhaLyr")
             arcpy.AddJoin_management("rhaLyr", rhaField, habitatData, habitatField)
-    except:
-            print(arcpy.GetMessages(0))
+        except Exception as e:
+            messages.addErrorMessage(f"Erro ao juntar dados: {str(e)}")
+            return
 
-    print("Criando lista de campos de vegetação para modelagem IDW...")
-    fieldList = [field.name for field in arcpy.ListFields(habitatData)]
-    fList = fieldList[2:17]
+        print("Criando lista de campos de vegetação para modelagem IDW...")
+        fieldList = [field.name for field in arcpy.ListFields(habitatData)]
+        fList = fieldList[2:17]
 
-    power = 2  
-    cellSize = 60  
-
-    try:
+        try:
             if arcpy.CheckExtension("spatial") == "Available":
                 arcpy.CheckOutExtension("spatial")
                 print("Licença do Spatial Analyst verificada.")
-    except:
-            print("Extensão do Spatial Analyst não disponível.")
-            print(arcpy.GetMessages(2))
+            else:
+                raise Exception("Extensão do Spatial Analyst não disponível.")
+        except Exception as e:
+            messages.addErrorMessage(f"Erro ao verificar a licença: {str(e)}")
+            return
 
-    for unit in unitList:
-        try:
-            for unit in unitList:
-                print("Criando cláusula where para a unidade de estudo " + str(unit) + "...")
-                whereRHA = '[' + rhaUnit + '] = ' + "'" + str(unit) + "'"
-                whereBarrier = '[' + barrierUnit + '] = ' + "'" + str(unit) + "'"
+        for unit in unitList:
+            print(f"Criando cláusula where para a unidade de estudo {unit}...")
+            whereRHA = f"[{rhaUnit}] = '{unit}'"
+            whereBarrier = f"[{barrierUnit}] = '{unit}'"
 
-                arcpy.MakeFeatureLayer_management("rhaLyr", "currentRHA", whereRHA)
-                arcpy.MakeFeatureLayer_management(barrier, "currentBarrier", whereBarrier)
+            arcpy.MakeFeatureLayer_management("rhaLyr", "currentRHA", whereRHA)
+            arcpy.MakeFeatureLayer_management(barrier, "currentBarrier", whereBarrier)
 
-                for feat in fList:
-                    try:
-                        print("Executando modelo IDW para " + feat + "...")
-                        # IDW Analyst
-                        outRaster = arcpy.sa.Idw("currentRHA", "habitatDetails." + feat, cellSize, power, "", "currentBarrier")
-                        rasterOutputPath = os.path.join(rasterPath, f"{feat}_{unit}.tif")
-                        outRaster.save(rasterOutputPath)
-                        print("IDW executado com sucesso para " + feat + ".")
-                    except:
-                        print(feat + " falhou na interpolação.")
-                        print(arcpy.GetMessages(2))
+            for feat in fList:
+                try:
+                    print(f"Executando modelo IDW para {feat}...")
+                    outRaster = arcpy.sa.Idw("currentRHA", f"habitatDetails.{feat}", cellSize, power, "", "currentBarrier")
+                    rasterOutputPath = os.path.join(rasterPath, f"{feat}_{unit}.tif")
+                    outRaster.save(rasterOutputPath)
+                    print(f"IDW executado com sucesso para {feat}.")
+                    
+                    # Adiciona o raster ao mapa e exporta
+                    mxd = arcpy.mapping.MapDocument("CURRENT")
+                    df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
+                    newLayer = arcpy.mapping.Layer(rasterOutputPath)
+                    arcpy.mapping.AddLayer(df, newLayer)
+                    arcpy.mapping.ExportToPNG(mxd, os.path.join(output_folder, f"{feat}_{unit}.png"))
 
-                arcpy.Delete_management("currentRHA")
-                arcpy.Delete_management("currentBarrier")
-        except:
-            print(arcpy.GetMessages(2))
-        finally:
-            arcpy.CheckInExtension("spatial")
-            print("Licença do Spatial verificada novamente.")
+                except Exception as e:
+                    print(f"{feat} falhou na interpolação: {str(e)}")
 
+            arcpy.Delete_management("currentRHA")
+            arcpy.Delete_management("currentBarrier")
 
-        mxd = arcpy.mapping.MapDocument("CURRENT")
-        df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
-        newLayer = arcpy.mapping.Layer(rasterOutputPath)
-        arcpy.mapping.AddLayer(df, newLayer)
-        arcpy.mapping.ExportToPNG(mxd, os.path.join(output_folder, f"{feat}_{unit}.png"))
+        arcpy.CheckInExtension("spatial")
+        print("Licença do Spatial verificada novamente.")
+
+        messages.addMessage("Processamento concluído com sucesso.")
