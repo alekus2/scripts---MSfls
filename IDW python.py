@@ -1,90 +1,122 @@
-#  Author: Roy Hewitt
-#  US Fish and Wildlife Service
-#  December 2011
+# Author: Roy Hewitt
+# US Fish and Wildlife Service
+# December 2011
 
-# Import modules, setup overwrite in environments
 import arcpy
 from arcpy.sa import *
+import os
 
-arcpy.env.overwriteOutput = True
+class IDWToolbox(object):
+    def __init__(self):
+        self.label = "IDW Toolbox"
+        self.description = "Toolbox para executar IDW com dados de entrada em CSV."
 
-# Create file paths
-barrier = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/WetlandBarrier/"
-rhaPoints = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/RHA_Waypoints"
-habitatData = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/habitatDetails"
-outPath = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/"
-rasterPath = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/Rasters/"
-rhaLayer = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/RHA_Waypoints.lyr"
+    def getParameterInfo(self):
+        params = [
+            arcpy.Parameter(displayName="Arquivo CSV",
+                            name="csv_file",
+                            datatype="DEFile",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Pasta de Saída",
+                            name="output_folder",
+                            datatype="DEFolder",
+                            parameterType="Required",
+                            direction="Input")
+        ]
+        return params
 
-# Create field variables
-rhaField = "IDENT"
-habitatField = "PointName"
-rhaUnit = "ModelUnit"
-barrierUnit = "ModelUnit"
+    def execute(self, parameters, messages):
+        csv_file = parameters[0].valueAsText
+        output_folder = parameters[1].valueAsText
 
-# Create List Variables
-fieldList = []
-unitList = [1,2,3,4,5,6,7,8]
+        # Verifica se o arquivo CSV existe
+        if not os.path.exists(csv_file):
+            raise FileNotFoundError(f"Erro: O arquivo '{csv_file}' não foi encontrado.")
 
-# Create join between RHA points and Habitat data table
-try:
-    print "Joining waypoints with habitat data..."
-    arcpy.MakeFeatureLayer_management(rhaPoints, "rhaLyr")
-    arcpy.AddJoin_management("rhaLyr", rhaField, habitatData, habitatField)
-    arcpy.SaveToLayerFile_management("rhaLyr", rhaLayer)
-except:
-    print arcpy.GetMessages(0)
+        # Lê os dados do arquivo CSV
+        df = pd.read_csv(csv_file)  # Usar pd.read_csv para CSV
 
-# Create list of vegetation attributes for loop, local variables
-print "Creating list of vegetation fields for IDW modeling..."
-for field in arcpy.ListFields(habitatData):
-    fieldList.append(field.name)
-fList = fieldList[2:17]
-    
-power = 2  # As distance increases, point has less impact on interpolation
-cellSize = 60  # Raster cell size
+        colunas_esperadas = ['Name', 'Parcela', 'F_Sobreviv']
+        for coluna in colunas_esperadas:
+            if coluna not in df.columns:
+                raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo.")
 
-# Check out Spatial Analyst extension
-try:
-    if arcpy.CheckExtension("spatial")== "Available":
-        arcpy.CheckOutExtension("spatial")
-        print "Spatial license checked out."
-except:
-    print "Spatial Analyst extension not available."
-    print arcpy.GetMessages(2)
-    
-try:
-    for unit in unitList:
-        # Create where clause for current study area.
-        print "Creating where clause for study unit " + str(unit) + "..."
-        whereRHA = '['+ rhaUnit + '] = ' + "'" + str(unitList[unit - 1]) + "'"
-        whereBarrier = '['+ barrierUnit + '] = ' + "'" + str(unitList[unit - 1]) + "'"
+        # Converter valores da coluna F_Sobreviv em porcentagem
+        df['F_Sobreviv'] = df['F_Sobreviv'].fillna(0) * 100
 
-        # Create feature layer for RHA waypoints and Barrier for current study unit
-        arcpy.MakeFeatureLayer_management("rhaLyr", "currentRHA", whereRHA)
-        arcpy.MakeFeatureLayer_management(barrier, "currentBarrier", whereBarrier)
+        # Criação de caminhos de arquivos
+        barrier = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/WetlandBarrier/"
+        rhaPoints = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/RHA_Waypoints"
+        habitatData = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/habitatDetails"
+        rasterPath = os.path.join(output_folder, "Rasters")
         
-        for feat in fList:
-            try:
-                print "Running IDW model for " + feat + "..."
-                # IDW geostat analyst
-                #arcpy.Idw_ga("currentRHA", feat, "", rasterOutpath + feat + "_" + str(unit),cellSize, power, "", "currentBarrier")
+        # Criação de variáveis de campo
+        rhaField = "IDENT"
+        habitatField = "PointName"
+        rhaUnit = "ModelUnit"
+        barrierUnit = "ModelUnit"
 
-                # IDW spatial analyst
-                outRaster = arcpy.sa.Idw("currentRHA", "habitatDetails." + feat, cellSize, power, "", "currentBarrier")
-                outRaster.save(outRaster + feat + "_" + str(unit))
-                print "Successfully ran IDW for " + feat + "."
-            except:
-                print feat + " interpolation failed."
-                print arcpy.GetMessages(2)
+        # Lista de unidades
+        unitList = [1, 2, 3, 4, 5, 6, 7, 8]
 
-        # Delete feature layer
-        arcpy.Delete_management("currentRHA")
-        arcpy.Delete_management("currentBarrier")
-except:
-    print arcpy.GetMessages(2)
-finally:
-    arcpy.CheckInExtension("spatial")
-    print "Spatial license checked back in."
+        # Criar junção entre pontos RHA e tabela de habitat
+        try:
+            print("Juntando waypoints com dados de habitat...")
+            arcpy.MakeFeatureLayer_management(rhaPoints, "rhaLyr")
+            arcpy.AddJoin_management("rhaLyr", rhaField, habitatData, habitatField)
+        except:
+            print(arcpy.GetMessages(0))
 
-print "Finished running IDW module."
+        # Criar lista de atributos de vegetação para modelagem IDW
+        print("Criando lista de campos de vegetação para modelagem IDW...")
+        fieldList = [field.name for field in arcpy.ListFields(habitatData)]
+        fList = fieldList[2:17]
+
+        power = 2  # À medida que a distância aumenta, o ponto tem menos impacto na interpolação
+        cellSize = 60  # Tamanho da célula raster
+
+        # Checar extensão do Spatial Analyst
+        try:
+            if arcpy.CheckExtension("spatial") == "Available":
+                arcpy.CheckOutExtension("spatial")
+                print("Licença do Spatial Analyst verificada.")
+        except:
+            print("Extensão do Spatial Analyst não disponível.")
+            print(arcpy.GetMessages(2))
+
+        # Loop através das unidades
+        try:
+            for unit in unitList:
+                print("Criando cláusula where para a unidade de estudo " + str(unit) + "...")
+                whereRHA = '[' + rhaUnit + '] = ' + "'" + str(unit) + "'"
+                whereBarrier = '[' + barrierUnit + '] = ' + "'" + str(unit) + "'"
+
+                # Criar camadas de feições para pontos RHA e barreira
+                arcpy.MakeFeatureLayer_management("rhaLyr", "currentRHA", whereRHA)
+                arcpy.MakeFeatureLayer_management(barrier, "currentBarrier", whereBarrier)
+
+                for feat in fList:
+                    try:
+                        print("Executando modelo IDW para " + feat + "...")
+                        # IDW Analyst
+                        outRaster = arcpy.sa.Idw("currentRHA", "habitatDetails." + feat, cellSize, power, "", "currentBarrier")
+                        rasterOutputPath = os.path.join(rasterPath, f"{feat}_{unit}.tif")
+                        outRaster.save(rasterOutputPath)
+                        print("IDW executado com sucesso para " + feat + ".")
+                    except:
+                        print(feat + " falhou na interpolação.")
+                        print(arcpy.GetMessages(2))
+
+                # Deletar camadas de feição
+                arcpy.Delete_management("currentRHA")
+                arcpy.Delete_management("currentBarrier")
+        except:
+            print(arcpy.GetMessages(2))
+        finally:
+            arcpy.CheckInExtension("spatial")
+            print("Licença do Spatial verificada novamente.")
+
+        print("Finalizado o módulo IDW.")
+
+# Para usar a toolbox, você deve salvar este código como um arquivo .pyt e adicioná-lo ao ArcGIS.
