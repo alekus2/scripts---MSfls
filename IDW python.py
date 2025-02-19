@@ -1,53 +1,90 @@
+#  Author: Roy Hewitt
+#  US Fish and Wildlife Service
+#  December 2011
+
+# Import modules, setup overwrite in environments
 import arcpy
 from arcpy.sa import *
-import pandas as pd
-import os
 
-class IDWToolbox(object):
-    def __init__(self):
-        self.label = "IDW Toolbox"
-        self.description = "Toolbox para executar IDW com dados de entrada em CSV."
+arcpy.env.overwriteOutput = True
 
-    def getParameterInfo(self):
-        params = [arcpy.Parameter(displayName="CSV File",
-                                   name="csv_file",
-                                   datatype="DEFile",
-                                   parameterType="Required",
-                                   direction="Input"),
-                  arcpy.Parameter(displayName="Output Folder",
-                                   name="output_folder",
-                                   datatype="DEFolder",
-                                   parameterType="Required",
-                                   direction="Input")]
-        return params
+# Create file paths
+barrier = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/WetlandBarrier/"
+rhaPoints = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/RHA_Waypoints"
+habitatData = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/habitatDetails"
+outPath = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/"
+rasterPath = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/Rasters/"
+rhaLayer = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/RHA_Waypoints.lyr"
 
-    def execute(self, parameters, messages):
-        csv_file = parameters[0].valueAsText
-        output_folder = parameters[1].valueAsText
+# Create field variables
+rhaField = "IDENT"
+habitatField = "PointName"
+rhaUnit = "ModelUnit"
+barrierUnit = "ModelUnit"
 
-        if not os.path.exists(csv_file):
-            raise FileNotFoundError(f"Erro: O arquivo '{csv_file}' não foi encontrado.")
+# Create List Variables
+fieldList = []
+unitList = [1,2,3,4,5,6,7,8]
 
-        df = pd.read_csv(csv_file)  # Usar pd.read_csv para CSV
+# Create join between RHA points and Habitat data table
+try:
+    print "Joining waypoints with habitat data..."
+    arcpy.MakeFeatureLayer_management(rhaPoints, "rhaLyr")
+    arcpy.AddJoin_management("rhaLyr", rhaField, habitatData, habitatField)
+    arcpy.SaveToLayerFile_management("rhaLyr", rhaLayer)
+except:
+    print arcpy.GetMessages(0)
 
-        colunas_esperadas = ['Name', 'Parcela', 'F_Sobreviv']
-        for coluna in colunas_esperadas:
-            if coluna not in df.columns:
-                raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo.")
+# Create list of vegetation attributes for loop, local variables
+print "Creating list of vegetation fields for IDW modeling..."
+for field in arcpy.ListFields(habitatData):
+    fieldList.append(field.name)
+fList = fieldList[2:17]
+    
+power = 2  # As distance increases, point has less impact on interpolation
+cellSize = 60  # Raster cell size
 
-        # Converter valores da coluna F_Sobreviv em porcentagem
-        df['F_Sobreviv'] = df['F_Sobreviv'].fillna(0) * 100
+# Check out Spatial Analyst extension
+try:
+    if arcpy.CheckExtension("spatial")== "Available":
+        arcpy.CheckOutExtension("spatial")
+        print "Spatial license checked out."
+except:
+    print "Spatial Analyst extension not available."
+    print arcpy.GetMessages(2)
+    
+try:
+    for unit in unitList:
+        # Create where clause for current study area.
+        print "Creating where clause for study unit " + str(unit) + "..."
+        whereRHA = '['+ rhaUnit + '] = ' + "'" + str(unitList[unit - 1]) + "'"
+        whereBarrier = '['+ barrierUnit + '] = ' + "'" + str(unitList[unit - 1]) + "'"
 
-        # Resto do seu código para IDW usando os valores convertidos...
-        # Aqui você deve integrar a lógica já apresentada para interpolação IDW
-
-        # Exemplo de como pode ser chamado o IDW
-        # (Assegure-se de usar a coluna convertida em porcentagem)
-        # ...
+        # Create feature layer for RHA waypoints and Barrier for current study unit
+        arcpy.MakeFeatureLayer_management("rhaLyr", "currentRHA", whereRHA)
+        arcpy.MakeFeatureLayer_management(barrier, "currentBarrier", whereBarrier)
         
-        # Salvar os resultados na pasta de saída
-        # ...
+        for feat in fList:
+            try:
+                print "Running IDW model for " + feat + "..."
+                # IDW geostat analyst
+                #arcpy.Idw_ga("currentRHA", feat, "", rasterOutpath + feat + "_" + str(unit),cellSize, power, "", "currentBarrier")
 
-        messages.addMessage("Processamento concluído com sucesso.")
+                # IDW spatial analyst
+                outRaster = arcpy.sa.Idw("currentRHA", "habitatDetails." + feat, cellSize, power, "", "currentBarrier")
+                outRaster.save(outRaster + feat + "_" + str(unit))
+                print "Successfully ran IDW for " + feat + "."
+            except:
+                print feat + " interpolation failed."
+                print arcpy.GetMessages(2)
 
-# Para usar a toolbox, você deve salvar este código como um arquivo .pyt e adicioná-lo ao ArcGIS.
+        # Delete feature layer
+        arcpy.Delete_management("currentRHA")
+        arcpy.Delete_management("currentBarrier")
+except:
+    print arcpy.GetMessages(2)
+finally:
+    arcpy.CheckInExtension("spatial")
+    print "Spatial license checked back in."
+
+print "Finished running IDW module."
