@@ -1,18 +1,17 @@
 import arcpy
 from arcpy.sa import *
 import os
-import pandas as pd
 
 class IDWToolbox(object):
     def __init__(self):
-        self.label = "IDW Toolbox"
-        self.description = "Toolbox para executar IDW com dados de entrada em CSV."
+        self.label = "IDW Toolbox com Shapefile"
+        self.description = "Executa interpolação IDW usando um Shapefile como entrada."
 
     def getParameterInfo(self):
         params = [
-            arcpy.Parameter(displayName="Arquivo CSV",
-                            name="csv_file",
-                            datatype="DEFile",
+            arcpy.Parameter(displayName="Shapefile de Entrada",
+                            name="input_shp",
+                            datatype="DEFeatureClass",
                             parameterType="Required",
                             direction="Input"),
             arcpy.Parameter(displayName="Pasta de Saída",
@@ -29,91 +28,81 @@ class IDWToolbox(object):
                             name="cell_size",
                             datatype="GPDouble",
                             parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Layer de Recorte (Opcional)",
+                            name="mask_layer",
+                            datatype="DEFeatureClass",
+                            parameterType="Optional",
                             direction="Input")
         ]
         return params
 
     def execute(self, parameters, messages):
-        csv_file = parameters[0].valueAsText
+        input_shp = parameters[0].valueAsText
         output_folder = parameters[1].valueAsText
         power = parameters[2].value
-        cellSize = parameters[3].value  
+        cell_size = parameters[3].value  
+        mask_layer = parameters[4].valueAsText  # Camada opcional para recorte
 
-        if not os.path.exists(csv_file):
-            raise FileNotFoundError(f"Erro: O arquivo '{csv_file}' não foi encontrado.")
-
-        df = pd.read_csv(csv_file) 
-
-        colunas_esperadas = ['Name', 'Parcela', 'F_Sobreviv']
-        for coluna in colunas_esperadas:
-            if coluna not in df.columns:
-                raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo.")
-
-        df['F_Sobreviv'] = df['F_Sobreviv'].fillna(0) * 100
-
-        barrier = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/WetlandBarrier/"
-        rhaPoints = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/RHA_Waypoints"
-        habitatData = "P:/Employee_GIS_Data/Hewitt_GIS_Data/Python/NutriaProj.mdb/habitatDetails"
-        rasterPath = os.path.join(output_folder, "Rasters")
-        
-        rhaField = "IDENT"
-        habitatField = "PointName"
-        rhaUnit = "ModelUnit"
-        barrierUnit = "ModelUnit"
-        unitList = [1, 2, 3, 4, 5, 6, 7, 8]
-
-        try:
-            print("Juntando waypoints com dados de habitat...")
-            arcpy.MakeFeatureLayer_management(rhaPoints, "rhaLyr")
-            arcpy.AddJoin_management("rhaLyr", rhaField, habitatData, habitatField)
-        except Exception as e:
-            messages.addErrorMessage(f"Erro ao juntar dados: {str(e)}")
+        # Verifica se o shapefile existe
+        if not arcpy.Exists(input_shp):
+            messages.addErrorMessage(f"Erro: O Shapefile '{input_shp}' não foi encontrado.")
             return
 
-        print("Criando lista de campos de vegetação para modelagem IDW...")
-        fieldList = [field.name for field in arcpy.ListFields(habitatData)]
-        fList = fieldList[2:17]
+        # Obtém os campos do shapefile
+        field_names = [f.name for f in arcpy.ListFields(input_shp)]
+        required_fields = ["Name", "Parcela", "F_Sobreviv"]
 
-        try:
-            if arcpy.CheckExtension("spatial") == "Available":
-                arcpy.CheckOutExtension("spatial")
-                print("Licença do Spatial Analyst verificada.")
-            else:
-                raise Exception("Extensão do Spatial Analyst não disponível.")
-        except Exception as e:
-            messages.addErrorMessage(f"Erro ao verificar a licença: {str(e)}")
+        for field in required_fields:
+            if field not in field_names:
+                messages.addErrorMessage(f"Erro: A coluna '{field}' não foi encontrada no shapefile.")
+                return
+
+        # Cria uma camada temporária para processar os dados
+        arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
+
+        # Habilita extensão Spatial Analyst
+        if arcpy.CheckExtension("spatial") == "Available":
+            arcpy.CheckOutExtension("spatial")
+        else:
+            messages.addErrorMessage("Erro: Extensão do Spatial Analyst não disponível.")
             return
 
-        for unit in unitList:
-            print(f"Criando cláusula where para a unidade de estudo {unit}...")
-            whereRHA = f"[{rhaUnit}] = '{unit}'"
-            whereBarrier = f"[{barrierUnit}] = '{unit}'"
+        # Define caminho de saída dos rasters
+        raster_output_folder = os.path.join(output_folder, "Rasters")
+        if not os.path.exists(raster_output_folder):
+            os.makedirs(raster_output_folder)
 
-            arcpy.MakeFeatureLayer_management("rhaLyr", "currentRHA", whereRHA)
-            arcpy.MakeFeatureLayer_management(barrier, "currentBarrier", whereBarrier)
+        # Cria interpolação IDW
+        try:
+            print("Executando interpolação IDW...")
+            out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
 
-            for feat in fList:
-                try:
-                    print(f"Executando modelo IDW para {feat}...")
-                    outRaster = arcpy.sa.Idw("currentRHA", f"habitatDetails.{feat}", cellSize, power, "", "currentBarrier")
-                    rasterOutputPath = os.path.join(rasterPath, f"{feat}_{unit}.tif")
-                    outRaster.save(rasterOutputPath)
-                    print(f"IDW executado com sucesso para {feat}.")
-                    
-                    # Adiciona o raster ao mapa e exporta
-                    mxd = arcpy.mapping.MapDocument("CURRENT")
-                    df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
-                    newLayer = arcpy.mapping.Layer(rasterOutputPath)
-                    arcpy.mapping.AddLayer(df, newLayer)
-                    arcpy.mapping.ExportToPNG(mxd, os.path.join(output_folder, f"{feat}_{unit}.png"))
+            # Se houver um layer de recorte, aplica máscara
+            if mask_layer:
+                print("Aplicando máscara de recorte...")
+                out_raster = ExtractByMask(out_raster, mask_layer)
 
-                except Exception as e:
-                    print(f"{feat} falhou na interpolação: {str(e)}")
+            # Salva o raster
+            raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
+            out_raster.save(raster_output_path)
+            print(f"Raster salvo em {raster_output_path}")
 
-            arcpy.Delete_management("currentRHA")
-            arcpy.Delete_management("currentBarrier")
+            # Adiciona o raster ao mapa e exporta a visualização
+            mxd = arcpy.mapping.MapDocument("CURRENT")
+            df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
+            new_layer = arcpy.mapping.Layer(raster_output_path)
+            arcpy.mapping.AddLayer(df, new_layer)
 
-        arcpy.CheckInExtension("spatial")
-        print("Licença do Spatial verificada novamente.")
+            output_png = os.path.join(output_folder, "IDW_Mapa.png")
+            arcpy.mapping.ExportToPNG(mxd, output_png)
+            print(f"Mapa exportado para {output_png}")
+
+        except Exception as e:
+            messages.addErrorMessage(f"Erro ao executar IDW: {str(e)}")
+
+        finally:
+            arcpy.CheckInExtension("spatial")
+            print("Extensão Spatial Analyst liberada.")
 
         messages.addMessage("Processamento concluído com sucesso.")
