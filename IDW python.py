@@ -83,13 +83,13 @@ class IDWToolbox(object):
             out_raster.save(raster_output_path)
             print(f"Raster salvo em {raster_output_path}")
 
-            mxd = arcpy.mapping.MapDocument("CURRENT")
-            df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
-            new_layer = arcpy.mapping.Layer(raster_output_path)
-            arcpy.mapping.AddLayer(df, new_layer)
+            aprx = arcpy.mp.ArcGISProject("CURRENT")
+            map = aprx.listMaps()[0]  # Pega o primeiro mapa do projeto
+            new_layer = arcpy.mp.LayerFile(raster_output_path)
+            map.addLayer(new_layer)
 
             output_png = os.path.join(output_folder, "IDW_Mapa.png")
-            arcpy.mapping.ExportToPNG(mxd, output_png)
+            arcpy.mp.ExportToPNG(aprx, output_png)
             print(f"Mapa exportado para {output_png}")
 
         except Exception as e:
