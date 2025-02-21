@@ -44,7 +44,7 @@ class IDWToolbox(object):
         ]
         return params
 
-    def execute(self, parameters, messages):
+    def execute(self, parameters):
         input_shp = parameters[0].valueAsText
         output_folder = parameters[1].valueAsText
         power = parameters[2].value
@@ -58,16 +58,12 @@ class IDWToolbox(object):
 
         arcpy.CheckOutExtension("spatial")
 
-        raster_output_folder = os.path.join(output_folder, "Rasters")
-        if not os.path.exists(raster_output_folder):
-            os.makedirs(raster_output_folder)
-
         out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
     
         if mask_layer:
             out_raster = ExtractByMask(out_raster, mask_layer)
                 
-        raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
+        raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
         out_raster.save(raster_output_path)
 
         symbology = arcpy.sa.RasterClassifySymbology()
