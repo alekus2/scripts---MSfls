@@ -45,6 +45,7 @@ class IDWToolbox(object):
         return params
 
     def execute(self, parameters):
+        # O ArcMap/ArcCatalog já faz a passagem dos parâmetros, não deve passar explicitamente
         input_shp = parameters[0].valueAsText
         output_folder = parameters[1].valueAsText
         power = parameters[2].value
