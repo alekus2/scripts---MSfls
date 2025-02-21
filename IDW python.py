@@ -57,7 +57,7 @@ class IDWTool(object):
         ]
         return params
 
-    def execute(self, parameters, messages):
+    def execute(self, parameters, _):
         """Executa a interpolação IDW."""
         
         # Obtendo os valores dos parâmetros
@@ -69,8 +69,7 @@ class IDWTool(object):
         
         # Verifica se o shapefile existe
         if not arcpy.Exists(input_shp):
-            messages.addErrorMessage(f"Erro: O Shapefile '{input_shp}' não foi encontrado.")
-            return
+            raise ValueError(f"Erro: O Shapefile '{input_shp}' não foi encontrado.")
 
         # Verifica se os campos necessários estão no shapefile
         field_names = [f.name for f in arcpy.ListFields(input_shp)]
@@ -78,42 +77,41 @@ class IDWTool(object):
 
         for field in required_fields:
             if field not in field_names:
-                messages.addErrorMessage(f"Erro: A coluna '{field}' não foi encontrada no shapefile.")
-                return
+                raise ValueError(f"Erro: A coluna '{field}' não foi encontrada no shapefile.")
         
         # Verifica a extensão do Spatial Analyst
         if arcpy.CheckExtension("spatial") == "Available":
             arcpy.CheckOutExtension("spatial")
         else:
-            messages.addErrorMessage("Erro: Extensão do Spatial Analyst não disponível.")
-            return
+            raise RuntimeError("Erro: Extensão do Spatial Analyst não disponível.")
 
         # Criar a pasta de saída, se não existir
         raster_output_folder = os.path.join(output_folder, "Rasters")
         os.makedirs(raster_output_folder, exist_ok=True)
 
         try:
-            messages.addMessage("Executando interpolação IDW...")
-            
-            # Executa a interpolação IDW
-            out_raster = Idw(input_shp, "F_Sobreviv", cell_size, power)
-    
-            # Se houver um layer de recorte, aplica a máscara
+            print("Criando Feature Layer temporária...")
+            shp_layer = "shp_layer_temp"
+            arcpy.MakeFeatureLayer_management(input_shp, shp_layer)
+
+            print("Executando interpolação IDW...")
+            out_raster = Idw(shp_layer, "F_Sobreviv", cell_size, power)
+
             if mask_layer:
-                messages.addMessage("Aplicando máscara de recorte...")
+                print("Aplicando máscara de recorte...")
                 out_raster = ExtractByMask(out_raster, mask_layer)
-                
-            # Salva o raster de saída
+
+            # Salvar o raster resultante
             raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
-            messages.addMessage(f"Raster salvo em {raster_output_path}")
+            print(f"Raster salvo em {raster_output_path}")
 
         except Exception as e:
-            messages.addErrorMessage(f"Erro ao executar IDW: {str(e)}")
+            raise RuntimeError(f"Erro ao executar IDW: {str(e)}")
 
         finally:
             # Libera a extensão Spatial Analyst
             arcpy.CheckInExtension("spatial")
-            messages.addMessage("Extensão Spatial Analyst liberada.")
+            print("Extensão Spatial Analyst liberada.")
 
-        messages.addMessage("Processamento concluído com sucesso.")
+        print("Processamento concluído com sucesso.")
