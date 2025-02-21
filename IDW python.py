@@ -4,15 +4,16 @@ import os
 
 class Toolbox(object):
     def __init__(self):
-        """Define a toolbox."""
+        """Define a toolbox para ArcMap."""
         self.label = "Interpolation Processing Toolbox"
         self.alias = "idwpython_toolbox"
-        self.tools = [IDWToolbox]
+        self.tools = [IDWTool]
 
-class IDWToolbox(object):
+class IDWTool(object):
     def __init__(self):
         self.label = "IDW Toolbox com Shapefile"
         self.description = "Executa interpolação IDW usando um Shapefile como entrada."
+        self.canRunInBackground = False
 
     def getParameterInfo(self):
         params = [
@@ -78,22 +79,22 @@ class IDWToolbox(object):
             os.makedirs(raster_output_folder)
 
         try:
-            print("Executando interpolação IDW...")
-            out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
+            messages.addMessage("Executando interpolação IDW...")
+            out_raster = Idw("shp_layer", "F_Sobreviv", cell_size, power)
     
             if mask_layer:
-                print("Aplicando máscara de recorte...")
+                messages.addMessage("Aplicando máscara de recorte...")
                 out_raster = ExtractByMask(out_raster, mask_layer)
                 
             raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
-            print(f"Raster salvo em {raster_output_path}")
+            messages.addMessage(f"Raster salvo em {raster_output_path}")
 
         except Exception as e:
             messages.addErrorMessage(f"Erro ao executar IDW: {str(e)}")
 
         finally:
             arcpy.CheckInExtension("spatial")
-            print("Extensão Spatial Analyst liberada.")
+            messages.addMessage("Extensão Spatial Analyst liberada.")
 
         messages.addMessage("Processamento concluído com sucesso.")
