@@ -58,13 +58,13 @@ class IDWToolbox(object):
         missing_fields = [field for field in required_fields if field not in field_names]
         if missing_fields:
             arcpy.AddError(f"Faltando campos obrigatórios: {', '.join(missing_fields)}")
-            raise ValueError(f"Faltando campos obrigatórios: {', '.join(missing_fields)}")
+            raise
 
         try:
             # Criação da camada de feição
             arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
         except Exception as e:
-            arcpy.AddError(f"Erro ao criar a camada de feição: {e}")
+            arcpy.AddError(f"Erro ao criar a camada de feição: {str(e)}")
             raise
 
         # Verificar a disponibilidade da extensão espacial
@@ -78,7 +78,7 @@ class IDWToolbox(object):
             # Executando a interpolação IDW
             out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
         except Exception as e:
-            arcpy.AddError(f"Erro ao executar a interpolação IDW: {e}")
+            arcpy.AddError(f"Erro ao executar a interpolação IDW: {str(e)}")
             raise
 
         # Verificação de validade do arquivo de máscara
@@ -96,12 +96,15 @@ class IDWToolbox(object):
         raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
         out_raster.save(raster_output_path)
 
-        # Aplicar simbologia a partir de um arquivo de camada (.lyr)
-        symbology_layer = r"caminho_para_arquivo_de_layer.lyr"  # Substitua pelo caminho para seu arquivo de camada
         try:
-            arcpy.management.ApplySymbologyFromLayer(out_raster, symbology_layer)
+            # Criar simbologia diretamente no raster
+            arcpy.env.overwriteOutput = True
+            symbology = arcpy.mapping.ListLayers(raster_output_path)[0]
+            symbology.symbologyType = "STRETCHED"
+            symbology.colorRamp = "Yellow to Red"
+            arcpy.RefreshActiveView()
         except Exception as e:
-            arcpy.AddError(f"Erro ao aplicar simbologia: {e}")
+            arcpy.AddError(f"Erro ao aplicar simbologia: {str(e)}")
             raise
 
         # Liberar a extensão espacial
