@@ -87,9 +87,13 @@ class IDWToolbox(object):
             out_raster.save(raster_output_path)
             print(f"Raster salvo em {raster_output_path}")
 
-            # Adiciona um symbology layer para o raster IDW
-            symbology_layer = "path_to_symbology_layer.lyr"
-            arcpy.ApplySymbologyFromLayer_management(out_raster, symbology_layer)
+            # Criando simbologia dinamicamente
+            symbology = arcpy.sa.RasterClassifySymbology()
+            symbology.valueField = "Value"
+            symbology.breakCount = 5
+            symbology.colorRamp = "Yellow to Red"
+
+            arcpy.ApplySymbologyFromRasterClassify(out_raster, symbology)
             print("Aplicando simbologia...")
 
         except Exception as e:
