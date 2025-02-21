@@ -2,6 +2,13 @@ import arcpy
 from arcpy.sa import *
 import os
 
+class Toolbox(object):
+    def __init__(self):
+        """Define a toolbox."""
+        self.label = "Interpolation Processing Toolbox"
+        self.alias = "idwpython_toolbox"
+        self.tools = [IDWToolbox]
+
 class IDWToolbox(object):
     def __init__(self):
         self.label = "IDW Toolbox com Shapefile"
@@ -42,14 +49,10 @@ class IDWToolbox(object):
         output_folder = parameters[1].valueAsText
         power = parameters[2].value
         cell_size = parameters[3].value  
-        mask_layer = parameters[4].valueAsText  # Camada opcional para recorte
-
-        # Verifica se o shapefile existe
+        mask_layer = parameters[4].valueAsText
         if not arcpy.Exists(input_shp):
             messages.addErrorMessage(f"Erro: O Shapefile '{input_shp}' não foi encontrado.")
             return
-
-        # Obtém os campos do shapefile
         field_names = [f.name for f in arcpy.ListFields(input_shp)]
         required_fields = ["Name", "Parcela", "F_Sobreviv"]
 
@@ -57,38 +60,29 @@ class IDWToolbox(object):
             if field not in field_names:
                 messages.addErrorMessage(f"Erro: A coluna '{field}' não foi encontrada no shapefile.")
                 return
-
-        # Cria uma camada temporária para processar os dados
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
-        # Habilita extensão Spatial Analyst
         if arcpy.CheckExtension("spatial") == "Available":
             arcpy.CheckOutExtension("spatial")
         else:
             messages.addErrorMessage("Erro: Extensão do Spatial Analyst não disponível.")
             return
 
-        # Define caminho de saída dos rasters
         raster_output_folder = os.path.join(output_folder, "Rasters")
         if not os.path.exists(raster_output_folder):
             os.makedirs(raster_output_folder)
-
-        # Cria interpolação IDW
         try:
             print("Executando interpolação IDW...")
             out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
-
-            # Se houver um layer de recorte, aplica máscara
+    
             if mask_layer:
                 print("Aplicando máscara de recorte...")
                 out_raster = ExtractByMask(out_raster, mask_layer)
-
-            # Salva o raster
+                
             raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
             print(f"Raster salvo em {raster_output_path}")
 
-            # Adiciona o raster ao mapa e exporta a visualização
             mxd = arcpy.mapping.MapDocument("CURRENT")
             df = arcpy.mapping.ListDataFrames(mxd, "Layers")[0]
             new_layer = arcpy.mapping.Layer(raster_output_path)
