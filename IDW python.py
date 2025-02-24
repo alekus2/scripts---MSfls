@@ -93,9 +93,18 @@ class IDWInterpolation(object):
 
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
+        # Criar um polígono de recorte com base nos pontos de entrada
+        # Vamos criar um buffer em torno dos pontos para formar o polígono de recorte
+        buffer_output = os.path.join(output_folder, "buffer.shp")
+        arcpy.Buffer_analysis("shp_layer", buffer_output, "0.1 Meters")
+
+        # Definir a máscara a ser usada na interpolação
+        mask_layer = buffer_output if not mask_layer else mask_layer
+
         arcpy.CheckOutExtension("spatial")
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
+        # Aplicar a máscara, se houver
         if mask_layer:
             out_raster = ExtractByMask(out_raster, mask_layer)
 
