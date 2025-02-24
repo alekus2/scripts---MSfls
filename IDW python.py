@@ -4,17 +4,47 @@ import os
 
 class Toolbox(object):
     def __init__(self):
-        self.label = "Interpolation Processing Toolbox"
-        self.alias = "idwpython_toolbox"
-        self.tools = [IDWToolbox]
+        self.label = "IDW Example Toolbox"
+        self.alias = "idw_example_toolbox"
+        self.tools = [CreateSampleData, IDWInterpolation]
 
-class IDWToolbox(object):
+class CreateSampleData(object):
     def __init__(self):
-        self.label = "IDW Toolbox"
-        self.description = "Executa interpolação IDW considerando todas as parcelas."
+        self.label = "Create Sample Shapefile"
+        self.description = "Cria um shapefile com pontos de exemplo para interpolação IDW."
 
     def getParameterInfo(self):
-        params = [
+        return [arcpy.Parameter(displayName="Pasta de Saída",
+                                name="output_folder",
+                                datatype="DEFolder",
+                                parameterType="Required",
+                                direction="Input")]
+
+    def execute(self, parameters, messages):
+        output_folder = parameters[0].valueAsText
+        shapefile_path = os.path.join(output_folder, "pontos.shp")
+
+        if arcpy.Exists(shapefile_path):
+            arcpy.Delete_management(shapefile_path)
+
+        spatial_reference = arcpy.SpatialReference(4326)
+        arcpy.CreateFeatureclass_management(output_folder, "pontos.shp", "POINT", spatial_reference=spatial_reference)
+        arcpy.AddField_management(shapefile_path, "F_Sobreviv", "DOUBLE")
+
+        points = [(-47.91, -15.78, 0.8), (-47.92, -15.79, 0.6), (-47.93, -15.76, 0.4), 
+                  (-47.94, -15.74, 0.9), (-47.95, -15.77, 0.7)]
+
+        with arcpy.da.InsertCursor(shapefile_path, ["SHAPE@XY", "F_Sobreviv"]) as cursor:
+            for x, y, value in points:
+                cursor.insertRow(((x, y), value))
+
+class IDWInterpolation(object):
+    def __init__(self):
+        self.label = "IDW Interpolation"
+        self.description = "Executa interpolação IDW em um shapefile de entrada."
+
+    def getParameterInfo(self):
+        return [
             arcpy.Parameter(displayName="Shapefile de Entrada",
                             name="input_shp",
                             datatype="DEFeatureClass",
@@ -41,12 +71,11 @@ class IDWToolbox(object):
                             parameterType="Optional",
                             direction="Input")
         ]
-        return params
 
     def execute(self, parameters, messages):
         input_shp = parameters[0].valueAsText
         output_folder = parameters[1].valueAsText
-        cell_size = parameters[2].value if parameters[2].value else 10
+        cell_size = parameters[2].value if parameters[2].value else 0.01
         power = parameters[3].value if parameters[3].value else 2
         mask_layer = parameters[4].valueAsText
 
@@ -65,13 +94,10 @@ class IDWToolbox(object):
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
         arcpy.CheckOutExtension("spatial")
-
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
         if mask_layer:
             out_raster = ExtractByMask(out_raster, mask_layer)
 
-        raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
-        out_raster.save(raster_output_path)
-
+        out_raster.save(os.path.join(output_folder, "IDW_Interpolacao.tif"))
         arcpy.CheckInExtension("spatial")
