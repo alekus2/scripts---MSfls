@@ -45,8 +45,8 @@ class IDWToolbox(object):
         return params
 
     def execute(self, parameters, messages=None):
-        """Executa a interpolação IDW com um recorte opcional e salva como PNG."""
-        
+        """Executa a interpolação IDW com recorte e gera um PNG compatível."""
+
         # Recebendo os parâmetros
         input_shp = parameters[0].valueAsText
         output_folder = parameters[1].valueAsText
@@ -77,9 +77,18 @@ class IDWToolbox(object):
         raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
         out_raster.save(raster_output_path)
 
-        # Converter o raster para PNG
+        # **Conversão para PNG corrigida**
         png_output_path = os.path.join(output_folder, "IDW_Interpolacao.png")
-        arcpy.management.CopyRaster(raster_output_path, png_output_path, format="PNG")
+
+        # Definir tipo de pixel correto (8 bits)
+        temp_raster = os.path.join(output_folder, "IDW_Interpolacao_8bit.tif")
+        arcpy.management.CopyRaster(raster_output_path, temp_raster, pixel_type="8_BIT_UNSIGNED")
+
+        # Converter para PNG corretamente
+        arcpy.management.CopyRaster(temp_raster, png_output_path, format="PNG", colormap="NONE")
+
+        # Remover temporário
+        arcpy.Delete_management(temp_raster)
 
         # Liberar a extensão Spatial Analyst
         arcpy.CheckInExtension("Spatial")
