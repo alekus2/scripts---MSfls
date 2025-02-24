@@ -2,13 +2,11 @@ import arcpy
 from arcpy.sa import *
 import os
 
-
 class Toolbox(object):
     def __init__(self):
-	self.label = "Exemplo de interpolaçao"
-	self.alias = "idw_example_toolbox"
-	self.tools = [IDWInterpolationExample]
-		
+        self.label = "Exemplo de Interpolação IDW"
+        self.alias = "idw_example_toolbox"
+        self.tools = [IDWInterpolationExample]
 
 class IDWInterpolationExample(object):
     def __init__(self):
@@ -30,8 +28,12 @@ class IDWInterpolationExample(object):
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        mxd = arcpy.mapping.MapDocument("CURRENT")
-        df = arcpy.mapping.ListDataFrames(mxd)[0]
+        # Verifique se o script está sendo executado no ArcMap, caso contrário, não acessa MapDocument
+        if "ArcMap" in arcpy.GetInstallInfo("desktop")["ProductName"]:
+            mxd = arcpy.mapping.MapDocument("CURRENT")
+            df = arcpy.mapping.ListDataFrames(mxd)[0]
+        else:
+            df = None  # Não faz nada com o mapa se não estiver no ArcMap
 
         shapefile_path = os.path.join(output_folder, "pontos.shp")
         if arcpy.Exists(shapefile_path):
@@ -69,3 +71,10 @@ class IDWInterpolationExample(object):
         out_raster.save(raster_output_path)
 
         arcpy.CheckInExtension("Spatial")
+
+        raster_layer = arcpy.mapping.Layer(raster_output_path)
+
+        if df:  # Só adiciona o layer se estiver no ArcMap
+            arcpy.mapping.AddLayer(df, raster_layer)
+
+        messages.addMessage("Interpolação IDW concluída e camada adicionada ao mapa.")
