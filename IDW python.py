@@ -80,18 +80,13 @@ class IDWToolbox(object):
         # **Conversão para PNG corrigida**
         png_output_path = os.path.join(output_folder, "IDW_Interpolacao.png")
 
-        # Definir tipo de pixel correto (8 bits)
+        # Converter para 8 bits antes de salvar como PNG
         temp_raster = os.path.join(output_folder, "IDW_Interpolacao_8bit.tif")
         arcpy.management.CopyRaster(raster_output_path, temp_raster, pixel_type="8_BIT_UNSIGNED")
-
-        # Converter para PNG corretamente
-        arcpy.management.CopyRaster(temp_raster, png_output_path, format="PNG", colormap="NONE")
+        arcpy.management.CopyRaster(temp_raster, png_output_path, pixel_type="8_BIT_UNSIGNED", format="PNG")
 
         # Remover temporário
         arcpy.Delete_management(temp_raster)
 
         # Liberar a extensão Spatial Analyst
         arcpy.CheckInExtension("Spatial")
-
-        arcpy.AddMessage(f"Interpolação IDW concluída! Arquivo salvo em {raster_output_path}")
-        arcpy.AddMessage(f"Imagem PNG criada em {png_output_path}")
