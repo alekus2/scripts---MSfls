@@ -1,5 +1,6 @@
 import arcpy
-from arcpy.sa import *
+from arcpy import env
+from arcpy.sa import *  # Certifique-se de que o módulo Spatial Analyst está importado
 import os
 
 class Toolbox(object):
@@ -7,7 +8,7 @@ class Toolbox(object):
         """Define a toolbox."""
         self.label = "Interpolation Processing Toolbox"
         self.alias = "idwpython_toolbox"
-        self.tools = [IDWToolbox]
+        self.tools = [IDWToolbox()]
 
 class IDWToolbox(object):
     def __init__(self):
@@ -87,13 +88,8 @@ class IDWToolbox(object):
             out_raster.save(raster_output_path)
             print(f"Raster salvo em {raster_output_path}")
 
-            # Criando simbologia dinamicamente
-            symbology = arcpy.sa.RasterClassifySymbology()
-            symbology.valueField = "Value"
-            symbology.breakCount = 5
-            symbology.colorRamp = "Yellow to Red"
-
-            arcpy.ApplySymbologyFromRasterClassify(out_raster, symbology)
+            # Aplicando simbologia
+            arcpy.management.ApplySymbologyFromLayer(out_raster, "path/to/symbology/layer.lyr")  # Ajuste o caminho conforme necessário
             print("Aplicando simbologia...")
 
         except Exception as e:
