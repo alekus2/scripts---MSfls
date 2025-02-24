@@ -1,6 +1,6 @@
 import arcpy
 from arcpy import env
-from arcpy.sa import *  # Certifique-se de que o módulo Spatial Analyst está importado
+from arcpy.sa import *
 import os
 
 class Toolbox(object):
@@ -70,6 +70,11 @@ class IDWToolbox(object):
             arcpy.CheckOutExtension("spatial")
         else:
             messages.addErrorMessage("Erro: Extensão do Spatial Analyst não disponível.")
+            return
+        
+        # Verifique se a ferramenta IDW está disponível
+        if "Idw" not in arcpy.ListTools():
+            messages.addErrorMessage("Erro: A ferramenta IDW não está disponível.")
             return
 
         raster_output_folder = os.path.join(output_folder, "Rasters")
