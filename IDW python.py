@@ -44,40 +44,45 @@ class IDWToolbox(object):
         ]
         return params
 
-    def execute(self, parameters):
-        # O ArcMap/ArcCatalog já faz a passagem dos parâmetros, não deve passar explicitamente
+    def execute(self, parameters, messages=None):
+        """Executa a interpolação IDW com um recorte opcional e salva como PNG."""
+        
+        # Recebendo os parâmetros
         input_shp = parameters[0].valueAsText
         output_folder = parameters[1].valueAsText
         power = parameters[2].value
         cell_size = parameters[3].value  
         mask_layer = parameters[4].valueAsText
 
-        # Criação da camada de feição
-        arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
+        # Ativar licença de extensão Spatial Analyst
+        arcpy.CheckOutExtension("Spatial")
 
-        # Verificar a disponibilidade da extensão espacial
-        arcpy.CheckOutExtension("spatial")
+        # Criando uma camada de feição temporária
+        shp_layer = "shp_layer"
+        arcpy.MakeFeatureLayer_management(input_shp, shp_layer)
 
         # Executando a interpolação IDW
-        out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
+        field_name = "F_Sobreviv"  # Alterar para o campo correto do shapefile
+        out_raster = Idw(shp_layer, field_name, cell_size, power)
 
-        # Aplicação da máscara, se houver
+        # Aplicação da máscara (recorte) se especificado
         if mask_layer:
             out_raster = ExtractByMask(out_raster, mask_layer)
 
-        # Verificação da pasta de saída
+        # Criando pasta de saída se não existir
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
+        # Salvando o raster IDW
         raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
         out_raster.save(raster_output_path)
 
-        # Criar simbologia diretamente no raster
-        arcpy.env.overwriteOutput = True
-        symbology = arcpy.mapping.ListLayers(raster_output_path)[0]
-        symbology.symbologyType = "STRETCHED"
-        symbology.colorRamp = "Yellow to Red"
-        arcpy.RefreshActiveView()
+        # Converter o raster para PNG
+        png_output_path = os.path.join(output_folder, "IDW_Interpolacao.png")
+        arcpy.management.CopyRaster(raster_output_path, png_output_path, format="PNG")
 
-        # Liberar a extensão espacial
-        arcpy.CheckInExtension("spatial")
+        # Liberar a extensão Spatial Analyst
+        arcpy.CheckInExtension("Spatial")
+
+        arcpy.AddMessage(f"Interpolação IDW concluída! Arquivo salvo em {raster_output_path}")
+        arcpy.AddMessage(f"Imagem PNG criada em {png_output_path}")
