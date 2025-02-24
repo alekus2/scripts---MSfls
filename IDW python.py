@@ -33,9 +33,6 @@ class IDWInterpolationExample(object):
             return
         arcpy.CheckOutExtension("Spatial")
 
-        mxd = arcpy.mapping.MapDocument("CURRENT")
-        df = arcpy.mapping.ListDataFrames(mxd)[0]
-
         shapefile_path = os.path.join(output_folder, "pontos.shp")
         if arcpy.Exists(shapefile_path):
             arcpy.Delete_management(shapefile_path)
@@ -49,9 +46,6 @@ class IDWInterpolationExample(object):
         with arcpy.da.InsertCursor(shapefile_path, ["SHAPE@XY", "F_Sobreviv"]) as cursor:
             for x, y, value in points:
                 cursor.insertRow(((x, y), value))
-
-        desc = arcpy.Describe(shapefile_path)
-        extent = desc.extent
 
         buffer_output = os.path.join(output_folder, "buffer.shp")
         arcpy.Buffer_analysis(shapefile_path, buffer_output, "1000 Meters")
@@ -71,8 +65,4 @@ class IDWInterpolationExample(object):
 
         arcpy.CheckInExtension("Spatial")
 
-        raster_layer = arcpy.mapping.Layer(raster_output_path)
-
-        arcpy.mapping.AddLayer(df, raster_layer)
-
-        messages.addMessage("Interpolação IDW concluída e camada adicionada ao mapa.")
+        messages.addMessage("Interpolação IDW concluída e raster salvo na pasta de saída.")
