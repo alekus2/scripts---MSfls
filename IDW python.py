@@ -2,6 +2,14 @@ import arcpy
 from arcpy.sa import *
 import os
 
+
+class Toolbox(object):
+    def __init__(self):
+	self.label = "Exemplo de interpolaçao"
+	self.alias = "idw_example_toolbox"
+	self.tools = [IDWInterpolationExample]
+		
+
 class IDWInterpolationExample(object):
     def __init__(self):
         self.label = "Exemplo de Interpolação IDW"
@@ -61,9 +69,3 @@ class IDWInterpolationExample(object):
         out_raster.save(raster_output_path)
 
         arcpy.CheckInExtension("Spatial")
-
-        raster_layer = arcpy.mapping.Layer(raster_output_path)
-
-        arcpy.mapping.AddLayer(df, raster_layer)
-
-        messages.addMessage("Interpolação IDW concluída e camada adicionada ao mapa.")
