@@ -28,12 +28,13 @@ class IDWInterpolationExample(object):
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
-        # Verifique se o script está sendo executado no ArcMap, caso contrário, não acessa MapDocument
-        if "ArcMap" in arcpy.GetInstallInfo("desktop")["ProductName"]:
-            mxd = arcpy.mapping.MapDocument("CURRENT")
-            df = arcpy.mapping.ListDataFrames(mxd)[0]
-        else:
-            df = None  # Não faz nada com o mapa se não estiver no ArcMap
+        if not arcpy.CheckExtension("Spatial"):
+            messages.addErrorMessage("A extensão Spatial Analyst não está disponível.")
+            return
+        arcpy.CheckOutExtension("Spatial")
+
+        mxd = arcpy.mapping.MapDocument("CURRENT")
+        df = arcpy.mapping.ListDataFrames(mxd)[0]
 
         shapefile_path = os.path.join(output_folder, "pontos.shp")
         if arcpy.Exists(shapefile_path):
@@ -60,8 +61,6 @@ class IDWInterpolationExample(object):
 
         cell_size = 0.01
         power = 2
-        
-        arcpy.CheckOutExtension("Spatial")
 
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
@@ -74,7 +73,6 @@ class IDWInterpolationExample(object):
 
         raster_layer = arcpy.mapping.Layer(raster_output_path)
 
-        if df:  # Só adiciona o layer se estiver no ArcMap
-            arcpy.mapping.AddLayer(df, raster_layer)
+        arcpy.mapping.AddLayer(df, raster_layer)
 
         messages.addMessage("Interpolação IDW concluída e camada adicionada ao mapa.")
