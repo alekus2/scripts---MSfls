@@ -99,5 +99,13 @@ class IDWInterpolation(object):
         if mask_layer:
             out_raster = ExtractByMask(out_raster, mask_layer)
 
-        out_raster.save(os.path.join(output_folder, "IDW_Interpolacao.tif"))
+        raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
+        out_raster.save(raster_output_path)
+
         arcpy.CheckInExtension("spatial")
+
+        # Criar o Layer a partir do raster gerado
+        raster_layer = arcpy.MakeRasterLayer_management(raster_output_path, "IDW_Layer")
+
+        # Adicionar o Layer ao mapa
+        arcpy.mapping.AddLayer(arcpy.mapping.ListDataFrames(arcpy.mapping.MapDocument("CURRENT"))[0], raster_layer)
