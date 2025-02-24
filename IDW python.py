@@ -93,13 +93,20 @@ class IDWInterpolation(object):
 
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
-        # Criar um polígono de recorte com base nos pontos de entrada
-        # Vamos criar um buffer em torno dos pontos para formar o polígono de recorte
+        # Criar um polígono que envolve todos os pontos (convex hull)
+        convex_hull = os.path.join(output_folder, "convex_hull.shp")
+        arcpy.MinimumBoundingGeometry_management("shp_layer", convex_hull, "CONVEX_HULL")
+
+        # Criar um buffer em torno do convex hull para garantir um recorte adequado
         buffer_output = os.path.join(output_folder, "buffer.shp")
-        arcpy.Buffer_analysis("shp_layer", buffer_output, "0.1 Meters")
+        arcpy.Buffer_analysis(convex_hull, buffer_output, "5000 Meters")  # Ajuste o tamanho do buffer conforme necessário
 
         # Definir a máscara a ser usada na interpolação
         mask_layer = buffer_output if not mask_layer else mask_layer
+
+        # Definir a extensão para o shapefile de entrada
+        arcpy.env.extent = input_shp  
+        arcpy.env.mask = ""  # Garante que a máscara não atrapalhe o IDW
 
         arcpy.CheckOutExtension("spatial")
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
@@ -113,8 +120,10 @@ class IDWInterpolation(object):
 
         arcpy.CheckInExtension("spatial")
 
-        # Criar o Layer a partir do raster gerado
-        raster_layer = arcpy.MakeRasterLayer_management(raster_output_path, "IDW_Layer")
+        # Salvar o raster sem recorte para debug
+        raster_sem_recorte = os.path.join(output_folder, "IDW_Sem_Recorte.tif")
+        out_raster.save(raster_sem_recorte)
 
-        # Adicionar o Layer ao mapa
-        arcpy.mapping.AddLayer(arcpy.mapping.ListDataFrames(arcpy.mapping.MapDocument("CURRENT"))[0], raster_layer)
+        # Criar o Layer a partir do raster gerado (sem a parte de mapa)
+        # Apenas salva o raster e não adiciona ao mapa automaticamente
+
