@@ -8,7 +8,7 @@ class Toolbox(object):
         """Define a toolbox."""
         self.label = "Interpolation Processing Toolbox"
         self.alias = "idwpython_toolbox"
-        self.tools = [IDWToolbox()]
+        self.tools = [IDWToolbox]
 
 class IDWToolbox(object):
     def __init__(self):
@@ -67,41 +67,26 @@ class IDWToolbox(object):
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
         if arcpy.CheckExtension("spatial") == "Available":
-            arcpy.CheckOutExtension("spatial")
+           arcpy.CheckOutExtension("spatial")
         else:
-            messages.addErrorMessage("Erro: Extensão do Spatial Analyst não disponível.")
-            return
-        
-        # Verifique se a ferramenta IDW está disponível
-        if "Idw" not in arcpy.ListTools():
-            messages.addErrorMessage("Erro: A ferramenta IDW não está disponível.")
-            return
+           arcpy.CheckOutExtension("spatial")         
+           return
 
         raster_output_folder = os.path.join(output_folder, "Rasters")
         if not os.path.exists(raster_output_folder):
             os.makedirs(raster_output_folder)
 
         try:
-            print("Executando interpolação IDW...")
             out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
-    
             if mask_layer:
-                print("Aplicando máscara de recorte...")
                 out_raster = ExtractByMask(out_raster, mask_layer)
-                
             raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
-            print(f"Raster salvo em {raster_output_path}")
 
-            # Aplicando simbologia
-            arcpy.management.ApplySymbologyFromLayer(out_raster, "path/to/symbology/layer.lyr")  # Ajuste o caminho conforme necessário
-            print("Aplicando simbologia...")
-
+            arcpy.management.ApplySymbologyFromLayer(out_raster, "")  
         except Exception as e:
             messages.addErrorMessage(f"Erro ao executar IDW: {str(e)}")
 
         finally:
             arcpy.CheckInExtension("spatial")
-            print("Extensão Spatial Analyst liberada.")
-
         messages.addMessage("Processamento concluído com sucesso.")
