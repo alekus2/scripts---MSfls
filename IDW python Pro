@@ -50,14 +50,14 @@ class IDWToolbox(object):
         output_folder = parameters[1].valueAsText
         power = parameters[2].value
         cell_size = parameters[3].value  
-        mask_layer = parameters[4].valueAsText
+        mask_layer = parameters[4].valueAsText if parameters[4].value else None
         
         if not arcpy.Exists(input_shp):
             messages.addErrorMessage(f"Erro: O Shapefile '{input_shp}' não foi encontrado.")
             return
 
         field_names = [f.name for f in arcpy.ListFields(input_shp)]
-        required_fields = ["Name", "Parcela", "F_Sobreviv"]
+        required_fields = ["F_Sobreviv"]
 
         for field in required_fields:
             if field not in field_names:
@@ -66,11 +66,12 @@ class IDWToolbox(object):
 
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
-        if arcpy.CheckExtension("spatial") == "Available":
-           arcpy.CheckOutExtension("spatial")
-        else:
-           arcpy.CheckOutExtension("spatial")         
-           return
+        # Verifica e retira a extensão espacial
+        try:
+            arcpy.CheckOutExtension("Spatial")
+        except arcpy.ExecuteError:
+            messages.addErrorMessage("Erro: A extensão espacial não está disponível.")
+            return
 
         raster_output_folder = os.path.join(output_folder, "Rasters")
         if not os.path.exists(raster_output_folder):
@@ -83,10 +84,12 @@ class IDWToolbox(object):
             raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
 
-            arcpy.management.ApplySymbologyFromLayer(out_raster, "")  
+            # Aplicar simbologia
+            arcpy.management.ApplySymbologyFromLayer(out_raster, "Caminho/para/seu/arquivo_de_simbologia.lyr")  # Atualize com o caminho correto
+
         except Exception as e:
             messages.addErrorMessage(f"Erro ao executar IDW: {str(e)}")
-
         finally:
-            arcpy.CheckInExtension("spatial")
+            arcpy.CheckInExtension("Spatial")
+        
         messages.addMessage("Processamento concluído com sucesso.")
