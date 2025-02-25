@@ -17,13 +17,13 @@ try:
 
     df = pd.read_excel(arquivo_excel, sheet_name=1)
 
-    colunas_esperadas = ['Nome', 'Leg', 'Valores Reais','Plano']
+    colunas_esperadas = ['Nome', 'Leg', 'Valores Reais', 'Plano']
     for coluna in colunas_esperadas:
         if coluna not in df.columns:
             raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo Excel.")
 
-
     nome = df['Nome'].fillna("Desconhecido").iloc[0]
+    semanas = df['Leg'].astype(str).values
     valores_real = df['Valores Reais'].fillna(0).values
     valores_plano = df['Plano'].fillna(0).values
 
@@ -31,50 +31,53 @@ except Exception as e:
     print(f"Erro ao processar o Excel: {e}")
     sys.exit(1)
 
-# --- Parte 2: Criar o gráfico para apresentação (ou apagar se ja existir) ---
+# --- Parte 2: Criar o gráfico ---
 try:
-    quantidade_realizada = {'Real': valores_real, 'Plano': valores_plano}
-
     fig, ax = plt.subplots(figsize=(14, 6))
-    bottom = np.zeros(len(semanas))
 
     bar_width = 0.3
+    indices = np.arange(len(semanas))
     cores = ['#4472c4', '#5e774c']
 
-    for i, (quantidade, valores) in enumerate(quantidade_realizada.items()):
-        bars = ax.bar(semanas, valores, width=bar_width, label=quantidade, bottom=bottom, color=cores[i])
-        for rect, valor in zip(bars, valores):
-            if valor > 0:
-                ax.text(rect.get_x() + rect.get_width() / 2,
-                        rect.get_y() + rect.get_height() / 2,
-                        f'{valor:.0f}%',
-                        ha='center', va='center', fontsize=10, color='black')
-        bottom += valores
+    bars_real = ax.bar(indices - bar_width/2, valores_real, width=bar_width, label='Real', color=cores[0])
+    bars_plano = ax.bar(indices + bar_width/2, valores_plano, width=bar_width, label='Plano', color=cores[1])
 
-    meta = 100
-    ax.plot([-0.5, last_data_idx + 0.5], [meta, meta],
-            color='darkgrey', linewidth=2, linestyle='--', label='Meta')
-    
-    ax.set_ylim(0, 200)
+    # Adicionando rótulos de valores nas barras
+    for bars in [bars_real, bars_plano]:
+        for rect in bars:
+            height = rect.get_height()
+            if height > 0:
+                ax.text(rect.get_x() + rect.get_width()/2, height, f'{height:,.0f}', 
+                        ha='center', va='bottom', fontsize=10, color='black')
 
-    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.05), ncol= 3,  frameon=False)
+    # Adicionando a linha de meta
+    meta = 10000  # Ajuste conforme necessário
+    ax.axhline(y=meta, color='darkgrey', linewidth=2, linestyle='--', label='Meta')
 
-    plt.xticks(rotation=0, ha='center')
+    # Configuração do eixo Y
+    ax.set_ylim(0, max(max(valores_real), max(valores_plano), meta) + 2000)
+    ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
+    ax.tick_params(axis='y', labelsize=10)
 
-    ax.tick_params(axis='y', labelleft=False)
-    
-    ax.spines['top'].set_visible(False)
-    ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
+    # Configuração do eixo X
+    ax.set_xticks(indices)
+    ax.set_xticklabels(semanas, rotation=0, ha='center')
 
-    ax.tick_params(axis='y',length=0)
+    # Configuração da legenda
+    ax.legend(loc='upper right', frameon=False, fontsize=10)
 
+    # Removendo bordas desnecessárias
+    for spine in ['top', 'right']:
+        ax.spines[spine].set_visible(False)
+
+    # Salvando o gráfico
     nome_arquivo = "".join(c for c in nome if c.isalnum() or c in "_-.").strip()
     nome_arquivo = nome_arquivo if nome_arquivo else "grafico"
     nome_arquivo += ".png"
-    
 
-    plt.savefig(nome_arquivo, format='png', dpi=300)
+    plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
+
+    print(f"Gráfico salvo como: {nome_arquivo}")
 
 except Exception as e:
     print(f"Erro ao gerar o gráfico: {e}")
