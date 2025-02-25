@@ -19,46 +19,52 @@ class IDWInterpolationExample(object):
                             name="output_folder",
                             datatype="DEFolder",
                             parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Shapefile de Entrada",
+                            name="input_shapefile",
+                            datatype="SHAPEFILE",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Mapa de Recorte",
+                            name="clip_feature",
+                            datatype="GPFeatureLayer",
+                            parameterType="Optional",
                             direction="Input")
         ]
 
     def execute(self, parameters, messages):
         output_folder = parameters[0].valueAsText
+        input_shapefile = parameters[1].valueAsText
+        clip_feature = parameters[2].valueAsText if parameters[2].value is not None else None
 
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
         if not arcpy.CheckExtension("Spatial"):
-            arcpy.CheckOutExtension("Spatial")	
+            arcpy.CheckOutExtension("Spatial")
             return
         arcpy.CheckOutExtension("Spatial")
 
-        shapefile_path = os.path.join(output_folder, "pontos.shp")
-        if arcpy.Exists(shapefile_path):
-            arcpy.Delete_management(shapefile_path)
-        
-        spatial_reference = arcpy.SpatialReference(4326)
-        arcpy.CreateFeatureclass_management(output_folder, "pontos.shp", "POINT", spatial_reference=spatial_reference)
-        arcpy.AddField_management(shapefile_path, "F_Sobreviv", "DOUBLE")
+        # Verifica se o shapefile de entrada existe
+        if not arcpy.Exists(input_shapefile):
+            messages.addErrorMessage(f"O shapefile de entrada '{input_shapefile}' não existe.")
+            return
 
-        points = [(-47.91, -15.78, 0.8), (-47.92, -15.79, 0.6), (-47.93, -15.76, 0.4), 
-                  (-47.94, -15.74, 0.9), (-47.95, -15.77, 0.7)]
-        with arcpy.da.InsertCursor(shapefile_path, ["SHAPE@XY", "F_Sobreviv"]) as cursor:
-            for x, y, value in points:
-                cursor.insertRow(((x, y), value))
-
+        # Cria o buffer
         buffer_output = os.path.join(output_folder, "buffer.shp")
-        arcpy.Buffer_analysis(shapefile_path, buffer_output, "1000 Meters")
+        arcpy.Buffer_analysis(input_shapefile, buffer_output, "1000 Meters")
 
         field_name = "F_Sobreviv"
-        arcpy.MakeFeatureLayer_management(shapefile_path, "shp_layer")
+        arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
 
         cell_size = 0.01
         power = 30
 
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
-        out_raster = ExtractByMask(out_raster, buffer_output)
+        # Aplica o mapa de recorte se fornecido
+        if clip_feature:
+            out_raster = ExtractByMask(out_raster, clip_feature)
 
         raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
         out_raster.save(raster_output_path)
