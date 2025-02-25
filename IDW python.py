@@ -29,7 +29,7 @@ class IDWInterpolationExample(object):
             os.makedirs(output_folder)
 
         if not arcpy.CheckExtension("Spatial"):
-            messages.addErrorMessage("A extensão Spatial Analyst não está disponível.")
+            arcpy.CheckOutExtension("Spatial")	
             return
         arcpy.CheckOutExtension("Spatial")
 
@@ -54,7 +54,7 @@ class IDWInterpolationExample(object):
         arcpy.MakeFeatureLayer_management(shapefile_path, "shp_layer")
 
         cell_size = 0.01
-        power = 2
+        power = 30
 
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
@@ -64,5 +64,3 @@ class IDWInterpolationExample(object):
         out_raster.save(raster_output_path)
 
         arcpy.CheckInExtension("Spatial")
-
-        messages.addMessage("Interpolação IDW concluída e raster salvo na pasta de saída.")
