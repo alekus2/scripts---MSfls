@@ -64,19 +64,6 @@ class IDWToolbox(object):
                 messages.addErrorMessage(f"Erro: A coluna '{field}' não foi encontrada no shapefile.")
                 return
 
-        # Criar a nova coluna "F_Percent" caso não exista
-        percent_field = "F_Percent"
-        if percent_field not in field_names:
-            arcpy.AddField_management(input_shp, percent_field, "DOUBLE")
-            messages.addMessage(f"Campo '{percent_field}' adicionado ao shapefile.")
-
-        # Preencher a nova coluna "F_Percent" convertendo valores de "F_Sobreviv"
-        with arcpy.da.UpdateCursor(input_shp, ["F_Sobreviv", "F_Percent"]) as cursor:
-            for row in cursor:
-                row[1] = row[0] * 100  # Convertendo para porcentagem
-                cursor.updateRow(row)
-        messages.addMessage(f"Campo '{percent_field}' preenchido com valores de porcentagem.")
-
         arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
 
         # Verifica e retira a extensão espacial
@@ -91,11 +78,10 @@ class IDWToolbox(object):
             os.makedirs(raster_output_folder)
 
         try:
-            # Executa a interpolação IDW usando "F_Percent"
-            out_raster = arcpy.sa.Idw("shp_layer", percent_field, cell_size, power)
+            out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
             if mask_layer:
                 out_raster = ExtractByMask(out_raster, mask_layer)
-            raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao_Percent.tif")
+            raster_output_path = os.path.join(raster_output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
 
         except Exception as e:
