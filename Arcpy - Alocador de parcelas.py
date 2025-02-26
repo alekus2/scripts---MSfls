@@ -31,11 +31,20 @@ class AlocadorDeParcelas(object):
             direction="Input"
         )
 
-        return [param_excel, param_workspace]
+        param_layer = arcpy.Parameter(
+            displayName="Camada base de dados",
+            name="input_layer",
+            datatype="DEFeatureClass",
+            parameterType="Required",
+            direction="Input"
+        )
+
+        return [param_excel, param_workspace, param_layer]
 
     def execute(self, parameters, messages):
         base_path = parameters[0].valueAsText
         workspace = parameters[1].valueAsText
+        input_layer = parameters[2].valueAsText
 
         if not arcpy.Exists(base_path):
             arcpy.AddError(f"Erro: O arquivo {base_path} não foi encontrado.")
@@ -52,8 +61,9 @@ class AlocadorDeParcelas(object):
         cod_talhao = df['CD_USO_SOL'].astype(int)
         area_talhao = df['AREA_HA'].astype(float)
         query = f"CD_USO_SOL IN ({','.join(map(str, cod_talhao.unique()))})"
+
         output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
-        arcpy.Select_analysis("CamadaBase", output_shapefile, query)
+        arcpy.Select_analysis(input_layer, output_shapefile, query)
 
         cell_size = (area_talhao ** 0.5) / 10
         fishnet_shp = os.path.join(workspace, "Fishnet.shp")
