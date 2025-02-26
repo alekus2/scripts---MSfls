@@ -1,1 +1,1 @@
-out_raster.save(os.path.join(raster_output_folder, "IDW_Interpolacao.tif"))
+-3,40282e+38
