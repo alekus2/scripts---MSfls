@@ -52,15 +52,15 @@ class AlocadorDeParcelas(object):
 
         arcpy.env.workspace = workspace
         df = pd.read_excel(base_path)
-        colunas_esperadas = ['CD_USO_SOL', 'AREA_HA']
+        colunas_esperadas = ['ID_PROJETO','ID_TALHAO','AREA_HA']
         for coluna in colunas_esperadas:
             if coluna not in df.columns:
                 arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no arquivo do Excel.")
                 return
-
-        cod_talhao = df['CD_USO_SOL'].astype(int)
+        cod_talhao = df['ID_TALHAO'].astype(str)
+        cod_project = df['ID_PROJETO'].astype(str)
         area_talhao = df['AREA_HA'].astype(float)
-        query = f"CD_USO_SOL IN ({','.join(map(str, cod_talhao.unique()))})"
+        query = f"CONCAT (ID_PROJETO,ID_TALHAO IN ({','.join(map(str, cod_talhao.unique()))})"
 
         output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
         arcpy.Select_analysis(input_layer, output_shapefile, query)
@@ -70,7 +70,7 @@ class AlocadorDeParcelas(object):
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
         corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
 
-        cell_size = (area_talhao.mean() ** 0.5) / 10
+        cell_size = (area_talhao.mean() ** 0.5) / 9
         fishnet_shp = os.path.join(workspace, "Fishnet.shp")
 
         arcpy.CreateFishnet_management(
@@ -94,7 +94,7 @@ class AlocadorDeParcelas(object):
         arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
 
         pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
-        planejado = len(cod_talhao) * 9
+        planejado = len(cod_talhao) 
         if pontos_count != planejado:
             arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
 
