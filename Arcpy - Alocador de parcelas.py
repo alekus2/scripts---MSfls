@@ -1,14 +1,10 @@
-# Converter os códigos para inteiros e criar a query correta
-cod_talhao = df['CD_USO_SOL'].astype(int).unique()
-query = f"CD_USO_SOL IN ({','.join(map(str, cod_talhao))})"
-
-# Criar uma camada temporária com a query aplicada
-layer_temp = "TalhoesSelecionados_Layer"
-arcpy.MakeFeatureLayer_management(input_layer, layer_temp, query)
-
-# Agora sim, exportar apenas os talhões filtrados
-output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
-arcpy.CopyFeatures_management(layer_temp, output_shapefile)
-arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(output_shapefile)[0]} talhões.")
-
-# Continuar com o processamento normal...
+Traceback (most recent call last):
+  File "<string>", line 66, in execute
+  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\management.py", line 10316, in MakeFeatureLayer
+    raise e
+  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\management.py", line 10313, in MakeFeatureLayer
+    retval = convertArcObjectToPythonObject(gp.MakeFeatureLayer_management(*gp_fixargs((in_features, out_layer, where_clause, workspace, field_info), True)))
+  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\geoprocessing\_base.py", line 512, in <lambda>
+    return lambda *args: val(*gp_fixargs(args, True))
+arcgisscripting.ExecuteError:  ERROR 000358: Invalid expression
+Failed to execute (MakeFeatureLayer).
