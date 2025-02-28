@@ -50,17 +50,23 @@ class AlocadorDeParcelas(object):
             arcpy.AddError(f"Erro: O arquivo {base_path} não foi encontrado.")
             return
 
+        if not arcpy.Exists(workspace):
+            arcpy.AddError(f"Erro: A pasta {workspace} não foi encontrada.")
+            return
+
         arcpy.env.workspace = workspace
         df = pd.read_excel(base_path)
-        colunas_esperadas = ['ID_PROJETO','ID_TALHAO','AREA_HA']
+        colunas_esperadas = ['ID_PROJETO', 'ID_TALHAO', 'AREA_HA']
         for coluna in colunas_esperadas:
             if coluna not in df.columns:
                 arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no arquivo do Excel.")
                 return
+
         cod_talhao = df['ID_TALHAO'].astype(str)
         cod_project = df['ID_PROJETO'].astype(str)
         area_talhao = df['AREA_HA'].astype(float)
-        query = f"CONCAT (ID_PROJETO,ID_TALHAO IN ({','.join(map(str, cod_talhao.unique()))})"
+
+        query = f"ID_PROJETO IN ({','.join(map(str, cod_project.unique()))}) AND ID_TALHAO IN ({','.join(map(str, cod_talhao.unique()))})"
 
         output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
         arcpy.Select_analysis(input_layer, output_shapefile, query)
@@ -68,9 +74,13 @@ class AlocadorDeParcelas(object):
         desc = arcpy.Describe(output_shapefile)
         origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
-        corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
+        corner_coord = f"{desc.extent.XMax} {desc.extent.YMax()}"
 
         cell_size = (area_talhao.mean() ** 0.5) / 9
+        if cell_size <= 0:
+            arcpy.AddError("Erro: O tamanho da célula calculado é inválido.")
+            return
+
         fishnet_shp = os.path.join(workspace, "Fishnet.shp")
 
         arcpy.CreateFishnet_management(
@@ -88,13 +98,14 @@ class AlocadorDeParcelas(object):
         )
 
         buffer_shp = os.path.join(workspace, "Buffer_30m.shp")
-        arcpy.Buffer_analysis(output_shapefile, buffer_shp, "-30 Meters")
+    
+        arcpy.Buffer_analysis(output_shapefile, buffer_shp, "30 Meters")  
 
         intersect_shp = os.path.join(workspace, "Intersected.shp")
         arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
 
         pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
-        planejado = len(cod_talhao) 
+        planejado = len(cod_talhao)
         if pontos_count != planejado:
             arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
 
