@@ -68,7 +68,7 @@ class AlocadorDeParcelas(object):
         field_list = arcpy.ListFields(input_layer, "CD_USO_SOLO")
         field_type = field_list[0].type  
 
-        cod_talhao = df['CD_USO_SOLO'].dropna().astype(str).unique()
+        cod_talhao = df['CD_USO_SOLO'].dropna().unique()
 
         pontos_coletados = len(cod_talhao)
         if pontos_coletados:
@@ -87,9 +87,16 @@ class AlocadorDeParcelas(object):
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
         layer_temp = "TalhoesSelecionados_Layer"
+        # Cria a camada de recurso filtrada usando a query
         arcpy.MakeFeatureLayer_management(input_layer, layer_temp, query)
 
+        # Verifica se a camada temporária foi criada com sucesso
+        if arcpy.GetCount_management(layer_temp)[0] == "0":
+            arcpy.AddError("Erro: Nenhum talhão corresponde à query.")
+            return
+
         output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
+        # Copia apenas os talhões filtrados para o novo shapefile
         arcpy.CopyFeatures_management(layer_temp, output_shapefile)
         arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(output_shapefile)[0]} talhões.")
 
