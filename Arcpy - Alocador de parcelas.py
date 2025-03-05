@@ -75,9 +75,9 @@ class AlocadorDeParcelas(object):
             arcpy.AddWarning(f"Quantidade de pontos coletados: ({pontos_coletados}).")
 
         if field_type in ["String", "Text"]:
-            query = f"CD_USO_SOLO IN ({','.join(f"'{c}'" for c in cod_talhao)})"  
+            query = f"CD_USO_SOLO IN ({','.join(f'\'{c}\'' for c in cod_talhao)})"
         else:
-            query = f"CD_USO_SOLO IN ({','.join(map(str, cod_talhao))})"  
+            query = f"CD_USO_SOLO IN ({','.join(map(str, cod_talhao))})"
 
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
@@ -86,16 +86,6 @@ class AlocadorDeParcelas(object):
 
         output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
         arcpy.CopyFeatures_management(layer_temp, output_shapefile)
-        arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(output_shapefile)[0]} talhões.")
-        
-        query = f"CD_USO_SOL IN ({','.join(map(str, cod_talhao))})"
-
-        layer_temp = "TalhoesSelecionados_Layer"
-        arcpy.MakeFeatureLayer_management(input_layer, layer_temp, query)
-     
-        output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
-        arcpy.CopyFeatures_management(layer_temp, output_shapefile)
-
         arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(output_shapefile)[0]} talhões.")
 
         desc = arcpy.Describe(output_shapefile)
@@ -134,8 +124,3 @@ class AlocadorDeParcelas(object):
         merged_shp = os.path.join(workspace, "Final_Points.shp")
         arcpy.Merge_management([intersect_shp], merged_shp)
         arcpy.AddMessage("Processo concluído.")
-
-File "<string>", line 78
-    query = f"CD_USO_SOLO IN ({','.join(f"'{c}'" for c in cod_talhao)})"  
-                                                                          ^
-SyntaxError: f-string: unmatched '('
