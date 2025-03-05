@@ -62,11 +62,9 @@ class AlocadorDeParcelas(object):
         df['CD_USO_SOLO'] = pd.to_numeric(df['CD_USO_SOLO'], errors='coerce').astype('Int64')
         df['ID_PROJETO'] = df['ID_PROJETO'].astype(str).str.strip()
 
-        # Criar a nova coluna combinada
         df['ID_TALHAO'] = df['CD_USO_SOLO'].astype(str) + "_" + df['ID_PROJETO']
         id_talhoes = df['ID_TALHAO'].dropna().unique()
 
-        # Verificar se ID_TALHAO existe na camada do ArcGIS
         field_names = [f.name for f in arcpy.ListFields(input_layer)]
         if "ID_TALHAO" not in field_names:
             arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente...")
@@ -76,13 +74,11 @@ class AlocadorDeParcelas(object):
                     row[2] = f"{row[0]}_{row[1]}" if row[0] and row[1] else None
                     cursor.updateRow(row)
 
-        # Criar a query SQL
         query = f"ID_TALHAO IN ({','.join(map(lambda x: f"'{x}'", id_talhoes))})"
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
         layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
 
-        # Aplicar filtro e exportar
         arcpy.Select_analysis(input_layer, layer_temp, query)
 
         if int(arcpy.GetCount_management(layer_temp)[0]) == 0:
@@ -91,7 +87,6 @@ class AlocadorDeParcelas(object):
 
         arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(layer_temp)[0]} talhões.")
 
-        # Criar Fishnet
         desc = arcpy.Describe(layer_temp)
         origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
@@ -114,15 +109,23 @@ class AlocadorDeParcelas(object):
             geometry_type="POLYGON"
         )
 
-        # Criar Buffer
         buffer_shp = os.path.join(workspace, "Buffer_30m.shp")
         arcpy.Buffer_analysis(layer_temp, buffer_shp, "-30 Meters")
 
-        # Criar Intersect
         intersect_shp = os.path.join(workspace, "Intersected.shp")
         arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
 
         pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
         planejado = len(id_talhoes)
         if pontos_count != planejado:
-            arcpy.AddWarning(f"Quantidade de pontos
+            arcpy.AddWarning(f"Quantidade de pontos({pontos_count}) diferente do planejado ({planejado}).")
+
+        merged_shp = os.path.join(workspace, "Final_Points.shp")
+        arcpy.Merge_management([intersect_shp], merged_shp)
+        arcpy.AddMessage("Processo concluído.")
+
+
+File "<string>", line 77
+    query = f"ID_TALHAO IN ({','.join(map(lambda x: f"'{x}'", id_talhoes))})"
+                                                                             ^
+SyntaxError: f-string: unmatched '('
