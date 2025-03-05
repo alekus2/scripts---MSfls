@@ -11,7 +11,7 @@ class Toolbox(object):
 class AlocadorDeParcelas(object):
     def __init__(self):
         self.label = "Alocar parcelas"
-        self.description = "Filtra e exporta parcelas com base em CD_USO_SOLO e ID_PROJETO."
+        self.description = "Filtra e exporta parcelas com base em CD_TALHAO e ID_PROJETO."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -53,25 +53,26 @@ class AlocadorDeParcelas(object):
         arcpy.env.workspace = workspace
         df = pd.read_excel(base_path)
 
-        colunas_esperadas = ['CD_USO_SOLO', 'ID_PROJETO', 'AREA_HA']
+        colunas_esperadas = ['CD_TALHAO', 'ID_PROJETO', 'AREA_HA']
         for coluna in colunas_esperadas:
             if coluna not in df.columns:
                 arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no Excel.")
                 return
             
-        df['CD_USO_SOLO'] = pd.to_numeric(df['CD_USO_SOLO'], errors='coerce').astype('Int64')
+        df['CD_TALHAO'] = df['CD_TALHAO'].astype(str).str.zfill(2)  # Preenche o CD_TALHAO com 2 dígitos
         df['ID_PROJETO'] = df['ID_PROJETO'].astype(str).str.strip()
 
-        df['ID_TALHAO'] = df['CD_USO_SOLO'].astype(str) + "_" + df['ID_PROJETO']
+        # Formata o ID_TALHAO no formato ID_PROJETO + CD_TALHAO
+        df['ID_TALHAO'] = df['ID_PROJETO'] + df['CD_TALHAO']
         id_talhoes = df['ID_TALHAO'].dropna().unique()
 
         field_names = [f.name for f in arcpy.ListFields(input_layer)]
         if "ID_TALHAO" not in field_names:
             arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente...")
             arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
-            with arcpy.da.UpdateCursor(input_layer, ["CD_USO_SOLO", "ID_PROJETO", "ID_TALHAO"]) as cursor:
+            with arcpy.da.UpdateCursor(input_layer, ["CD_TALHAO", "ID_PROJETO", "ID_TALHAO"]) as cursor:
                 for row in cursor:
-                    row[2] = f"{row[0]}_{row[1]}" if row[0] and row[1] else None
+                    row[2] = f"{row[1]}{row[0].zfill(2)}" if row[0] and row[1] else None
                     cursor.updateRow(row)
 
         id_talhoes_str = ",".join([f"'{x}'" for x in id_talhoes])  # Lista de strings corretamente formatadas
