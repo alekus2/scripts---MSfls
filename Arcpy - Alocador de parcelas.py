@@ -86,20 +86,16 @@ class AlocadorDeParcelas(object):
 
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
-        # Criar uma nova camada temporária filtrada
         layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
 
-        # Aplicar a seleção e exportar diretamente os talhões filtrados
         arcpy.Select_analysis(input_layer, layer_temp, query)
 
-        # Verifica se o shapefile filtrado foi criado corretamente
         if arcpy.GetCount_management(layer_temp)[0] == "0":
             arcpy.AddError("Erro: Nenhum talhão corresponde à query.")
             return
 
         arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(layer_temp)[0]} talhões.")
 
-        # Criar Fishnet baseado nos talhões filtrados
         desc = arcpy.Describe(layer_temp)
         origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
