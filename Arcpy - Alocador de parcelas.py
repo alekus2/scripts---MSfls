@@ -68,7 +68,8 @@ class AlocadorDeParcelas(object):
         field_list = arcpy.ListFields(input_layer, "CD_USO_SOLO")
         field_type = field_list[0].type  
 
-        cod_talhao = df['CD_USO_SOLO'].dropna().unique()
+        cod_talhao = pd.to_numeric(df['CD_USO_SOLO'], errors='coerce').dropna().astype(int).unique()
+
 
         pontos_coletados = len(cod_talhao)
         if pontos_coletados:
