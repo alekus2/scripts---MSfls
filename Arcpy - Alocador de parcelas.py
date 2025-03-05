@@ -88,7 +88,10 @@ class AlocadorDeParcelas(object):
 
         layer_temp = "TalhoesSelecionados_Layer"
         # Cria a camada de recurso filtrada usando a query
-        arcpy.MakeFeatureLayer_management(input_layer, layer_temp, query)
+        arcpy.MakeFeatureLayer_management(input_layer, layer_temp)
+
+        # Aplica a query na camada temporária
+        arcpy.SelectLayerByAttribute_management(layer_temp, "NEW_SELECTION", query)
 
         # Verifica se a camada temporária foi criada com sucesso
         if arcpy.GetCount_management(layer_temp)[0] == "0":
