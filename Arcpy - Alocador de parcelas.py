@@ -73,15 +73,19 @@ class AlocadorDeParcelas(object):
         # Obter os valores únicos de ID_TALHAO
         id_talhoes = df['ID_TALHAO'].dropna().unique()
 
-        # Adicionar o campo ID_TALHAO na camada de dados base, se não existir
-        field_names = [f.name for f in arcpy.ListFields(input_layer)]
-        if "ID_TALHAO" not in field_names:
-            arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente na camada base de dados...")
-            arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
-            with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
-                for row in cursor:
-                    row[2] = f"{row[0]}{str(row[1]).zfill(2)}" if row[0] and row[1] else None
-                    cursor.updateRow(row)
+        # Verificar se o campo 'ID_TALHAO' já existe e, caso não exista, criá-lo
+field_names = [f.name for f in arcpy.ListFields(input_layer)]
+if "ID_TALHAO" not in field_names:
+    arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente na camada base de dados...")
+    arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
+
+# Usar o UpdateCursor para atualizar o campo ID_TALHAO com base nas colunas da própria camada de dados
+with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
+    for row in cursor:
+        # Atualizar o campo ID_TALHAO com a concatenação de ID_PROJETO e CD_TALHAO
+        row[2] = f"{str(row[0]).strip()}{str(row[1]).zfill(2)}" if row[0] and row[1] else None
+        cursor.updateRow(row)  # Isso vai substituir o valor antigo de 'ID_TALHAO'
+
 
         # Gerar a query SQL com base no ID_TALHAO
         id_talhoes_str = ",".join([f"'{x.strip()}'" for x in id_talhoes])
