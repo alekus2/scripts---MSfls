@@ -86,24 +86,21 @@ class AlocadorDeParcelas(object):
 
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
-        layer_temp = "TalhoesSelecionados_Layer"
-        # Cria a camada de recurso filtrada usando a query
-        arcpy.MakeFeatureLayer_management(input_layer, layer_temp)
+        # Criar uma nova camada temporária filtrada
+        layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
 
-        # Aplica a query na camada temporária
-        arcpy.SelectLayerByAttribute_management(layer_temp, "NEW_SELECTION", query)
+        # Aplicar a seleção e exportar diretamente os talhões filtrados
+        arcpy.Select_analysis(input_layer, layer_temp, query)
 
-        # Verifica se a camada temporária foi criada com sucesso
+        # Verifica se o shapefile filtrado foi criado corretamente
         if arcpy.GetCount_management(layer_temp)[0] == "0":
             arcpy.AddError("Erro: Nenhum talhão corresponde à query.")
             return
 
-        output_shapefile = os.path.join(workspace, "TalhoesSelecionados.shp")
-        # Copia apenas os talhões filtrados para o novo shapefile
-        arcpy.CopyFeatures_management(layer_temp, output_shapefile)
-        arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(output_shapefile)[0]} talhões.")
+        arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(layer_temp)[0]} talhões.")
 
-        desc = arcpy.Describe(output_shapefile)
+        # Criar Fishnet baseado nos talhões filtrados
+        desc = arcpy.Describe(layer_temp)
         origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
         corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
@@ -121,12 +118,12 @@ class AlocadorDeParcelas(object):
             number_columns="",
             corner_coord=corner_coord,
             labels="NO_LABELS",
-            template=output_shapefile,
+            template=layer_temp,
             geometry_type="POLYGON"
         )
 
         buffer_shp = os.path.join(workspace, "Buffer_30m.shp")
-        arcpy.Buffer_analysis(output_shapefile, buffer_shp, "-30 Meters")
+        arcpy.Buffer_analysis(layer_temp, buffer_shp, "-30 Meters")
 
         intersect_shp = os.path.join(workspace, "Intersected.shp")
         arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
