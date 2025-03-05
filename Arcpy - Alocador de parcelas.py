@@ -122,5 +122,10 @@ class AlocadorDeParcelas(object):
             arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
 
         merged_shp = os.path.join(workspace, "Final_Points.shp")
+
+  File "<string>", line 78
+    query = f"CD_USO_SOLO IN ({','.join(f'\'{c}\'' for c in cod_talhao)})"
+                                                                          ^
+SyntaxError: f-string expression part cannot include a backslash
         arcpy.Merge_management([intersect_shp], merged_shp)
         arcpy.AddMessage("Processo concluído.")
