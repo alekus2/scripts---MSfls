@@ -11,7 +11,7 @@ class Toolbox(object):
 class AlocadorDeParcelas(object):
     def __init__(self):
         self.label = "Alocar parcelas"
-        self.description = "Verifica dentro da Base de dados, conta CD_USO_SOL e faz um query e exporta o query como um shapefile"
+        self.description = "Filtra e exporta parcelas com base em CD_USO_SOLO e ID_PROJETO."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -52,57 +52,52 @@ class AlocadorDeParcelas(object):
 
         arcpy.env.workspace = workspace
         df = pd.read_excel(base_path)
-        colunas_esperadas = ['CD_USO_SOLO', 'AREA_HA']
+
+        colunas_esperadas = ['CD_USO_SOLO', 'ID_PROJETO', 'AREA_HA']
         for coluna in colunas_esperadas:
             if coluna not in df.columns:
-                arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no arquivo do Excel.")
+                arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no Excel.")
                 return
             
-        area_talhao = df['AREA_HA'].astype(float)
-        
+        df['CD_USO_SOLO'] = pd.to_numeric(df['CD_USO_SOLO'], errors='coerce').astype('Int64')
+        df['ID_PROJETO'] = df['ID_PROJETO'].astype(str).str.strip()
+
+        # Criar a nova coluna combinada
+        df['ID_TALHAO'] = df['CD_USO_SOLO'].astype(str) + "_" + df['ID_PROJETO']
+        id_talhoes = df['ID_TALHAO'].dropna().unique()
+
+        # Verificar se ID_TALHAO existe na camada do ArcGIS
         field_names = [f.name for f in arcpy.ListFields(input_layer)]
-        if "CD_USO_SOLO" not in field_names:
-            arcpy.AddError("Erro: Campo 'CD_USO_SOLO' não encontrado na camada. Verifique o nome exato.")
-            return
+        if "ID_TALHAO" not in field_names:
+            arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente...")
+            arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
+            with arcpy.da.UpdateCursor(input_layer, ["CD_USO_SOLO", "ID_PROJETO", "ID_TALHAO"]) as cursor:
+                for row in cursor:
+                    row[2] = f"{row[0]}_{row[1]}" if row[0] and row[1] else None
+                    cursor.updateRow(row)
 
-        field_list = arcpy.ListFields(input_layer, "CD_USO_SOLO")
-        field_type = field_list[0].type  
-
-        cod_talhao = pd.to_numeric(df['CD_USO_SOLO'], errors='coerce').dropna().astype(int).unique()
-
-
-        pontos_coletados = len(cod_talhao)
-        if pontos_coletados:
-            arcpy.AddWarning(f"Quantidade de pontos coletados: ({pontos_coletados}).")
-
-        if field_type in ["Integer", "Double", "Float"]:
-            cod_talhao = [c for c in cod_talhao if pd.notnull(c)]
-            if not cod_talhao:
-                arcpy.AddError("Erro: Não há códigos válidos em 'CD_USO_SOLO'.")
-                return
-            query = f"CD_USO_SOLO IN ({','.join(map(str, cod_talhao))})"
-        else:
-            arcpy.AddError("Erro: O campo 'CD_USO_SOLO' não é numérico.")
-            return    
-
+        # Criar a query SQL
+        query = f"ID_TALHAO IN ({','.join(map(lambda x: f"'{x}'", id_talhoes))})"
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
         layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
 
+        # Aplicar filtro e exportar
         arcpy.Select_analysis(input_layer, layer_temp, query)
 
-        if arcpy.GetCount_management(layer_temp)[0] == "0":
+        if int(arcpy.GetCount_management(layer_temp)[0]) == 0:
             arcpy.AddError("Erro: Nenhum talhão corresponde à query.")
             return
 
         arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(layer_temp)[0]} talhões.")
 
+        # Criar Fishnet
         desc = arcpy.Describe(layer_temp)
         origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
         corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
 
-        cell_size = (area_talhao.mean() ** 0.5) / 9
+        cell_size = (df['AREA_HA'].mean() ** 0.5) / 9
         fishnet_shp = os.path.join(workspace, "Fishnet.shp")
 
         arcpy.CreateFishnet_management(
@@ -119,17 +114,15 @@ class AlocadorDeParcelas(object):
             geometry_type="POLYGON"
         )
 
+        # Criar Buffer
         buffer_shp = os.path.join(workspace, "Buffer_30m.shp")
         arcpy.Buffer_analysis(layer_temp, buffer_shp, "-30 Meters")
 
+        # Criar Intersect
         intersect_shp = os.path.join(workspace, "Intersected.shp")
         arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
 
         pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
-        planejado = len(cod_talhao)
+        planejado = len(id_talhoes)
         if pontos_count != planejado:
-            arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
-
-        merged_shp = os.path.join(workspace, "Final_Points.shp")
-        arcpy.Merge_management([intersect_shp], merged_shp)
-        arcpy.AddMessage("Processo concluído.")
+            arcpy.AddWarning(f"Quantidade de pontos
