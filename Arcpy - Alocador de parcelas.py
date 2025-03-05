@@ -62,13 +62,10 @@ class AlocadorDeParcelas(object):
         df['CD_USO_SOLO'] = pd.to_numeric(df['CD_USO_SOLO'], errors='coerce').astype('Int64')
         df['ID_PROJETO'] = df['ID_PROJETO'].astype(str).str.strip()
 
-        # Criar o 'ID_TALHAO' concatenando 'ID_PROJETO' e 'CD_TALHAO'
-        df['CD_TALHAO'] = df['CD_TALHAO'].astype(str).str.zfill(2)  # Garantir 2 dígitos em 'CD_TALHAO'
+        df['CD_TALHAO'] = df['CD_TALHAO'].astype(str).str.zfill(2)  
         df['ID_TALHAO'] = df['ID_PROJETO'].astype(str) + df['CD_TALHAO']
 
         id_talhoes = df['ID_TALHAO'].dropna().unique()
-
-        # Verificar se o campo 'ID_TALHAO' existe no shapefile, caso contrário criar
         field_names = [f.name for f in arcpy.ListFields(input_layer)]
         if "ID_TALHAO" not in field_names:
             arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente...")
@@ -78,12 +75,10 @@ class AlocadorDeParcelas(object):
                     row[2] = f"{row[1]}{str(row[0]).zfill(2)}" if row[0] and row[1] else None
                     cursor.updateRow(row)
 
-        # Gerar a query SQL com base no 'ID_TALHAO'
-        id_talhoes_str = ",".join([f"'{x.strip()}'" for x in id_talhoes])  # Garantir que o valor seja uma string
+        id_talhoes_str = ",".join([f"'{x.strip()}'" for x in id_talhoes])  
         query = f"ID_TALHAO IN ({id_talhoes_str})"
         arcpy.AddMessage(f"Query SQL gerada: {query}")
 
-        # Exportar os talhões que atendem à query
         layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
         arcpy.Select_analysis(input_layer, layer_temp, query)
 
@@ -93,7 +88,6 @@ class AlocadorDeParcelas(object):
 
         arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(layer_temp)[0]} talhões.")
 
-        # Gerar coordenadas do Fishnet e realizar as análises espaciais
         desc = arcpy.Describe(layer_temp)
         origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
         y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
