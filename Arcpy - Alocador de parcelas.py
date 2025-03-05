@@ -143,3 +143,8 @@ with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]
         merged_shp = os.path.join(workspace, "Final_Points.shp")
         arcpy.Merge_management([intersect_shp], merged_shp)
         arcpy.AddMessage("Processo concluído.")
+
+Traceback (most recent call last):
+  File "<string>", line 75, in execute
+RuntimeError: Cannot acquire a lock.
+Failed to execute (AlocadorDeParcelas).
