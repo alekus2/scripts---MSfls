@@ -57,16 +57,18 @@ class AlocadorDeParcelas(object):
                 arcpy.AddError("Erro: A coluna CD_USO_SOLO não foi encontrada no Excel.")
                 return
 
+            df['CD_USO_SOLO'] = df['CD_USO_SOLO'].astype(int)
+
             cd_uso_solo = df['CD_USO_SOLO'].dropna().unique()
 
-            cd_uso_solo_str = ",".join([f"'{x.strip()}'" for x in cd_uso_solo])
+            cd_uso_solo_str = ",".join([str(x) for x in cd_uso_solo])
             query = f"CD_USO_SOLO IN ({cd_uso_solo_str})"
             arcpy.AddMessage(f"Query SQL gerada: {query}")
 
             field_names = [f.name for f in arcpy.ListFields(input_layer)]
             if "CD_USO_SOLO" not in field_names:
                 arcpy.AddMessage("Criando campo 'CD_USO_SOLO' temporariamente na camada base de dados...")
-                arcpy.AddField_management(input_layer, "CD_USO_SOLO", "TEXT", field_length=50)
+                arcpy.AddField_management(input_layer, "CD_USO_SOLO", "LONG", field_length=50)
 
             layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
             arcpy.Select_analysis(input_layer, layer_temp, query)
@@ -117,7 +119,7 @@ class AlocadorDeParcelas(object):
             arcpy.AddMessage("Processo concluído.")
 
             if "CD_USO_SOLO" not in [f.name for f in arcpy.ListFields(merged_shp)]:
-                arcpy.AddField_management(merged_shp, "CD_USO_SOLO", "TEXT", field_length=50)
+                arcpy.AddField_management(merged_shp, "CD_USO_SOLO", "LONG", field_length=50)
 
             arcpy.AddMessage("Campo 'CD_USO_SOLO' atualizado no shapefile final.")
 
