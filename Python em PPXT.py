@@ -74,7 +74,8 @@ try:
 
     ax.spines['bottom'].set_visible(False)
 
-    ax.legend(loc='upper right', frameon=False, fontsize=10)
+    # Ajuste da legenda
+    ax.legend(loc='upper center', bbox_to_anchor=(0.5, -0.1), ncol=2, fontsize=12, frameon=False)
 
     # nome_arquivo = "grafico_empilhado.png"
     # plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
