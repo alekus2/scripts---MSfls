@@ -49,23 +49,32 @@ try:
         ax.text(bar.get_x() + bar.get_width()/2, plano, f'{plano:,.0f}', 
                 ha='center', va='bottom', fontsize=10, color='black')
 
-    ax.set_ylim(0, max(max(valores_real), max(valores_plano), meta) + 2000)
+    ax.set_ylim(0, max(max(valores_real), max(valores_plano)) + 2000)
     ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
     ax.tick_params(axis='y', labelsize=10)
     ax.set_title(titulos[0])
     ax.set_xticks(indices)
     ax.set_xticklabels(nomes, rotation=0, ha='center')
+    
+    plt.xticks(rotation=0, ha='center')
+
+    ax.tick_params(axis='y', labelleft=False)
+    
+    ax.spines['top'].set_visible(False)
+    ax.spines['right'].set_visible(False)
+    ax.spines['left'].set_visible(False)
+
+    ax.tick_params(axis='y',length=0)
     ax.tick_params(axis='y',length=0)
     ax.legend(loc='upper right', frameon=False, fontsize=10)
 
     for spine in ['top', 'left', 'right']:
         ax.spines[spine].set_visible(False)
 
-    nome_arquivo = "grafico_empilhado.png"
-    plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
+    # nome_arquivo = "grafico_empilhado.png"
+    # plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
 
-    print(f"Gráfico salvo como: {nome_arquivo}")
+    # print(f"Gráfico salvo como: {nome_arquivo}")
 
 except Exception as e:
     print(f"Erro ao gerar o gráfico: {e}")
-    sys.exit(1)
