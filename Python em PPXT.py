@@ -2,7 +2,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import sys
 
 # --- Parte 1: Ler os dados do Excel ---
 try:
@@ -44,15 +43,23 @@ try:
 
     for bar, real, plano in zip(bars_real, valores_real, valores_plano):
         height = bar.get_height()
-        ax.text(bar.get_x() + bar.get_width()/2, height, f'{real:,.0f}', 
-                ha='center', va='bottom', fontsize=10, color='black')
+        
+        # Texto dentro da barra Real
+        ax.text(bar.get_x() + bar.get_width()/2, height/2, f'{real:,.0f}', 
+                ha='center', va='center', fontsize=10, color='white', fontweight='bold')
+        
+        # Texto em cima da barra Plano
         ax.text(bar.get_x() + bar.get_width()/2, plano, f'{plano:,.0f}', 
-                ha='center', va='bottom', fontsize=10, color='black')
+                ha='center', va='bottom', fontsize=10, color='black', fontweight='bold')
 
     ax.set_ylim(0, max(max(valores_real), max(valores_plano)) + 2000)
     ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
+    
+    # Remover sinal negativo nos valores do eixo Y
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f'{abs(int(x)):,}'))
+
     ax.tick_params(axis='y', labelsize=10)
-    ax.set_title(titulos[0])
+    ax.set_title(titulos[0], fontsize=14)
     ax.set_xticks(indices)
     ax.set_xticklabels(nomes, rotation=0, ha='center')
     
@@ -64,8 +71,7 @@ try:
     ax.spines['right'].set_visible(False)
     ax.spines['left'].set_visible(False)
 
-    ax.tick_params(axis='y',length=0)
-    ax.tick_params(axis='y',length=0)
+    ax.tick_params(axis='y', length=0)
     ax.legend(loc='upper right', frameon=False, fontsize=10)
 
     for spine in ['top', 'left', 'right']:
