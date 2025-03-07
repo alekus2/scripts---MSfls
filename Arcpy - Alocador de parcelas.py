@@ -53,44 +53,20 @@ class AlocadorDeParcelas(object):
         try:
             df = pd.read_excel(base_path)
 
-            colunas_esperadas = ['CD_USO_SOLO']
-            for coluna in colunas_esperadas:
-                if coluna not in df.columns:
-                    arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no Excel.")
-                    return
-
-            df['CD_USO_SOLO'] = df['CD_USO_SOLO'].astype(str).str.zfill(2)
-
-            df.to_excel(base_path, index=False)
-            arcpy.AddMessage("Excel atualizado com a coluna CD_USO_SOLO corrigida.")
+            if 'CD_USO_SOLO' not in df.columns:
+                arcpy.AddError("Erro: A coluna CD_USO_SOLO não foi encontrada no Excel.")
+                return
 
             cd_uso_solo = df['CD_USO_SOLO'].dropna().unique()
+
+            cd_uso_solo_str = ",".join([f"'{x.strip()}'" for x in cd_uso_solo])
+            query = f"CD_USO_SOLO IN ({cd_uso_solo_str})"
+            arcpy.AddMessage(f"Query SQL gerada: {query}")
 
             field_names = [f.name for f in arcpy.ListFields(input_layer)]
             if "CD_USO_SOLO" not in field_names:
                 arcpy.AddMessage("Criando campo 'CD_USO_SOLO' temporariamente na camada base de dados...")
                 arcpy.AddField_management(input_layer, "CD_USO_SOLO", "TEXT", field_length=50)
-
-            with arcpy.da.UpdateCursor(input_layer, ["CD_USO_SOLO"]) as cursor:
-                for row in cursor:
-                    if row[0]:
-                        novo_cd_uso_solo = str(row[0]).zfill(2)
-                        arcpy.AddMessage(f"Atualizando CD_USO_SOLO: {row[0]} → {novo_cd_uso_solo}")
-                        row[0] = novo_cd_uso_solo
-                        cursor.updateRow(row)
-
-            camada_valores = []
-            with arcpy.da.SearchCursor(input_layer, ["CD_USO_SOLO"]) as cursor:
-                for row in cursor:
-                    if row[0]:
-                        camada_valores.append(row[0].strip())
-
-            arcpy.AddMessage(f"Valores em CD_USO_SOLO na camada: {camada_valores}")
-            arcpy.AddMessage(f"Valores esperados de CD_USO_SOLO (do Excel): {list(cd_uso_solo)}")
-
-            cd_uso_solo_str = ",".join([f"'{x.strip()}'" for x in cd_uso_solo])
-            query = f"CD_USO_SOLO IN ({cd_uso_solo_str})"
-            arcpy.AddMessage(f"Query SQL gerada: {query}")
 
             layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
             arcpy.Select_analysis(input_layer, layer_temp, query)
@@ -106,7 +82,7 @@ class AlocadorDeParcelas(object):
             y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
             corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
 
-            total_area_m2 = df['AREA_HA'].sum() * 10000  # Convertendo para metros quadrados
+            total_area_m2 = df['AREA_HA'].sum() * 10000
             cell_size = (total_area_m2 ** 0.5) / 9
             arcpy.AddMessage(f"Tamanho da célula calculado: {cell_size}")
 
@@ -142,12 +118,6 @@ class AlocadorDeParcelas(object):
 
             if "CD_USO_SOLO" not in [f.name for f in arcpy.ListFields(merged_shp)]:
                 arcpy.AddField_management(merged_shp, "CD_USO_SOLO", "TEXT", field_length=50)
-
-            with arcpy.da.UpdateCursor(merged_shp, ["CD_USO_SOLO"]) as cursor:
-                for row in cursor:
-                    if row[0]:
-                        row[0] = str(row[0]).zfill(2)
-                        cursor.updateRow(row)
 
             arcpy.AddMessage("Campo 'CD_USO_SOLO' atualizado no shapefile final.")
 
