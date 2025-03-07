@@ -59,8 +59,9 @@ class AlocadorDeParcelas(object):
                     arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no Excel.")
                     return
 
-            df['CD_TALHAO'] = df['CD_TALHAO'].astype(str).str[-2:]
-            df['ID_TALHAO'] = df['ID_PROJETO'].astype(str).str.strip() + df['CD_TALHAO']
+            df['CD_TALHAO'] = df['CD_TALHAO'].astype(str).str[-2:].str.zfill(2)
+            df['ID_PROJETO'] = df['ID_PROJETO'].astype(str).str.strip()
+            df['ID_TALHAO'] = df['ID_PROJETO'] + df['CD_TALHAO']
 
             df.to_excel(base_path, index=False)
             arcpy.AddMessage("Excel atualizado com a coluna ID_TALHAO corrigida.")
@@ -75,7 +76,8 @@ class AlocadorDeParcelas(object):
             with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
                 for row in cursor:
                     if row[0] and row[1]:
-                        novo_id_talhao = f"{str(row[0]).strip()}{str(row[1])[-2:]}"
+                        novo_cd_talhao = str(row[1])[-2:].zfill(2)
+                        novo_id_talhao = f"{str(row[0]).strip()}{novo_cd_talhao}"
                         arcpy.AddMessage(f"Atualizando ID_TALHAO: {row[2]} → {novo_id_talhao}")
                         row[2] = novo_id_talhao
                         cursor.updateRow(row)
@@ -145,7 +147,7 @@ class AlocadorDeParcelas(object):
             with arcpy.da.UpdateCursor(merged_shp, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
                 for row in cursor:
                     if row[0] and row[1]:
-                        row[2] = f"{str(row[0]).strip()}{str(row[1])[-2:]}"
+                        row[2] = f"{str(row[0]).strip()}{str(row[1])[-2:].zfill(2)}"
                         cursor.updateRow(row)
 
             arcpy.AddMessage("Campo 'ID_TALHAO' atualizado no shapefile final.")
