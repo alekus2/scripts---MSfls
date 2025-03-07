@@ -2,6 +2,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import sys
 
 # --- Parte 1: Ler os dados do Excel ---
 try:
@@ -41,16 +42,19 @@ try:
             fill=False, edgecolor='#5e774c', linestyle='dashed', linewidth=2, label='Plano' if i == 0 else ""
         ))
 
+    # Remover texto nas barras se o valor for zero, mas as barras continuam visíveis
     for bar, real, plano in zip(bars_real, valores_real, valores_plano):
         height = bar.get_height()
         
-        # Texto dentro da barra Real
-        ax.text(bar.get_x() + bar.get_width()/2, height/2, f'{real:,.0f}', 
-                ha='center', va='center', fontsize=10, color='white', fontweight='bold')
+        # Adicionar texto dentro da barra Real apenas se o valor for diferente de zero
+        if real != 0:
+            ax.text(bar.get_x() + bar.get_width()/2, height/2, f'{real:,.0f}', 
+                    ha='center', va='center', fontsize=10, color='white', fontweight='bold')
         
-        # Texto em cima da barra Plano
-        ax.text(bar.get_x() + bar.get_width()/2, plano, f'{plano:,.0f}', 
-                ha='center', va='bottom', fontsize=10, color='black', fontweight='bold')
+        # Adicionar texto em cima da barra Plano apenas se o valor for diferente de zero
+        if plano != 0:
+            ax.text(bar.get_x() + bar.get_width()/2, plano, f'{plano:,.0f}', 
+                    ha='center', va='bottom', fontsize=10, color='black', fontweight='bold')
 
     ax.set_ylim(0, max(max(valores_real), max(valores_plano)) + 2000)
     ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
@@ -65,16 +69,19 @@ try:
     
     plt.xticks(rotation=0, ha='center')
 
-    ax.tick_params(axis='y', labelleft=False)
-    
+    # Habilitar a barra do eixo Y
+    ax.spines['left'].set_visible(True)
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
-    ax.spines['left'].set_visible(False)
 
-    ax.tick_params(axis='y', length=0)
+    ax.tick_params(axis='y', labelleft=True)
+
+    # Remover a barra de "bottom" (se preferir)
+    ax.spines['bottom'].set_visible(False)
+
     ax.legend(loc='upper right', frameon=False, fontsize=10)
 
-    for spine in ['top', 'left', 'right']:
+    for spine in ['top', 'right']:
         ax.spines[spine].set_visible(False)
 
     # nome_arquivo = "grafico_empilhado.png"
