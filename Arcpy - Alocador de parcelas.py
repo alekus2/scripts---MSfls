@@ -154,3 +154,9 @@ class AlocadorDeParcelas(object):
                 cursor.updateRow(row)  # Atualiza o valor de 'ID_TALHAO'
 
         arcpy.AddMessage("Campo 'ID_TALHAO' atualizado no shapefile final.")
+
+
+
+  File "<string>", line 136
+    with arcpy.da.UpdateCursor(merged_shp, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
+IndentationError: unexpected indent
