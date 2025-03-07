@@ -69,8 +69,8 @@ try:
     
     plt.xticks(rotation=0, ha='center')
 
-    # Habilitar a barra do eixo Y
-    ax.spines['left'].set_visible(True)
+    # Habilitar a barra do eixo Y, mas sem a linha
+    ax.spines['left'].set_visible(False)  # Remover linha do eixo Y
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
