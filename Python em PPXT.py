@@ -84,6 +84,9 @@ try:
     for spine in ['top', 'right']:
         ax.spines[spine].set_visible(False)
 
+    # Adicionar a legenda ao lado do eixo Y, na vertical
+    ax.set_ylabel('Área (ha)', fontsize=12, fontweight='bold', rotation=90, labelpad=20)
+
     # nome_arquivo = "grafico_empilhado.png"
     # plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
 
