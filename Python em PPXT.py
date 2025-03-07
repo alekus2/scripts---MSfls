@@ -59,8 +59,8 @@ try:
     ax.set_ylim(0, max(max(valores_real), max(valores_plano)) + 2000)
     ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
     
-    # Remover sinal negativo nos valores do eixo Y
-    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, loc: f'{abs(int(x)):,}'))
+    # Remover o traço do eixo Y
+    ax.yaxis.set_tick_params(length=0)
 
     ax.tick_params(axis='y', labelsize=10)
     ax.set_title(titulos[0], fontsize=14)
@@ -70,7 +70,7 @@ try:
     plt.xticks(rotation=0, ha='center')
 
     # Habilitar a barra do eixo Y, mas sem a linha
-    ax.spines['left'].set_visible(False)  # Remover linha do eixo Y
+    ax.spines['left'].set_visible(True)  # A linha do eixo Y será visível agora
     ax.spines['top'].set_visible(False)
     ax.spines['right'].set_visible(False)
 
