@@ -74,8 +74,7 @@ try:
 
     ax.spines['bottom'].set_visible(False)
 
-    # Configurar a legenda com fontweight
-    ax.legend(loc='upper right', frameon=False, fontsize=10, title_fontsize='13', title_fontweight='bold', labelspacing=1.2, borderpad=1, borderaxespad=1, handleheight=2, handlelength=2, fontweight='bold')
+    ax.legend(loc='upper right', frameon=False, fontsize=10)
 
     # nome_arquivo = "grafico_empilhado.png"
     # plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
