@@ -57,7 +57,7 @@ try:
     ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
     
     ax.yaxis.set_tick_params(length=0)
-    ax.tick_params(axis='y', labelsize=10, labelweight='bold')
+    ax.tick_params(axis='y', labelsize=10)
     ax.set_title(titulos[0], fontsize=14, fontweight='bold')
     ax.set_xticks(indices)
     ax.set_xticklabels(nomes, rotation=0, ha='center', fontweight='bold')
@@ -70,7 +70,7 @@ try:
 
     ax.set_ylabel('Área (ha)', fontsize=12, color='black', fontweight='bold', rotation=90, labelpad=20)
 
-    ax.tick_params(axis='y', labelleft=True, labelweight='bold')
+    ax.tick_params(axis='y', labelleft=True)  # Removendo o 'labelweight' aqui
 
     ax.spines['bottom'].set_visible(False)
 
