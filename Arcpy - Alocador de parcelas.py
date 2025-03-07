@@ -74,18 +74,17 @@ class AlocadorDeParcelas(object):
         id_talhoes = df['ID_TALHAO'].dropna().unique()
 
         # Verificar se o campo 'ID_TALHAO' já existe e, caso não exista, criá-lo
-field_names = [f.name for f in arcpy.ListFields(input_layer)]
-if "ID_TALHAO" not in field_names:
-    arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente na camada base de dados...")
-    arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
+        field_names = [f.name for f in arcpy.ListFields(input_layer)]
+        if "ID_TALHAO" not in field_names:
+            arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente na camada base de dados...")
+            arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
 
-# Usar o UpdateCursor para atualizar o campo ID_TALHAO com base nas colunas da própria camada de dados
-with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
-    for row in cursor:
-        # Atualizar o campo ID_TALHAO com a concatenação de ID_PROJETO e CD_TALHAO
-        row[2] = f"{str(row[0]).strip()}{str(row[1]).zfill(2)}" if row[0] and row[1] else None
-        cursor.updateRow(row)  # Isso vai substituir o valor antigo de 'ID_TALHAO'
-
+        # Usar o UpdateCursor para atualizar o campo ID_TALHAO com base nas colunas da própria camada de dados
+        with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
+            for row in cursor:
+                # Atualizar o campo ID_TALHAO com a concatenação de ID_PROJETO e CD_TALHAO
+                row[2] = f"{str(row[0]).strip()}{str(row[1]).zfill(2)}" if row[0] and row[1] else None
+                cursor.updateRow(row)  # Isso vai substituir o valor antigo de 'ID_TALHAO'
 
         # Gerar a query SQL com base no ID_TALHAO
         id_talhoes_str = ",".join([f"'{x.strip()}'" for x in id_talhoes])
@@ -137,14 +136,21 @@ with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]
         pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
         planejado = len(id_talhoes)
         if pontos_count != planejado:
-            arcpy.AddWarning(f"Quantidade de pontos({pontos_count}) diferente do planejado ({planejado}).")
+            arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
 
         # Finalizar a mesclagem e criar o shapefile final
         merged_shp = os.path.join(workspace, "Final_Points.shp")
         arcpy.Merge_management([intersect_shp], merged_shp)
         arcpy.AddMessage("Processo concluído.")
 
-Traceback (most recent call last):
-  File "<string>", line 75, in execute
-RuntimeError: Cannot acquire a lock.
-Failed to execute (AlocadorDeParcelas).
+        # Atualizar o campo ID_TALHAO no Final_Points.shp
+        if "ID_TALHAO" not in [f.name for f in arcpy.ListFields(merged_shp)]:
+            arcpy.AddField_management(merged_shp, "ID_TALHAO", "TEXT", field_length=50)
+
+        # Usar o UpdateCursor para atualizar o campo ID_TALHAO no shapefile final
+        with arcpy.da.UpdateCursor(merged_shp, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
+            for row in cursor:
+                row[2] = f"{str(row[0]).strip()}{str(row[1]).zfill(2)}" if row[0] and row[1] else None
+                cursor.updateRow(row)  # Atualiza o valor de 'ID_TALHAO'
+
+        arcpy.AddMessage("Campo 'ID_TALHAO' atualizado no shapefile final.")
