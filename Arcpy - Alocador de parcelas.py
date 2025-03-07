@@ -11,7 +11,7 @@ class Toolbox(object):
 class AlocadorDeParcelas(object):
     def __init__(self):
         self.label = "Alocar parcelas"
-        self.description = "Filtra e exporta parcelas com base no ID_TALHAO."
+        self.description = "Filtra e exporta parcelas com base no CD_USO_SOLO."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -53,46 +53,43 @@ class AlocadorDeParcelas(object):
         try:
             df = pd.read_excel(base_path)
 
-            colunas_esperadas = ['ID_PROJETO', 'CD_TALHAO']
+            colunas_esperadas = ['CD_USO_SOLO']
             for coluna in colunas_esperadas:
                 if coluna not in df.columns:
                     arcpy.AddError(f"Erro: A coluna {coluna} não foi encontrada no Excel.")
                     return
 
-            df['CD_TALHAO'] = df['CD_TALHAO'].astype(str).str[-2:].str.zfill(2)
-            df['ID_PROJETO'] = df['ID_PROJETO'].astype(str).str.strip()
-            df['ID_TALHAO'] = df['ID_PROJETO'] + df['CD_TALHAO']
+            df['CD_USO_SOLO'] = df['CD_USO_SOLO'].astype(str).str.zfill(2)
 
             df.to_excel(base_path, index=False)
-            arcpy.AddMessage("Excel atualizado com a coluna ID_TALHAO corrigida.")
+            arcpy.AddMessage("Excel atualizado com a coluna CD_USO_SOLO corrigida.")
 
-            id_talhoes = df['ID_TALHAO'].dropna().unique()
+            cd_uso_solo = df['CD_USO_SOLO'].dropna().unique()
 
             field_names = [f.name for f in arcpy.ListFields(input_layer)]
-            if "ID_TALHAO" not in field_names:
-                arcpy.AddMessage("Criando campo 'ID_TALHAO' temporariamente na camada base de dados...")
-                arcpy.AddField_management(input_layer, "ID_TALHAO", "TEXT", field_length=50)
+            if "CD_USO_SOLO" not in field_names:
+                arcpy.AddMessage("Criando campo 'CD_USO_SOLO' temporariamente na camada base de dados...")
+                arcpy.AddField_management(input_layer, "CD_USO_SOLO", "TEXT", field_length=50)
 
-            with arcpy.da.UpdateCursor(input_layer, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
+            with arcpy.da.UpdateCursor(input_layer, ["CD_USO_SOLO"]) as cursor:
                 for row in cursor:
-                    if row[0] and row[1]:
-                        novo_cd_talhao = str(row[1])[-2:].zfill(2)
-                        novo_id_talhao = f"{str(row[0]).strip()}{novo_cd_talhao}"
-                        arcpy.AddMessage(f"Atualizando ID_TALHAO: {row[2]} → {novo_id_talhao}")
-                        row[2] = novo_id_talhao
+                    if row[0]:
+                        novo_cd_uso_solo = str(row[0]).zfill(2)
+                        arcpy.AddMessage(f"Atualizando CD_USO_SOLO: {row[0]} → {novo_cd_uso_solo}")
+                        row[0] = novo_cd_uso_solo
                         cursor.updateRow(row)
 
             camada_valores = []
-            with arcpy.da.SearchCursor(input_layer, ["ID_TALHAO"]) as cursor:
+            with arcpy.da.SearchCursor(input_layer, ["CD_USO_SOLO"]) as cursor:
                 for row in cursor:
                     if row[0]:
                         camada_valores.append(row[0].strip())
 
-            arcpy.AddMessage(f"Valores em ID_TALHAO na camada: {camada_valores}")
-            arcpy.AddMessage(f"Valores esperados de ID_TALHAO (do Excel): {list(id_talhoes)}")
+            arcpy.AddMessage(f"Valores em CD_USO_SOLO na camada: {camada_valores}")
+            arcpy.AddMessage(f"Valores esperados de CD_USO_SOLO (do Excel): {list(cd_uso_solo)}")
 
-            id_talhoes_str = ",".join([f"'{x.strip()}'" for x in id_talhoes])
-            query = f"ID_TALHAO IN ({id_talhoes_str})"
+            cd_uso_solo_str = ",".join([f"'{x.strip()}'" for x in cd_uso_solo])
+            query = f"CD_USO_SOLO IN ({cd_uso_solo_str})"
             arcpy.AddMessage(f"Query SQL gerada: {query}")
 
             layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
@@ -109,9 +106,11 @@ class AlocadorDeParcelas(object):
             y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
             corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
 
-            cell_size = (df['AREA_HA'].mean() ** 0.5) / 9
-            fishnet_shp = os.path.join(workspace, "Fishnet.shp")
+            total_area_m2 = df['AREA_HA'].sum() * 10000  # Convertendo para metros quadrados
+            cell_size = (total_area_m2 ** 0.5) / 9
+            arcpy.AddMessage(f"Tamanho da célula calculado: {cell_size}")
 
+            fishnet_shp = os.path.join(workspace, "Fishnet.shp")
             arcpy.CreateFishnet_management(
                 out_feature_class=fishnet_shp,
                 origin_coord=origin_coord,
@@ -133,7 +132,7 @@ class AlocadorDeParcelas(object):
             arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
 
             pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
-            planejado = len(id_talhoes)
+            planejado = len(cd_uso_solo)
             if pontos_count != planejado:
                 arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
 
@@ -141,16 +140,16 @@ class AlocadorDeParcelas(object):
             arcpy.Merge_management([intersect_shp], merged_shp)
             arcpy.AddMessage("Processo concluído.")
 
-            if "ID_TALHAO" not in [f.name for f in arcpy.ListFields(merged_shp)]:
-                arcpy.AddField_management(merged_shp, "ID_TALHAO", "TEXT", field_length=50)
+            if "CD_USO_SOLO" not in [f.name for f in arcpy.ListFields(merged_shp)]:
+                arcpy.AddField_management(merged_shp, "CD_USO_SOLO", "TEXT", field_length=50)
 
-            with arcpy.da.UpdateCursor(merged_shp, ["ID_PROJETO", "CD_TALHAO", "ID_TALHAO"]) as cursor:
+            with arcpy.da.UpdateCursor(merged_shp, ["CD_USO_SOLO"]) as cursor:
                 for row in cursor:
-                    if row[0] and row[1]:
-                        row[2] = f"{str(row[0]).strip()}{str(row[1])[-2:].zfill(2)}"
+                    if row[0]:
+                        row[0] = str(row[0]).zfill(2)
                         cursor.updateRow(row)
 
-            arcpy.AddMessage("Campo 'ID_TALHAO' atualizado no shapefile final.")
+            arcpy.AddMessage("Campo 'CD_USO_SOLO' atualizado no shapefile final.")
 
         except Exception as e:
             arcpy.AddError(f"Erro ao processar o arquivo Excel: {e}")
