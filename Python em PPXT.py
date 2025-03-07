@@ -57,10 +57,10 @@ try:
     ax.set_yticks(np.arange(0, ax.get_ylim()[1] + 1, 2000))
     
     ax.yaxis.set_tick_params(length=0)
-    ax.tick_params(axis='y', labelsize=10)
-    ax.set_title(titulos[0], fontsize=14)
+    ax.tick_params(axis='y', labelsize=10, labelweight='bold')
+    ax.set_title(titulos[0], fontsize=14, fontweight='bold')
     ax.set_xticks(indices)
-    ax.set_xticklabels(nomes, rotation=0, ha='center')
+    ax.set_xticklabels(nomes, rotation=0, ha='center', fontweight='bold')
     
     plt.xticks(rotation=0, ha='center')
 
@@ -70,11 +70,11 @@ try:
 
     ax.set_ylabel('Área (ha)', fontsize=12, color='black', fontweight='bold', rotation=90, labelpad=20)
 
-    ax.tick_params(axis='y', labelleft=True)
+    ax.tick_params(axis='y', labelleft=True, labelweight='bold')
 
     ax.spines['bottom'].set_visible(False)
 
-    ax.legend(loc='upper right', frameon=False, fontsize=10)
+    ax.legend(loc='upper right', frameon=False, fontsize=10, fontweight='bold')
 
     # nome_arquivo = "grafico_empilhado.png"
     # plt.savefig(nome_arquivo, format='png', dpi=300, bbox_inches='tight')
