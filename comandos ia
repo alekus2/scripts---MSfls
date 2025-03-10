@@ -1,12 +1,3 @@
-**Assunto:** Atualização sobre o Alocador de Parcelas no ArcGIS Pro  
+Bom dia, Fernando! Tudo certo?
 
-Olá Leticia, bom dia! Tudo bem?  
-
-Após uma semana de trabalho, consegui encontrar uma solução para que o alocador de parcelas funcionasse dentro do ArcGIS Pro, atendendo às suas demandas. Durante os testes, percebi que a abordagem em R não seria a mais adequada para esse tipo de código, pois há restrições de permissão do sistema para o salvamento dos arquivos.  
-
-Após algumas horas de pesquisa e com o apoio do @Jean Rodrigo Jacob Da Silva, identifiquei que a melhor alternativa seria utilizar o **Python Toolbox**. Com essa ferramenta, consegui desenvolver um código que realiza as mesmas operações que fizemos anteriormente na calculadora, mas agora de forma integrada ao ArcGIS. Além disso, essa abordagem torna futuras edições e ajustes muito mais simples e eficientes.  
-
-Caso precise de alguma funcionalidade extra ou queira realizar ajustes no código, estou à disposição para implementá-los. Mas, se preferir que eu continue explorando uma solução em R, posso seguir tentando novas abordagens.  
-
-Aproveite as férias e fico no aguardo do seu retorno!  
-
+Após uma analise rápida, gostaria que se possível me mostrasse de que forma é feito o IDW de forma manual para que eu tivesse uma ideia de como começar o processo de automatização, por conta que não sei direito como funciona ai queria que você me ensinasse
