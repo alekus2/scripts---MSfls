@@ -75,3 +75,9 @@ class IDWToolbox(object):
             arcpy.CheckInExtension("Spatial")
         
         messages.addMessage("Processamento concluído com sucesso.")
+
+1) Gerar um mapa de calor com base na sobrevivencia das mudas em plantio.
+2) O mapa de calor gerado será com base em uma tabela onde os numeros estão em forma decimal.
+3) O mapa gerado deverá ter o recorte do talhao composto pela tabela.
+4) Ele é baseado em pontos em um shpfile onde cada ponto representa a quantidade de taxa de sobrevivencia.
+5) Apos gerado ele tem que ser formado com o filtro de cores em verde para taxas maiores e vermelho para taxas menores.
