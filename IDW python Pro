@@ -11,7 +11,7 @@ class Toolbox(object):
 class IDWInterpolationExample(object):
     def __init__(self):
         self.label = "Exemplo de Interpolação IDW"
-        self.description = "Cria um shapefile fictício, cria um buffer com base nos pontos e realiza a interpolação IDW."
+        self.description = "Cria um mapa de calor com base na taxa de sobrevivência das mudas usando Interpolação IDW."
 
     def getParameterInfo(self):
         return [
@@ -25,7 +25,7 @@ class IDWInterpolationExample(object):
                             datatype="SHAPEFILE",
                             parameterType="Required",
                             direction="Input"),
-            arcpy.Parameter(displayName="Mapa de Recorte",
+            arcpy.Parameter(displayName="Mapa de Recorte (opcional)",
                             name="clip_feature",
                             datatype="GPFeatureLayer",
                             parameterType="Optional",
@@ -37,36 +37,58 @@ class IDWInterpolationExample(object):
         input_shapefile = parameters[1].valueAsText
         clip_feature = parameters[2].valueAsText if parameters[2].value is not None else None
 
+        # Verifica se a pasta de saída existe, se não, cria
         if not os.path.exists(output_folder):
             os.makedirs(output_folder)
 
+        # Verifica e faz checkout da extensão espacial
         if not arcpy.CheckExtension("Spatial"):
             arcpy.CheckOutExtension("Spatial")
             return
         arcpy.CheckOutExtension("Spatial")
 
+        # Verifica se o shapefile de entrada existe
         if not arcpy.Exists(input_shapefile):
             messages.addErrorMessage(f"O shapefile de entrada '{input_shapefile}' não existe.")
             return
 
-        count = arcpy.GetCount_management(input_shapefile)
-        messages.addMessage(f"Quantidade de pontos: {count[0]}")
+        # Verifica e obtém a extensão do shapefile
+        desc = arcpy.Describe(input_shapefile)
+        extent = desc.extent
 
-        buffer_output = os.path.join(output_folder, "buffer.shp")
-        arcpy.Buffer_analysis(input_shapefile, buffer_output, "1000 Meters")
+        # Define a extensão para a área dos pontos
+        arcpy.env.extent = extent
+        messages.addMessage(f"Extensão definida para: {extent}")
 
-        field_name = "F_Sobreviv"
+        # Define a projeção para a área de saída (mesma do shapefile de entrada)
+        spatial_ref = desc.spatialReference
+        arcpy.env.outputCoordinateSystem = spatial_ref
+        messages.addMessage(f"Projeção definida para: {spatial_ref.name}")
+
+        # Cria um layer de pontos para a interpolação
         arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
 
-        cell_size = 0.01
-        power = 30
+        # Define o campo de taxa de sobrevivência
+        field_name = "F_Sobreviv"
 
+        # Define o tamanho da célula e o parâmetro de potência
+        cell_size = 30  # Ajuste conforme necessário
+        power = 2  # Potência do IDW, ajustável
+
+        # Realiza a interpolação IDW
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
+        # Se houver uma camada de recorte, aplica a máscara
         if clip_feature:
             out_raster = ExtractByMask(out_raster, clip_feature)
+            messages.addMessage(f"Máscara aplicada com a camada: {clip_feature}")
 
+        # Salva o resultado da interpolação
         raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
         out_raster.save(raster_output_path)
+        messages.addMessage(f"Raster salvo em: {raster_output_path}")
 
+        # Finaliza o processo de extensão
         arcpy.CheckInExtension("Spatial")
+
+        messages.addMessage("Processamento concluído com sucesso.")
