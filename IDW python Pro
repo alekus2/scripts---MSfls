@@ -52,7 +52,7 @@ class IDWInterpolation(object):
         count = arcpy.GetCount_management(input_shapefile)
         messages.addMessage(f"Quantidade de pontos: {count[0]}")
 
-        field_name = "F_Sobreviv"
+        field_name = "F_Percent"
         arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
 
         field_names = [f.name for f in arcpy.ListFields(input_shapefile)]
@@ -72,14 +72,11 @@ class IDWInterpolation(object):
         power = 2
 
         try:
-            out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
-
-            if clip_feature:
-                out_raster = ExtractByMask(out_raster, clip_feature)
-
+            out_raster = arcpy.sa.Idw("shp_layer", "F_Percent", cell_size, power)
+            if mask_layer:
+                out_raster = ExtractByMask(out_raster, mask_layer)
             raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
-            out_raster.save(raster_output_path)
-            messages.addMessage(f"Raster salvo em: {raster_output_path}")
+            out_raster.save(raster_output_path)  
 
         except Exception as e:
             messages.addErrorMessage(f"Erro na interpolação IDW: {str(e)}")
