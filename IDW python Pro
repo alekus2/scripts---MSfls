@@ -52,31 +52,31 @@ class IDWInterpolation(object):
         count = arcpy.GetCount_management(input_shapefile)
         messages.addMessage(f"Quantidade de pontos: {count[0]}")
 
-        field_name = "F_Sobreviv"  # Certifique-se de que esse campo existe e tem valores numéricos
+        field_name = "F_Sobreviv"
         arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
 
-        # Verificando se o campo "F_Sobreviv" existe
         field_names = [f.name for f in arcpy.ListFields(input_shapefile)]
         if field_name not in field_names:
             messages.addErrorMessage(f"O campo '{field_name}' não foi encontrado no shapefile.")
             return
 
-        # Definindo a extensão com base nos pontos do shapefile
+        spatial_ref = arcpy.Describe(input_shapefile).spatialReference
+        if spatial_ref.name == "Unknown":
+            arcpy.AddWarning("A projeção do shapefile não está definida. Tentando definir a projeção WGS 84.")
+            arcpy.DefineProjection_management(input_shapefile, arcpy.SpatialReference(4326))
+
         extent = arcpy.Describe(input_shapefile).extent
         arcpy.env.extent = extent
 
-        cell_size = 30  # Ajuste o tamanho da célula conforme necessário
-        power = 2  # Ajuste o poder conforme necessário
+        cell_size = 30
+        power = 2
 
         try:
-            # Realizando a interpolação IDW com base nos pontos
             out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
-            # Se um layer de recorte for fornecido, aplica a máscara
             if clip_feature:
                 out_raster = ExtractByMask(out_raster, clip_feature)
 
-            # Salvando o resultado
             raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
             messages.addMessage(f"Raster salvo em: {raster_output_path}")
@@ -85,10 +85,3 @@ class IDWInterpolation(object):
             messages.addErrorMessage(f"Erro na interpolação IDW: {str(e)}")
         finally:
             arcpy.CheckInExtension("Spatial")
-
-
-Erro na interpolação IDW: ERROR 010429: Error in GRID IO: CellLyrChannelClose: Attempt to close invalid cell layer channel.
-ERROR 010029: Unable to create the raster C:\Users\alex_santos4\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\Idw_V2_6465_1.
-ERROR 010067: Error in executing grid expression.
-Failed to execute (Idw).
-Failed to execute (IDWInterpolation).
