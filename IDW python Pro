@@ -85,3 +85,10 @@ class IDWInterpolation(object):
             messages.addErrorMessage(f"Erro na interpolação IDW: {str(e)}")
         finally:
             arcpy.CheckInExtension("Spatial")
+
+
+Erro na interpolação IDW: ERROR 010429: Error in GRID IO: CellLyrChannelClose: Attempt to close invalid cell layer channel.
+ERROR 010029: Unable to create the raster C:\Users\alex_santos4\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\Idw_V2_6465_1.
+ERROR 010067: Error in executing grid expression.
+Failed to execute (Idw).
+Failed to execute (IDWInterpolation).
