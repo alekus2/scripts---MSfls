@@ -45,24 +45,20 @@ class IDWInterpolationExample(object):
             return
         arcpy.CheckOutExtension("Spatial")
 
-        # Verifica se o shapefile de entrada existe
         if not arcpy.Exists(input_shapefile):
-            messages.addErrorMessage(f"O shapefile de entrada '{input_shapefile}' não existe.")
             return
 
-        # Cria o buffer
         buffer_output = os.path.join(output_folder, "buffer.shp")
         arcpy.Buffer_analysis(input_shapefile, buffer_output, "1000 Meters")
 
-        field_name = "F_Sobreviv"
+        field_name = "F_Percent"
         arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
 
-        cell_size = 0.01
-        power = 30
+        cell_size = 30
+        power = 2
 
         out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
 
-        # Aplica o mapa de recorte se fornecido
         if clip_feature:
             out_raster = ExtractByMask(out_raster, clip_feature)
 
