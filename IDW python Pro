@@ -1,83 +1,72 @@
 import arcpy
-from arcpy import env
 from arcpy.sa import *
 import os
 
 class Toolbox(object):
     def __init__(self):
-        """Define a toolbox."""
-        self.label = "Interpolation Processing Toolbox"
-        self.alias = "idwpython_toolbox"
-        self.tools = [IDWToolbox]
+        self.label = "Exemplo de Interpolação IDW"
+        self.alias = "idw_example_toolbox"
+        self.tools = [IDWInterpolationExample]
 
-class IDWToolbox(object):
+class IDWInterpolationExample(object):
     def __init__(self):
-        self.label = "IDW Toolbox com Shapefile"
-        self.description = "Executa interpolação IDW usando um Shapefile como entrada."
+        self.label = "Exemplo de Interpolação IDW"
+        self.description = "Cria um shapefile fictício, cria um buffer com base nos pontos e realiza a interpolação IDW."
 
     def getParameterInfo(self):
-        params = [
-            arcpy.Parameter(displayName="Shapefile de Entrada",
-                            name="input_shp",
-                            datatype="DEFeatureClass",
-                            parameterType="Required",
-                            direction="Input"),
+        return [
             arcpy.Parameter(displayName="Pasta de Saída",
                             name="output_folder",
                             datatype="DEFolder",
                             parameterType="Required",
                             direction="Input"),
-            arcpy.Parameter(displayName="Layer de Recorte (Opcional)",
-                            name="mask_layer",
-                            datatype="DEFeatureClass",
+            arcpy.Parameter(displayName="Shapefile de Entrada",
+                            name="input_shapefile",
+                            datatype="SHAPEFILE",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Mapa de Recorte",
+                            name="clip_feature",
+                            datatype="GPFeatureLayer",
                             parameterType="Optional",
                             direction="Input")
         ]
-        return params
 
     def execute(self, parameters, messages):
-        input_shp = parameters[0].valueAsText
-        output_folder = parameters[1].valueAsText
-        mask_layer = parameters[2].valueAsText if parameters[2].value else None  # Corrigido para índice 2
-        
-        power = 0.01  # Definido como 0.01
-        cell_size = 30  # Definido como 30
+        output_folder = parameters[0].valueAsText
+        input_shapefile = parameters[1].valueAsText
+        clip_feature = parameters[2].valueAsText if parameters[2].value is not None else None
 
-        if not arcpy.Exists(input_shp):
-            messages.addErrorMessage(f"Erro: O Shapefile '{input_shp}' não foi encontrado.")
-            return
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
 
-        field_names = [f.name for f in arcpy.ListFields(input_shp)]
-        required_fields = ["F_Sobreviv"]
-
-        for field in required_fields:
-            if field not in field_names:
-                messages.addErrorMessage(f"Erro: A coluna '{field}' não foi encontrada no shapefile.")
-                return
-
-        arcpy.MakeFeatureLayer_management(input_shp, "shp_layer")
-
-        try:
+        if not arcpy.CheckExtension("Spatial"):
             arcpy.CheckOutExtension("Spatial")
-        except arcpy.ExecuteError:
-            messages.addErrorMessage("Erro: A extensão espacial não está disponível.")
             return
-        try:
-            out_raster = arcpy.sa.Idw("shp_layer", "F_Sobreviv", cell_size, power)
-            if mask_layer:
-                out_raster = ExtractByMask(out_raster, mask_layer)
-            raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
-            out_raster.save(raster_output_path)  # Corrigido para usar raster_output_path
+        arcpy.CheckOutExtension("Spatial")
 
-        except Exception as e:
-            messages.addErrorMessage(f"Erro ao executar IDW: {str(e)}")
-        finally:
-            arcpy.CheckInExtension("Spatial")
-        
-        messages.addMessage("Processamento concluído com sucesso.")
+        if not arcpy.Exists(input_shapefile):
+            messages.addErrorMessage(f"O shapefile de entrada '{input_shapefile}' não existe.")
+            return
 
-1) Gerar um mapa de calor com base na sobrevivencia das mudas em plantio.
-2) O mapa de calor gerado será com base em uma tabela onde os numeros estão em forma decimal.
-3) O mapa gerado deverá ter o recorte do talhao composto pela tabela.
-4) Ele é baseado em pontos em um shpfile onde cada ponto representa a quantidade de taxa de sobrevivencia.
-5) Apos gerado ele tem que ser formado com o filtro de cores em verde para taxas maiores e vermelho para taxas menores.
+        count = arcpy.GetCount_management(input_shapefile)
+        messages.addMessage(f"Quantidade de pontos: {count[0]}")
+
+        buffer_output = os.path.join(output_folder, "buffer.shp")
+        arcpy.Buffer_analysis(input_shapefile, buffer_output, "1000 Meters")
+
+        field_name = "F_Sobreviv"
+        arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
+
+        cell_size = 0.01
+        power = 30
+
+        out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
+
+        if clip_feature:
+            out_raster = ExtractByMask(out_raster, clip_feature)
+
+        raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
+        out_raster.save(raster_output_path)
+
+        arcpy.CheckInExtension("Spatial")
