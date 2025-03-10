@@ -1,19 +1,73 @@
-Extensão definida para: -52,1935509699999 -21,943458999 -52,184944768 -21,936196143 nan nan nan nan
-Projeção definida para: GCS_WGS_1984
-Traceback (most recent call last):
-  File "<string>", line 69, in execute
-  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\sa\Functions.py", line 5385, in Idw
-    return Wrapper(
-  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\sa\Utils.py", line 55, in swapper
-    result = wrapper(*args, **kwargs)
-  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\sa\Functions.py", line 5376, in Wrapper
-    result = arcpy.gp.Idw_sa(
-  File "C:\Program Files\ArcGIS\Pro\Resources\ArcPy\arcpy\geoprocessing\_base.py", line 512, in <lambda>
-    return lambda *args: val(*gp_fixargs(args, True))
-arcgisscripting.ExecuteError: ERROR 010429: Error in GRID IO: CellLyrChannelClose: Attempt to close invalid cell layer channel.
-ERROR 010029: Unable to create the raster C:\Users\alex_santos4\Documents\ArcGIS\Projects\MyProject\MyProject.gdb\Idw_V2_6465_1.
-ERROR 010067: Error in executing grid expression.
-Failed to execute (Idw).
+import arcpy
+from arcpy.sa import *
+import os
 
+class Toolbox(object):
+    def __init__(self):
+        self.label = "IDW Interpolation"
+        self.alias = "idw_toolbox"
+        self.tools = [IDWInterpolation]
 
-Failed to execute (IDWInterpolationExample).
+class IDWInterpolation(object):
+    def __init__(self):
+        self.label = "IDW Interpolation Tool"
+        self.description = "Realiza interpolação IDW com base em um shapefile de entrada e gera um mapa de calor."
+
+    def getParameterInfo(self):
+        return [
+            arcpy.Parameter(displayName="Pasta de Saída",
+                            name="output_folder",
+                            datatype="DEFolder",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Shapefile de Entrada",
+                            name="input_shapefile",
+                            datatype="SHAPEFILE",
+                            parameterType="Required",
+                            direction="Input"),
+            arcpy.Parameter(displayName="Layer de Recorte",
+                            name="clip_feature",
+                            datatype="GPFeatureLayer",
+                            parameterType="Optional",
+                            direction="Input")
+        ]
+
+    def execute(self, parameters, messages):
+        output_folder = parameters[0].valueAsText
+        input_shapefile = parameters[1].valueAsText
+        clip_feature = parameters[2].valueAsText if parameters[2].value is not None else None
+
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+
+        if not arcpy.CheckExtension("Spatial"):
+            arcpy.CheckOutExtension("Spatial")
+            return
+        arcpy.CheckOutExtension("Spatial")
+
+        if not arcpy.Exists(input_shapefile):
+            messages.addErrorMessage(f"O shapefile de entrada '{input_shapefile}' não existe.")
+            return
+
+        count = arcpy.GetCount_management(input_shapefile)
+        messages.addMessage(f"Quantidade de pontos: {count[0]}")
+
+        field_name = "F_Sobreviv"
+        arcpy.MakeFeatureLayer_management(input_shapefile, "shp_layer")
+
+        cell_size = 30
+        power = 2
+
+        extent = arcpy.env.extent
+        arcpy.env.extent = extent
+
+        out_raster = arcpy.sa.Idw("shp_layer", field_name, cell_size, power)
+
+        if clip_feature:
+            out_raster = ExtractByMask(out_raster, clip_feature)
+
+        raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
+        out_raster.save(raster_output_path)
+
+        arcpy.CheckInExtension("Spatial")
+        messages.addMessage(f"Raster salvo em: {raster_output_path}")
