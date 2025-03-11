@@ -41,7 +41,6 @@ class IDWInterpolation(object):
             os.makedirs(output_folder)
 
         if arcpy.CheckExtension("Spatial") != "Available":
-            messages.addErrorMessage("Extensão Spatial Analyst não disponível.")
             return
         arcpy.CheckOutExtension("Spatial")
 
@@ -50,26 +49,27 @@ class IDWInterpolation(object):
         arcpy.env.cellSize = 30  
 
         if not arcpy.Exists(input_shapefile):
-            messages.addErrorMessage(f"O shapefile de entrada '{input_shapefile}' não existe.")
             return
 
         if not arcpy.Exists(clip_feature):
-            messages.addErrorMessage(f"O layer de recorte '{clip_feature}' não existe.")
             return
 
         field_name = "F_Percent"
         field_names = [f.name for f in arcpy.ListFields(input_shapefile)]
         if field_name not in field_names:
-            messages.addErrorMessage(f"O campo '{field_name}' não foi encontrado no shapefile.")
             return
 
         valores = []
         with arcpy.da.SearchCursor(input_shapefile, [field_name]) as cursor:
             for row in cursor:
-                valores.append(row[0])
+                if row[0] is not None and isinstance(row[0], (int, float)):
+                    valores.append(row[0])
 
         if not valores:
-            messages.addErrorMessage(f"O campo '{field_name}' não contém valores válidos.")
+            return
+
+        min_val, max_val = min(valores), max(valores)
+        if min_val == max_val:
             return
 
         shp_layer = "shp_layer"
@@ -80,14 +80,11 @@ class IDWInterpolation(object):
             out_raster = Idw(shp_layer, field_name, arcpy.env.cellSize, 2, search_radius)
             out_raster = ExtractByMask(out_raster, clip_feature)
 
-            arcpy.MakeRasterLayer_management(out_raster, "IDW_Raster_Layer")
-
             raster_output_path = os.path.join(output_folder, "IDW_Interpolacao.tif")
             out_raster.save(raster_output_path)
-            messages.addMessage(f"Raster salvo em: {raster_output_path}")
 
-        except Exception as e:
-            messages.addErrorMessage(f"Erro na interpolação IDW: {str(e)}")
+        except:
+            pass
         
         finally:
             arcpy.CheckInExtension("Spatial")
