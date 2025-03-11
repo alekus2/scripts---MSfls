@@ -41,7 +41,7 @@ class CustomIDWTool(object):
             datatype="GPDouble",
             parameterType="Optional",
             direction="Input")
-        p3.value = 10  # valor padrão; ajuste conforme necessário
+        p3.value = 10  # valor padrão
         
         # 4 - Power (opcional)
         p4 = arcpy.Parameter(
@@ -110,7 +110,6 @@ class CustomIDWTool(object):
         return params
 
     def updateParameters(self, parameters):
-        # Habilita ou desabilita parâmetros conforme o tipo de raio selecionado
         if parameters[5].valueAsText == "Variable":
             parameters[6].enabled = True
             parameters[7].enabled = True
@@ -133,7 +132,6 @@ class CustomIDWTool(object):
         return
 
     def execute(self, parameters, messages):
-        # Recupera os parâmetros
         in_points = parameters[0].valueAsText
         z_field = parameters[1].valueAsText
         out_raster = parameters[2].valueAsText
@@ -142,23 +140,21 @@ class CustomIDWTool(object):
         search_type = parameters[5].valueAsText
         barrier = parameters[10].valueAsText if parameters[10].value else ""
 
-        # Configura o parâmetro do raio de busca
         if search_type == "Variable":
             num_points = parameters[6].value if parameters[6].value is not None else 12
             max_distance = parameters[7].value if parameters[7].value is not None else ""
             if max_distance:
-                radius_param = f"{num_points};{max_distance}"
+                radius_param = "{};{}".format(num_points, max_distance)
             else:
-                radius_param = f"{num_points}"
+                radius_param = "{}".format(num_points)
         else:  # Fixed
             fixed_radius = parameters[8].value if parameters[8].value is not None else ""
             min_points = parameters[9].value if parameters[9].value is not None else ""
             if fixed_radius and min_points:
-                radius_param = f"{fixed_radius};{min_points}"
+                radius_param = "{};{}".format(fixed_radius, min_points)
             else:
-                radius_param = f"{fixed_radius}"
+                radius_param = "{}".format(fixed_radius)
 
-        # Define o ambiente para o tamanho da célula, se fornecido
         if cell_size:
             arcpy.env.cellSize = cell_size
 
@@ -167,6 +163,5 @@ class CustomIDWTool(object):
             idw_result = Idw(in_points, z_field, cell_size, power, radius_param, barrier)
             idw_result.save(out_raster)
         except Exception as e:
-            # Sem mensagens, apenas a exceção é levantada
             raise e
         return
