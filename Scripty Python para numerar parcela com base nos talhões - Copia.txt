@@ -1,0 +1,36 @@
+DEU CERTO
+
+def calcular_maximo(talhao):
+    max_parcelas = {}
+    valores = [int(row[1]) for row in arcpy.da.SearchCursor("Nome da sua tabela", ["Index", "nm_parcela"]) if row[0] == talhao]
+    max_parcelas[talhao] = max(valores)
+    return max_parcelas[talhao]
+
+calcular_maximo(!Index!)
+
+DEU CERTO TAMBEM
+
+def autoIncrement(parcela, count):
+    parcela=int(parcela)
+    count=int(count)
+    if count <= 3:
+        return 1
+    return 1 if parcela % 2 != 0 else 0
+
+autoIncrement(!nm_parcela!, !CONTADOR!)
+
+
+def matizador(area):
+    # Obtenha os valores da área da tabela "piracicaba_talhão"
+    parcelas = []
+    
+    # Busque as áreas da tabela
+    for row in arcpy.da.SearchCursor("piracicaba_talhão", ["AREA_HA"]):
+        # Divida cada área por 5 e armazene o resultado
+        parcelas.append(row[0] / 5)
+    
+    # Retorne a quantidade de parcelas para a área atual
+    return parcelas
+
+# Chame a função passando o valor da área atual
+matizador(!AREA_HA!)
