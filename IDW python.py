@@ -106,7 +106,15 @@ class CustomIDWTool(object):
             parameterType="Optional",
             direction="Input")
         
-        params = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10]
+        # 11 - Polígono de Recorte (opcional)
+        p11 = arcpy.Parameter(
+            displayName="Polígono de Recorte (Opcional)",
+            name="clip_polygon",
+            datatype="GPFeatureLayer",
+            parameterType="Optional",
+            direction="Input")
+
+        params = [p0, p1, p2, p3, p4, p5, p6, p7, p8, p9, p10, p11]
         return params
 
     def updateParameters(self, parameters):
@@ -138,6 +146,7 @@ class CustomIDWTool(object):
         power = parameters[4].value if parameters[4].value is not None else 2
         search_type = parameters[5].valueAsText
         barrier = parameters[10].valueAsText if parameters[10].value else ""
+        clip_polygon = parameters[11].valueAsText if parameters[11].value else ""
 
         # Calcular a extensão do conjunto de dados de entrada
         extent = arcpy.Describe(in_points).extent
@@ -172,6 +181,12 @@ class CustomIDWTool(object):
             from arcpy.sa import Idw
             idw_result = Idw(in_points, z_field, cell_size, power, radius_param, barrier)
             idw_result.save(out_raster)
+            
+            # Se um polígono de recorte for fornecido, recorte o raster resultante
+            if clip_polygon:
+                clipped_raster = arcpy.sa.ExtractByMask(out_raster, clip_polygon)
+                clipped_raster.save(out_raster)  # Sobrescrever o raster de saída com o recorte
+            
         except Exception as e:
             raise e
         return
