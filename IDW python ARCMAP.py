@@ -44,8 +44,7 @@ class CustomIDWTool(object):
             parameterType="Required",
             direction="Input")
 
-        params = [p0, p1, p2, p3]
-        return params
+        return [p0, p1, p2, p3]
 
     def execute(self, parameters):
         in_points = parameters[0].valueAsText
@@ -78,12 +77,3 @@ class CustomIDWTool(object):
 
         if 'in_points_temp' in locals():
             arcpy.Delete_management(in_points_temp)
-
-
-Executing: CustomIDWTool V2_6465_Piracicaba_T024_30dias F_Sobreviv C:\Users\alex_santos4\Documents\ArcGIS\Default.gdb\V2_6465_Piracicaba_T024_30di USO_DO_SOLO_6465_Piracicaba_T024
-Start Time: Fri Mar 14 09:37:38 2025
-Running script CustomIDWTool...
-TypeError: execute() takes exactly 2 arguments (3 given)
-Failed to execute (CustomIDWTool).
-Failed at Fri Mar 14 09:37:38 2025 (Elapsed Time: 0,05 seconds)
-WARNING 001003: Datum conflict between input and output.
