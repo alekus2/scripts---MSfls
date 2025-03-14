@@ -77,3 +77,12 @@ class CustomIDWTool(object):
 
         if 'in_points_temp' in locals():
             arcpy.Delete_management(in_points_temp)
+
+
+Executing: CustomIDWTool V2_6465_Piracicaba_T024_30dias F_Sobreviv "F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\bds\IDW python\Output\idw_saida" USO_DO_SOLO_6465_Piracicaba_T024
+Start Time: Fri Mar 14 09:46:19 2025
+Running script CustomIDWTool...
+TypeError: execute() takes exactly 2 arguments (3 given)
+Failed to execute (CustomIDWTool).
+Failed at Fri Mar 14 09:46:19 2025 (Elapsed Time: 0,03 seconds)
+WARNING 001003: Datum conflict between input and output.
