@@ -76,3 +76,18 @@ class CustomIDWTool(object):
         except Exception as e:
             raise e
         return
+
+
+
+
+Executing: CustomIDWTool V2_6465_Piracicaba_T024_30dias F_Sobreviv C:\Users\alex_santos4\Documents\ArcGIS\Default.gdb\V2_6465_Piracicaba_T024_30di1 USO_DO_SOLO_6465_Piracicaba_T024
+Start Time: Fri Mar 14 10:10:30 2025
+Running script CustomIDWTool...
+
+Traceback (most recent call last):
+  File "<string>", line 77, in execute
+RuntimeError: ERROR 000872: Output Raster: Dataset C:\Users\alex_santos4\Documents\ArcGIS\Default.gdb\V2_6465_Piracicaba_T024_30di1 already exists and cannot be overwritten since the Overwrite existing datasets option is disabled.
+
+Failed to execute (CustomIDWTool).
+Failed at Fri Mar 14 10:10:33 2025 (Elapsed Time: 3,86 seconds)
+WARNING 001003: Datum conflict between input and output.
