@@ -1,5 +1,4 @@
 import arcpy
-from arcpy import env
 from arcpy import sa
 
 class Toolbox(object):
@@ -22,7 +21,7 @@ class CustomIDWTool(object):
             datatype="GPFeatureLayer",
             parameterType="Required",
             direction="Input")
-
+            
         p1 = arcpy.Parameter(
             displayName="Campo Z",
             name="z_field",
@@ -30,14 +29,14 @@ class CustomIDWTool(object):
             parameterType="Required",
             direction="Input")
         p1.parameterDependencies = [p0.name]
-
+        
         p2 = arcpy.Parameter(
             displayName="Raster de Saída",
             name="out_raster",
             datatype="DERasterDataset",
             parameterType="Required",
             direction="Output")
-
+        
         p3 = arcpy.Parameter(
             displayName="Polígono de Recorte",
             name="clip_polygon",
@@ -45,7 +44,8 @@ class CustomIDWTool(object):
             parameterType="Required",
             direction="Input")
 
-        return [p0, p1, p2, p3]
+        params = [p0, p1, p2, p3]
+        return params
 
     def execute(self, parameters):
         in_points = parameters[0].valueAsText
@@ -54,15 +54,27 @@ class CustomIDWTool(object):
         clip_polygon = parameters[3].valueAsText
 
         extent = arcpy.Describe(clip_polygon).extent
-        env.extent = extent
-
         width = extent.XMax - extent.XMin
         height = extent.YMax - extent.YMin
+        
         cell_size = min(width, height) / 220
-        env.cellSize = cell_size
+
+        arcpy.env.extent = extent
+        arcpy.env.cellSize = cell_size
+
+        spatial_ref_points = arcpy.Describe(in_points).spatialReference
+        spatial_ref_clip = arcpy.Describe(clip_polygon).spatialReference
+
+        if spatial_ref_points.name != spatial_ref_clip.name:
+            in_points_temp = "in_memory/in_points_reprojected"
+            arcpy.Project_management(in_points, in_points_temp, spatial_ref_clip)
+            in_points = in_points_temp
 
         idw_result = sa.Idw(in_points, z_field, cell_size)
         idw_result.save(out_raster)
-
+        
         clipped_raster = sa.ExtractByMask(out_raster, clip_polygon)
         clipped_raster.save(out_raster)
+
+        if 'in_points_temp' in locals():
+            arcpy.Delete_management(in_points_temp)
