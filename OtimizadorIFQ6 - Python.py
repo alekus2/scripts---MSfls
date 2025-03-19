@@ -1,9 +1,10 @@
+python
 import pandas as pd
 import os 
 import time
 
 class OtimizadorIFQ6():
-    def validação(codigos_adicionais, path_b1, path_b2, path_b3):
+    def validação(codigos_adicionais, path_b1, path_b2, path_b3, coluna_codigos):
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -25,8 +26,15 @@ class OtimizadorIFQ6():
         if colunas_faltando:
             raise KeyError(f"Erro: As colunas esperadas não foram encontradas: {', '.join(colunas_faltando)}")
 
-        colunas_a_manter = [coluna for coluna in df.columns if coluna in nomes_colunas or any(codigo in coluna for codigo in codigos_adicionais)]
+        # Filtragem das colunas com base nos códigos adicionais e na coluna especificada
+        colunas_a_manter = [coluna for coluna in df.columns if coluna in nomes_colunas]
 
+        # Verifica se a coluna especificada está nos dados e filtra os códigos de A a W
+        if coluna_codigos in df.columns:
+            # Filtra os códigos entre A e W
+            codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
+            colunas_a_manter += [coluna for coluna in df.columns if any(df[coluna_codigos][codigos_validos].str.contains(codigo) for codigo in codigos_adicionais)]
+        
         df_filtrado = df[colunas_a_manter]
 
         novo_arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6_modificado.xlsx'
@@ -35,5 +43,6 @@ class OtimizadorIFQ6():
         print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
         time.sleep(3)
 
+# Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validação(['cd_02'], '/content/Base_dados_EQ_01.xlsx', '', '')
+otimizador.validação(['CD_02'], '/content/Base_dados_EQ_01.xlsx', '', '', 'CD_01')
