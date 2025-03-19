@@ -51,4 +51,30 @@ class OtimizadorIFQ6():
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validação(['CD_02'], '/content/Base_dados_EQ_01.xlsx', '', '', 'CD_01')
+otimizador.validação('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_01')
+
+
+Tudo certo!
+A coluna 'cd_02' existe. Mostrando as primeiras linhas dessa coluna:
+0    NaN
+1    NaN
+2    NaN
+3    NaN
+4    NaN
+Name: cd_02, dtype: object
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+<ipython-input-21-4700c1aeebee> in <cell line: 0>()
+     48 # Exemplo de uso
+     49 otimizador = OtimizadorIFQ6()
+---> 50 otimizador.validação('/content/Base_dados_EQ_01.xlsx','', '', 'cd_02')
+
+1 frames
+<ipython-input-21-4700c1aeebee> in <listcomp>(.0)
+     36         codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
+     37 
+---> 38         colunas_a_manter += [coluna for coluna in df.columns if any(df[coluna_codigos][codigos_validos].str.contains(codigo) for codigo in codigos_adicionais)]
+     39 
+     40         df_filtrado = df[colunas_a_manter]
+
+TypeError: 'OtimizadorIFQ6' object is not iterable
