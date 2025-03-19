@@ -40,7 +40,7 @@ class OtimizadorIFQ6:
             print(f"A coluna '{coluna_codigos}' não contém dados.")
             return  
 
-        codigos_validos = df[coluna_codigos].astype(str).str.match(r'^[A-W]$', na=False)
+        codigos_validos = df[coluna_codigos].astype(str).str.match(['A','B','C'...])
 
         if codigos_validos.any():
             df.loc[codigos_validos, coluna_codigos] = df.loc[codigos_validos, coluna_codigos].str.upper()
@@ -54,6 +54,5 @@ class OtimizadorIFQ6:
         print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
         time.sleep(3)
 
-# Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'CD_02')
+otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_02')S
