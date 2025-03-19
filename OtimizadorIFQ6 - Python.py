@@ -31,3 +31,24 @@ class OtimizadorIFQ6():
                      "NM_ALTURA",
                      "CD_01"
                      ]
+    try:
+       arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6.xlsx'
+
+       if not os.path.exists(arquivo_excel):
+        raise FileNotFoundError(f"Erro: O arquivo '{arquivo_excel}' não foi encontrado no diretório atual.")
+       else:
+        print("Tudo certo!")
+
+       df = pd.read_excel(arquivo_excel, sheet_name=1)
+
+
+       for coluna in nomes_colunas:
+            if coluna not in df.columns:
+                raise KeyError(f"Erro: A coluna esperada '{coluna}' não foi encontrada no arquivo Excel.")
+       titulos = df['Titulo'].astype(str).values
+       nomes = df['Nome'].astype(str).values
+       valores_real = df['Valores Reais'].fillna(0).values
+       valores_plano = df['Plano'].fillna(0).values
+    finally:
+     time.sleep(3)
+     quit
