@@ -1,9 +1,10 @@
+
 import pandas as pd
 import os 
 import time
 
 class OtimizadorIFQ6:
-    def validacao(self, codigos_adicionais, path_b1, path_b2, path_b3, coluna_codigos):
+    def validacao(self, path_b1, path_b2, path_b3, coluna_codigos):
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -42,7 +43,7 @@ class OtimizadorIFQ6:
 
         codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
 
-        colunas_a_manter += [codigo for codigo in codigos_adicionais if codigo in df.columns]
+        colunas_a_manter += [codigo for codigo in coluna_codigos if codigo in df.columns]
 
         df_filtrado = df[colunas_a_manter]
 
@@ -54,4 +55,4 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validacao(['CD_02'], '/content/Base_dados_EQ_01.xlsx', '', '', 'CD_01')
+otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_02')
