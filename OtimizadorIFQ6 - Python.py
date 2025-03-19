@@ -1,4 +1,3 @@
-
 import pandas as pd
 import os 
 import time
@@ -41,9 +40,11 @@ class OtimizadorIFQ6:
             print(f"A coluna '{coluna_codigos}' não contém dados.")
             return  
 
-        codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
+        codigos_validos = df[coluna_codigos].astype(str).str.match(r'^[A-W]$', na=False)
 
-        colunas_a_manter += [codigo for codigo in coluna_codigos if codigo in df.columns]
+        if codigos_validos.any():
+            df.loc[codigos_validos, coluna_codigos] = df.loc[codigos_validos, coluna_codigos].str.upper()
+            colunas_a_manter.append(coluna_codigos)
 
         df_filtrado = df[colunas_a_manter]
 
@@ -55,4 +56,4 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_02')
+otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'CD_02')
