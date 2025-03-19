@@ -1,6 +1,7 @@
 import pandas as pd
 import os 
 import time
+import string
 
 class OtimizadorIFQ6:
     def validacao(self, path_b1, path_b2, path_b3, coluna_codigos):
@@ -40,7 +41,8 @@ class OtimizadorIFQ6:
             print(f"A coluna '{coluna_codigos}' não contém dados.")
             return  
 
-        codigos_validos = df[coluna_codigos].astype(str).str.match(['A','B','C'...])
+        letras_validas = list(string.ascii_uppercase[:23])  # Letras de A a W
+        codigos_validos = df[coluna_codigos].astype(str).str.upper().isin(letras_validas)
 
         if codigos_validos.any():
             df.loc[codigos_validos, coluna_codigos] = df.loc[codigos_validos, coluna_codigos].str.upper()
@@ -55,4 +57,4 @@ class OtimizadorIFQ6:
         time.sleep(3)
 
 otimizador = OtimizadorIFQ6()
-otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_02')S
+otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'CD_02')
