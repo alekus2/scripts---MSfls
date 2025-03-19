@@ -1,7 +1,5 @@
-
 import pandas as pd
 import os
-import time
 
 class OtimizadorIFQ6:
     def validacao(self, path_b1, coluna_codigos):
@@ -16,45 +14,56 @@ class OtimizadorIFQ6:
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01"
         ]
         
+        # Verifica se o arquivo existe
         if not os.path.exists(path_b1):
             raise FileNotFoundError(f"Erro: O arquivo '{path_b1}' não foi encontrado.")
         print("Tudo certo!")
         
+        # Lê o arquivo Excel
         df = pd.read_excel(path_b1)
         
+        # Converte os nomes das colunas para maiúsculas
         df.columns = [col.upper() for col in df.columns]
         
+        # Verifica se as colunas obrigatórias estão presentes
         colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
         if colunas_faltando:
             raise KeyError(f"Erro: As colunas esperadas não foram encontradas: {', '.join(colunas_faltando)}")
         
+        # Converte o nome da coluna de códigos para maiúsculas
         coluna_codigos = coluna_codigos.upper()
         
-        codigos_validos = ['O']
+        # Lista de códigos válidos: letras de A a W
+        codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
         
-        if df[coluna_codigos].isnull().all():
-            print(f"A coluna '{coluna_codigos}' não contém dados.")
-            return
-        else: 
-          print('tem alguma coisa')
-              
+        # Inicializa a lista de colunas a serem mantidas com as colunas obrigatórias
         colunas_a_manter = nomes_colunas.copy()
         
+        # Verifica se a coluna de códigos existe no DataFrame
         if coluna_codigos in df.columns:
-            if df[coluna_codigos].astype(str).str.upper().isin(codigos_validos).any():
-                print(f"Códigos válidos encontrados na coluna '{coluna_codigos}'. A coluna será incluída no arquivo final.")
+            # Filtra os valores válidos na coluna de códigos
+            codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
+            if codigos_encontrados.any():
+                # Exibe os códigos válidos encontrados
+                print(f"Códigos válidos encontrados na coluna '{coluna_codigos}':")
+                print(df.loc[codigos_encontrados, coluna_codigos].unique())
+                
+                # Inclui a coluna de códigos na lista de colunas a serem mantidas
                 colunas_a_manter.append(coluna_codigos)
             else:
                 print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}'. A coluna não será incluída no arquivo final.")
         else:
             print(f"A coluna '{coluna_codigos}' não foi encontrada no DataFrame.")
         
+        # Filtra o DataFrame para manter apenas as colunas selecionadas
         df_filtrado = df[colunas_a_manter]
         
+        # Salva o DataFrame filtrado em um novo arquivo Excel
         novo_arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6_modificado.xlsx'
         df_filtrado.to_excel(novo_arquivo_excel, index=False)
         
         print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
 
+# Exemplo de uso:
 otimizador = OtimizadorIFQ6()
 otimizador.validacao('/content/Base_dados_EQ_01.xlsx', 'cd_02')
