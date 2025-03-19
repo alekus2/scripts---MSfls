@@ -73,3 +73,30 @@ class OtimizadorIFQ6:
 # Exemplo de uso:
 otimizador = OtimizadorIFQ6()
 otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_02')
+
+
+
+Tudo certo!
+A coluna 'cd_02' encontrada. Mostrando as primeiras linhas:
+0    NaN
+1    NaN
+2    NaN
+3    NaN
+4    NaN
+Name: cd_02, dtype: object
+Código válido encontrado na coluna: cd_02
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+<ipython-input-29-774fae4904aa> in <cell line: 0>()
+     57 # Exemplo de uso:
+     58 otimizador = OtimizadorIFQ6()
+---> 59 otimizador.validacao('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_02')
+
+3 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/indexes/base.py in _raise_if_missing(self, key, indexer, axis_name)
+   6250 
+   6251             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
+-> 6252             raise KeyError(f"{not_found} not in index")
+   6253 
+   6254     @overload
+
