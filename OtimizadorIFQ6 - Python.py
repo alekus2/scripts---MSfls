@@ -3,7 +3,7 @@ import os
 import time
 
 class OtimizadorIFQ6():
-    def validação(self, nomes_colunas, path_b1, path_b2, path_b3):
+    def validação(self, nomes_colunas, codigos_adicionais, path_b1, path_b2, path_b3):
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -31,15 +31,20 @@ class OtimizadorIFQ6():
         if colunas_faltando:
             raise KeyError(f"Erro: As colunas esperadas não foram encontradas: {', '.join(colunas_faltando)}")
 
-        titulos = df['TITULO'].astype(str).values  # Coluna 'Titulo' deve ser convertida para maiúscula
-        nomes = df['NOME'].astype(str).values  # Coluna 'Nome' deve ser convertida para maiúscula
-        valores_real = df['VALORES REAIS'].fillna(0).values  # Coluna 'Valores Reais' deve ser convertida para maiúscula
-        valores_plano = df['PLANO'].fillna(0).values  # Coluna 'Plano' deve ser convertida para maiúscula
+        # Filtrar colunas que estão em nomes_colunas ou contêm códigos adicionais
+        colunas_a_manter = [coluna for coluna in df.columns if coluna in nomes_colunas or any(codigo in coluna for codigo in codigos_adicionais)]
+
+        # Criar um novo DataFrame com as colunas filtradas
+        df_filtrado = df[colunas_a_manter]
 
         # Salvando o DataFrame modificado em um novo arquivo Excel
         novo_arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6_modificado.xlsx'
-        df.to_excel(novo_arquivo_excel, index=False)
+        df_filtrado.to_excel(novo_arquivo_excel, index=False)
 
-        print(f"As colunas foram transformadas para maiúsculas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
+        print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
 
         time.sleep(3)
+
+# Exemplo de uso
+otimizador = OtimizadorIFQ6()
+otimizador.validação([], ['codigo1', 'codigo2'], '', '', '')
