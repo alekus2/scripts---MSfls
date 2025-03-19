@@ -85,3 +85,21 @@ arquivos = [
 ]
 otimizador.validacao(arquivos, 'cd_02')
 
+Processando o arquivo: /content/Base_dados_EQ_01.xlsx
+---------------------------------------------------------------------------
+AttributeError                            Traceback (most recent call last)
+<ipython-input-41-1fd035deed29> in <cell line: 0>()
+     69     '/content/Base_dados_EQ_03.xlsx'
+     70 ]
+---> 71 otimizador.validacao(arquivos, ('cd_02','cd_03'))
+
+<ipython-input-41-1fd035deed29> in validacao(self, paths, coluna_codigos)
+     32                 continue
+     33 
+---> 34             coluna_codigos = coluna_codigos.upper()
+     35 
+     36             colunas_a_manter = nomes_colunas.copy()
+
+AttributeError: 'tuple' object has no attribute 'upper'
+
+
