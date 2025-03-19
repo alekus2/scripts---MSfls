@@ -2,7 +2,7 @@ import pandas as pd
 import os
 
 class OtimizadorIFQ6:
-    def validacao(self, paths, coluna_codigos):
+    def validacao(self, paths, colunas_codigos):
         # Lista de colunas obrigatórias esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
@@ -36,27 +36,29 @@ class OtimizadorIFQ6:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
             
-            # Converte o nome da coluna de códigos para maiúsculas
-            coluna_codigos = coluna_codigos.upper()
-            
             # Inicializa a lista de colunas a serem mantidas com as colunas obrigatórias
             colunas_a_manter = nomes_colunas.copy()
             
-            # Verifica se a coluna de códigos existe no DataFrame
-            if coluna_codigos in df.columns:
-                # Filtra os valores válidos na coluna de códigos
-                codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
-                if codigos_encontrados.any():
-                    # Exibe os códigos válidos encontrados
-                    print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
-                    print(df.loc[codigos_encontrados, coluna_codigos].unique())
-                    
-                    # Inclui a coluna de códigos na lista de colunas a serem mantidas
-                    colunas_a_manter.append(coluna_codigos)
+            # Itera sobre cada coluna de códigos fornecida
+            for coluna_codigos in colunas_codigos:
+                # Converte o nome da coluna de códigos para maiúsculas
+                coluna_codigos = coluna_codigos.upper()
+                
+                # Verifica se a coluna de códigos existe no DataFrame
+                if coluna_codigos in df.columns:
+                    # Filtra os valores válidos na coluna de códigos
+                    codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
+                    if codigos_encontrados.any():
+                        # Exibe os códigos válidos encontrados
+                        print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
+                        print(df.loc[codigos_encontrados, coluna_codigos].unique())
+                        
+                        # Inclui a coluna de códigos na lista de colunas a serem mantidas
+                        colunas_a_manter.append(coluna_codigos)
+                    else:
+                        print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna não será incluída no arquivo final.")
                 else:
-                    print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna não será incluída no arquivo final.")
-            else:
-                print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
+                    print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
             
             # Filtra o DataFrame para manter apenas as colunas selecionadas
             df_filtrado = df[colunas_a_manter]
@@ -83,23 +85,4 @@ arquivos = [
     '/content/Base_dados_EQ_02.xlsx',
     '/content/Base_dados_EQ_03.xlsx'
 ]
-otimizador.validacao(arquivos, 'cd_02')
-
-Processando o arquivo: /content/Base_dados_EQ_01.xlsx
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-<ipython-input-41-1fd035deed29> in <cell line: 0>()
-     69     '/content/Base_dados_EQ_03.xlsx'
-     70 ]
----> 71 otimizador.validacao(arquivos, ('cd_02','cd_03'))
-
-<ipython-input-41-1fd035deed29> in validacao(self, paths, coluna_codigos)
-     32                 continue
-     33 
----> 34             coluna_codigos = coluna_codigos.upper()
-     35 
-     36             colunas_a_manter = nomes_colunas.copy()
-
-AttributeError: 'tuple' object has no attribute 'upper'
-
-
+otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
