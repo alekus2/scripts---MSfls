@@ -1,4 +1,3 @@
-python
 import pandas as pd
 import os 
 import time
@@ -29,28 +28,21 @@ class OtimizadorIFQ6:
         if colunas_faltando:
             raise KeyError(f"Erro: As colunas esperadas não foram encontradas: {', '.join(colunas_faltando)}")
 
-        # Verifica se a coluna especificada existe
-        if coluna_codigos in df.columns:
-            print(f"A coluna '{coluna_codigos}' existe. Mostrando as primeiras linhas dessa coluna:")
-            print(df[coluna_codigos].head())  # Exibe as primeiras linhas da coluna
-        else:
+        if coluna_codigos not in df.columns:
             raise KeyError(f"Erro: A coluna '{coluna_codigos}' não foi encontrada.")
 
-        # Filtragem das colunas a serem mantidas
+        print(f"A coluna '{coluna_codigos}' existe. Mostrando as primeiras linhas dessa coluna:")
+        print(df[coluna_codigos].head())
+
         colunas_a_manter = [coluna for coluna in df.columns if coluna in nomes_colunas]
 
-        # Filtra os códigos entre A e W na coluna especificada
         if df[coluna_codigos].isnull().all():
             print(f"A coluna '{coluna_codigos}' não contém dados.")
-            return  # Finaliza a função caso a coluna não contenha dados.
+            return  
 
         codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
 
-        # Adiciona colunas que têm códigos adicionais
-        colunas_a_manter += [
-            coluna for coluna in df.columns
-            if any(df[coluna_codigos][codigos_validos].str.contains(codigo, na=False) for codigo in codigos_adicionais)
-        ]
+        colunas_a_manter += [codigo for codigo in codigos_adicionais if codigo in df.columns]
 
         df_filtrado = df[colunas_a_manter]
 
@@ -62,4 +54,4 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validacao(['cd_02'], '/content/Base_dados_EQ_01.xlsx', '', '', 'cd_01')
+otimizador.validacao(['CD_02'], '/content/Base_dados_EQ_01.xlsx', '', '', 'CD_01')
