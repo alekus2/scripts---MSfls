@@ -1,9 +1,9 @@
-from logging import exception
+
 import pandas as pd
 import os
 
 class OtimizadorIFQ6:
-    def validacao(self, path_b1,path_b2,path_b3, cc1,cc2,):
+    def validacao(self, paths, colunas_codigos):
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -14,64 +14,98 @@ class OtimizadorIFQ6:
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01"
         ]
         
-        if not os.path.exists(path_b1):
-            raise FileNotFoundError(f"Erro: O arquivo '{path_b1}' não foi encontrado.")
-        print("Tudo certo!")
+        codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
         
-        df = pd.read_excel(path_b1)
-        
-        df.columns = [col.upper() for col in df.columns]
-
-    
-        try:
-            if cc2 or cc2 != '': 
-              colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
-              if colunas_faltando:
-                  raise KeyError(f"Erro: As colunas esperadas não foram encontradas: {', '.join(colunas_faltando)}")
-              cc2 = cc2.upper()
-              codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
-              colunas_a_manter = nomes_colunas.copy()
-              if cc2 in df.columns:
-                  print(df.head(10))
-                  codigos_encontrados = df[cc2].astype(str).str.upper().isin(codigos_validos)
-                  if codigos_encontrados.any():
-                      print(f"Códigos válidos encontrados na coluna '{cc2}':")
-                      print(df.loc[codigos_encontrados, cc2].unique())
-                      colunas_a_manter.append(cc2)
-                  else:
-                      print(f"Nenhum código válido encontrado na coluna '{cc2}'. A coluna não será incluída no arquivo final.")
-              else:
-                  print(f"A coluna '{cc2}' não foi encontrada no DataFrame.")
-            else:
-              pass
-        finally:
-         df_filtrado = df[colunas_a_manter]
-    
-        try:
-            if cc1 or cc1 != '': 
-              colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
-              if colunas_faltando:
-                  raise KeyError(f"Erro: As colunas esperadas não foram encontradas: {', '.join(colunas_faltando)}")
-              cc1 = cc1.upper()
-              codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
-              colunas_a_manter = nomes_colunas.copy()
-              if cc1 in df.columns:
-                  codigos_encontrados = df[cc1].astype(str).str.upper().isin(codigos_validos)
-                  if codigos_encontrados.any():
-                      print(f"Códigos válidos encontrados na coluna '{cc1}':")
-                      print(df.loc[codigos_encontrados, cc1].unique())
-                      colunas_a_manter.append(cc1)
-                  else:
-                      print(f"Nenhum código válido encontrado na coluna '{cc1}'. A coluna não será incluída no arquivo final.")
-              else:
-                  print(f"A coluna '{cc1}' não foi encontrada no DataFrame.")
-            else:
-              pass
-        finally:
+        for path in paths:
+            if not os.path.exists(path):
+                print(f"Erro: O arquivo '{path}' não foi encontrado.")
+                continue
+            print(f"Processando o arquivo: {path}")
+            
+            df = pd.read_excel(path)
+            
+            df.columns = [col.upper() for col in df.columns]
+            
+            colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
+            if colunas_faltando:
+                print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
+                continue
+            
+            colunas_a_manter = nomes_colunas.copy()
+            
+            for coluna_codigos in colunas_codigos:
+                coluna_codigos = coluna_codigos.upper()
+                
+                if coluna_codigos in df.columns:
+                    codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
+                    if codigos_encontrados.any():
+                        print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
+                        print(df.loc[codigos_encontrados, coluna_codigos].unique())
+                        
+                        colunas_a_manter.append(coluna_codigos)
+                    else:
+                        print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna não será incluída no arquivo final.")
+                else:
+                    print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
+            
             df_filtrado = df[colunas_a_manter]
-        novo_arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6_modificado.xlsx'
-        df_filtrado.to_excel(novo_arquivo_excel, index=False)
-        print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
+            
+            if 'NM_FILA' in df_filtrado.columns:
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+                print(f"Contagem de 'NM_FILA' registrada em 'NM_COVA' para o arquivo '{path}'.")
+            else:
+                print(f"A coluna 'NM_FILA' não foi encontrada no arquivo '{path}'. Não foi possível registrar a contagem em 'NM_COVA'.")
+            
+            novo_arquivo_excel = os.path.splitext(path)[0] + '_modificado.xlsx'
+            
+            df_filtrado.to_excel(novo_arquivo_excel, index=False)
+            
+            print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.\n")
 
+# Exemplo de uso:
 otimizador = OtimizadorIFQ6()
-otimizador.validacao('/content/Base_dados_EQ_03.xlsx', 'cd_02','cd_03')
+arquivos = [
+    '/content/Base_dados_EQ_01.xlsx',
+    '/content/Base_dados_EQ_02.xlsx',
+    '/content/Base_dados_EQ_03.xlsx'
+]
+otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
+
+
+Processando o arquivo: /content/Base_dados_EQ_01.xlsx
+Códigos válidos encontrados na coluna 'CD_02' no arquivo '/content/Base_dados_EQ_01.xlsx':
+['O']
+Nenhum código válido encontrado na coluna 'CD_03' no arquivo '/content/Base_dados_EQ_01.xlsx'. A coluna não será incluída no arquivo final.
+Contagem de 'NM_FILA' registrada em 'NM_COVA' para o arquivo '/content/Base_dados_EQ_01.xlsx'.
+<ipython-input-42-f9479c5faee1>:53: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+As colunas foram filtradas e o arquivo foi salvo como '/content/Base_dados_EQ_01_modificado.xlsx'.
+
+Processando o arquivo: /content/Base_dados_EQ_02.xlsx
+Nenhum código válido encontrado na coluna 'CD_02' no arquivo '/content/Base_dados_EQ_02.xlsx'. A coluna não será incluída no arquivo final.
+Nenhum código válido encontrado na coluna 'CD_03' no arquivo '/content/Base_dados_EQ_02.xlsx'. A coluna não será incluída no arquivo final.
+Contagem de 'NM_FILA' registrada em 'NM_COVA' para o arquivo '/content/Base_dados_EQ_02.xlsx'.
+<ipython-input-42-f9479c5faee1>:53: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+As colunas foram filtradas e o arquivo foi salvo como '/content/Base_dados_EQ_02_modificado.xlsx'.
+
+Processando o arquivo: /content/Base_dados_EQ_03.xlsx
+Códigos válidos encontrados na coluna 'CD_02' no arquivo '/content/Base_dados_EQ_03.xlsx':
+['T']
+Nenhum código válido encontrado na coluna 'CD_03' no arquivo '/content/Base_dados_EQ_03.xlsx'. A coluna não será incluída no arquivo final.
+Contagem de 'NM_FILA' registrada em 'NM_COVA' para o arquivo '/content/Base_dados_EQ_03.xlsx'.
+<ipython-input-42-f9479c5faee1>:53: SettingWithCopyWarning: 
+A value is trying to be set on a copy of a slice from a DataFrame.
+Try using .loc[row_indexer,col_indexer] = value instead
+
+See the caveats in the documentation: https://pandas.pydata.org/pandas-docs/stable/user_guide/indexing.html#returning-a-view-versus-a-copy
+  df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+As colunas foram filtradas e o arquivo foi salvo como '/content/Base_dados_EQ_03_modificado.xlsx'.
