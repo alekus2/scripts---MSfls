@@ -36,4 +36,10 @@ class OtimizadorIFQ6():
         valores_real = df['VALORES REAIS'].fillna(0).values  # Coluna 'Valores Reais' deve ser convertida para maiúscula
         valores_plano = df['PLANO'].fillna(0).values  # Coluna 'Plano' deve ser convertida para maiúscula
 
+        # Salvando o DataFrame modificado em um novo arquivo Excel
+        novo_arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6_modificado.xlsx'
+        df.to_excel(novo_arquivo_excel, index=False)
+
+        print(f"As colunas foram transformadas para maiúsculas e o arquivo foi salvo como '{novo_arquivo_excel}'.")
+
         time.sleep(3)
