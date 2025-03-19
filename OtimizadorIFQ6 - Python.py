@@ -1,9 +1,10 @@
+python
 import pandas as pd
 import os 
 import time
 
-class OtimizadorIFQ6():
-    def validação(codigos_adicionais, path_b1, path_b2, path_b3, coluna_codigos):
+class OtimizadorIFQ6:
+    def validacao(self, codigos_adicionais, path_b1, path_b2, path_b3, coluna_codigos):
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -19,7 +20,10 @@ class OtimizadorIFQ6():
         print("Tudo certo!")
 
         df = pd.read_excel(path_b1)
-        df.columns = [coluna.upper() if coluna.lower() in (n.lower() for n in nomes_colunas) else coluna for coluna in df.columns]
+        df.columns = [
+            coluna.upper() if coluna.lower() in (n.lower() for n in nomes_colunas) else coluna
+            for coluna in df.columns
+        ]
 
         colunas_faltando = [coluna for coluna in nomes_colunas if coluna not in df.columns]
         if colunas_faltando:
@@ -36,11 +40,18 @@ class OtimizadorIFQ6():
         colunas_a_manter = [coluna for coluna in df.columns if coluna in nomes_colunas]
 
         # Filtra os códigos entre A e W na coluna especificada
+        if df[coluna_codigos].isnull().all():
+            print(f"A coluna '{coluna_codigos}' não contém dados.")
+            return  # Finaliza a função caso a coluna não contenha dados.
+
         codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
 
         # Adiciona colunas que têm códigos adicionais
-        colunas_a_manter += [coluna for coluna in df.columns if any(df[coluna_codigos][codigos_validos].str.contains(codigo) for codigo in codigos_adicionais)]
-        
+        colunas_a_manter += [
+            coluna for coluna in df.columns
+            if any(df[coluna_codigos][codigos_validos].str.contains(codigo, na=False) for codigo in codigos_adicionais)
+        ]
+
         df_filtrado = df[colunas_a_manter]
 
         novo_arquivo_excel = r'/content/Base_padrao_estrutura_IFQ6_modificado.xlsx'
@@ -51,30 +62,4 @@ class OtimizadorIFQ6():
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-otimizador.validação('/content/Base_dados_EQ_01.xlsx', '', '', 'cd_01')
-
-
-Tudo certo!
-A coluna 'cd_02' existe. Mostrando as primeiras linhas dessa coluna:
-0    NaN
-1    NaN
-2    NaN
-3    NaN
-4    NaN
-Name: cd_02, dtype: object
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-<ipython-input-21-4700c1aeebee> in <cell line: 0>()
-     48 # Exemplo de uso
-     49 otimizador = OtimizadorIFQ6()
----> 50 otimizador.validação('/content/Base_dados_EQ_01.xlsx','', '', 'cd_02')
-
-1 frames
-<ipython-input-21-4700c1aeebee> in <listcomp>(.0)
-     36         codigos_validos = df[coluna_codigos].str.contains(r'^[A-W]$', na=False)
-     37 
----> 38         colunas_a_manter += [coluna for coluna in df.columns if any(df[coluna_codigos][codigos_validos].str.contains(codigo) for codigo in codigos_adicionais)]
-     39 
-     40         df_filtrado = df[colunas_a_manter]
-
-TypeError: 'OtimizadorIFQ6' object is not iterable
+otimizador.validacao(['cd_02'], '/content/Base_dados_EQ_01.xlsx', '', '', 'cd_01')
