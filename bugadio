@@ -47,9 +47,15 @@ class OtimizadorIFQ6:
                         print(df.loc[codigos_encontrados, coluna_codigos].unique())
                         colunas_a_manter.append(coluna_codigos)
                     else:
-                        print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna não será incluída no arquivo final.")
+                        print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna será criada no DataFrame final, mas estará vazia.")
+                        # Cria a coluna no DataFrame final, mas com valores nulos
+                        df[coluna_codigos] = pd.NA
+                        colunas_a_manter.append(coluna_codigos)
                 else:
-                    print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
+                    print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'. A coluna será criada no DataFrame final, mas estará vazia.")
+                    # Cria a coluna no DataFrame final, mas com valores nulos
+                    df[coluna_codigos] = pd.NA
+                    colunas_a_manter.append(coluna_codigos)
             
             df_filtrado = df[colunas_a_manter].copy()
             
@@ -78,7 +84,7 @@ class OtimizadorIFQ6:
             
             # Ajusta a coluna NM_COVA conforme a presença de 'L' nas colunas CD_01, CD_02 ou CD_03
             for col in ['CD_01', 'CD_02', 'CD_03']:
-                if col in df_filtrado.columns and df_filtrado[col].notna().any():
+                if col in df_filtrado.columns:
                     df_filtrado['NM_COVA'] = df_filtrado.apply(
                         lambda row: row['NM_COVA'] if row[col] != 'L' else row['NM_COVA'] - 1,
                         axis=1
@@ -104,4 +110,6 @@ arquivos = [
     '/content/Base_dados_EQ_02.xlsx',
     '/content/Base_dados_EQ_03.xlsx'
 ]
-otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
+otimizador.validacao(arquivos, ['cd_02', 'cd
+::contentReference[oaicite:0]{index=0}
+ 
