@@ -50,7 +50,13 @@ class OtimizadorIFQ6:
             df_filtrado = df[colunas_a_manter]
 
             if 'NM_FILA' in df_filtrado.columns:
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+                def atribuir_cova(grupo):
+                    tamanho_grupo = len(grupo)
+                    repeticoes = (tamanho_grupo // 7) + 1
+                    cova_values = list(range(1, 8)) * repeticoes
+                    return cova_values[:tamanho_grupo]
+                
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').apply(atribuir_cova).reset_index(level=0, drop=True)
                 print(f"NM_COVA atualizado conforme padrão para o arquivo '{path}'.")
             else:
                 print(f"A coluna 'NM_FILA' não foi encontrada no arquivo '{path}'. Não foi possível registrar a contagem em 'NM_COVA'.")
