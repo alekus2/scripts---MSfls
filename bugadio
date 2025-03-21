@@ -68,10 +68,11 @@ class OtimizadorIFQ6:
             
             for col in ['CD_01', 'CD_02', 'CD_03']:
                 if col in df_filtrado.columns:
+                    # Alteração aqui: usando apply corretamente
                     df_filtrado['NM_COVA'] = df_filtrado.apply(
-                    lambda row: row['NM_COVA'] - 1 if row[col].any('L') else row['NM_COVA'],
-                    axis=1
-                )
+                        lambda row: row['NM_COVA'] - 1 if str(row[col]) == 'L' else row['NM_COVA'],
+                        axis=1
+                    )
             
             lista_df.append(df_filtrado)
         
@@ -91,26 +92,3 @@ arquivos = [
     '/content/Base_dados_EQ_03.xlsx'
 ]
 otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
-
-
-
-Processando o arquivo: /content/Base_dados_EQ_01.xlsx
-Códigos válidos encontrados na coluna 'CD_02' no arquivo '/content/Base_dados_EQ_01.xlsx':
-['O']
-Nenhum código válido encontrado na coluna 'CD_03' no arquivo '/content/Base_dados_EQ_01.xlsx'. A coluna será criada no DataFrame final, mas estará vazia.
----------------------------------------------------------------------------
-AttributeError                            Traceback (most recent call last)
-<ipython-input-17-791fb24e7393> in <cell line: 0>()
-     91     '/content/Base_dados_EQ_03.xlsx'
-     92 ]
----> 93 otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
-
-5 frames
-<ipython-input-17-791fb24e7393> in <lambda>(row)
-     70                 if col in df_filtrado.columns:
-     71                     df_filtrado['NM_COVA'] = df_filtrado.apply(
----> 72                     lambda row: row['NM_COVA'] - 1 if row[col].any('L') else row['NM_COVA'],
-     73                     axis=1
-     74                 )
-
-AttributeError: 'str' object has no attribute 'any'
