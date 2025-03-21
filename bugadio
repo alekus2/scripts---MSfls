@@ -51,16 +51,20 @@ class OtimizadorIFQ6:
                 else:
                     print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
             
-            # Seleciona somente as colunas necessárias
             df_filtrado = df[colunas_a_manter].copy()
             
             # Recalcula a coluna NM_COVA sem alterar NM_FILA original:
-            # Cria uma coluna auxiliar "grupo" que identifica mudanças contíguas em NM_FILA.
+            # Cria uma coluna auxiliar para identificar mudanças contíguas em NM_FILA.
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
             # Para cada grupo contíguo, NM_COVA recebe a contagem sequencial a partir de 1.
             df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
             # Remove a coluna auxiliar
             df_filtrado.drop(columns=['grupo'], inplace=True)
+            
+            # Tratamento da coluna CD_TALHAO:
+            # Converte o valor para string, preenche com zeros à esquerda se tiver menos de 3 dígitos
+            # e mantém somente os últimos 3 caracteres se tiver mais de 3 dígitos.
+            df_filtrado['CD_TALHAO'] = df_filtrado['CD_TALHAO'].astype(str).apply(lambda x: x.zfill(3)[-3:])
             
             # Cria a coluna EQUIPES, extraindo a identificação da equipe do nome do arquivo.
             # Exemplo: se o nome do arquivo contiver "EQ_01", EQUIPES será "ep_01".
