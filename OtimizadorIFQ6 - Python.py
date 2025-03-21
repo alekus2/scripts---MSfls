@@ -50,8 +50,9 @@ class OtimizadorIFQ6:
             df_filtrado = df[colunas_a_manter]
 
             if 'NM_FILA' in df_filtrado.columns:
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
-                print(f"NM_COVA atualizado conforme padrão para o arquivo '{path}'.")
+                # Calcula a contagem cumulativa dentro de cada grupo de NM_FILA
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() % 7 + 1
+                print(f"NM_COVA atualizado conforme padrão cíclico para o arquivo '{path}'.")
             else:
                 print(f"A coluna 'NM_FILA' não foi encontrada no arquivo '{path}'. Não foi possível registrar a contagem em 'NM_COVA'.")
             
