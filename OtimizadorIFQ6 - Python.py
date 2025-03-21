@@ -22,7 +22,6 @@ class OtimizadorIFQ6:
             print(f"Processando o arquivo: {path}")
             
             df = pd.read_excel(path)
-            
             df.columns = [col.upper() for col in df.columns]
             
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
@@ -31,16 +30,13 @@ class OtimizadorIFQ6:
                 continue
             
             colunas_a_manter = nomes_colunas.copy()
-            
             for coluna_codigos in colunas_codigos:
                 coluna_codigos = coluna_codigos.upper()
-                
                 if coluna_codigos in df.columns:
                     codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
                     if codigos_encontrados.any():
                         print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
                         print(df.loc[codigos_encontrados, coluna_codigos].unique())
-                        
                         colunas_a_manter.append(coluna_codigos)
                     else:
                         print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna não será incluída no arquivo final.")
@@ -48,13 +44,15 @@ class OtimizadorIFQ6:
                     print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
             
             df_filtrado = df[colunas_a_manter]
-
-            # Adiciona a coluna NM_FILA com valores de 1 a 7 repetidamente
-            df_filtrado['NM_FILA'] = ((df_filtrado.index % 7) + 1).astype(int)
-
-            # Adiciona a coluna NM_COVA com valores sequenciais dentro de cada NM_FILA
-            df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
-
+            
+            # NÃO alteramos a coluna NM_FILA. Apenas recalculamos NM_COVA.
+            # Criamos uma coluna auxiliar para identificar mudanças contíguas em NM_FILA.
+            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+            # Dentro de cada grupo contíguo, NM_COVA recebe a contagem sequencial a partir de 1.
+            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
+            # Removemos a coluna auxiliar
+            df_filtrado.drop(columns=['grupo'], inplace=True)
+            
             novo_arquivo_excel = os.path.splitext(path)[0] + '_modificado.xlsx'
             df_filtrado.to_excel(novo_arquivo_excel, index=False)
             print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.\n")
