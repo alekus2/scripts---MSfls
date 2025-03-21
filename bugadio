@@ -12,7 +12,7 @@ class OtimizadorIFQ6:
             "DT_FINAL", "CD_EQUIPE", "NM_LATITUDE", "NM_LONGITUDE",
             "NM_ALTITUDE", "DC_MATERIAL", "NM_FILA", "NM_COVA",
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
-            "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01"
+            "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
         
         # Códigos válidos para verificação extra
@@ -75,6 +75,14 @@ class OtimizadorIFQ6:
             else:
                 equipe = "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
+            
+            # Ajusta a coluna NM_COVA conforme a presença de 'L' nas colunas CD_01, CD_02 ou CD_03
+            for col in ['CD_01', 'CD_02', 'CD_03']:
+                if col in df_filtrado.columns:
+                    df_filtrado['NM_COVA'] = df_filtrado.apply(
+                        lambda row: row['NM_COVA'] if row[col] != 'L' else row['NM_COVA'] - 1,
+                        axis=1
+                    )
             
             lista_df.append(df_filtrado)
         
