@@ -49,13 +49,12 @@ class OtimizadorIFQ6:
             
             df_filtrado = df[colunas_a_manter]
 
-            if 'NM_FILA' in df_filtrado.columns:
-                # Calcula a contagem cumulativa dentro de cada grupo de NM_FILA
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() % 7 + 1
-                print(f"NM_COVA atualizado conforme padrão cíclico para o arquivo '{path}'.")
-            else:
-                print(f"A coluna 'NM_FILA' não foi encontrada no arquivo '{path}'. Não foi possível registrar a contagem em 'NM_COVA'.")
-            
+            # Adiciona a coluna NM_FILA com valores de 1 a 7 repetidamente
+            df_filtrado['NM_FILA'] = ((df_filtrado.index % 7) + 1).astype(int)
+
+            # Adiciona a coluna NM_COVA com valores sequenciais dentro de cada NM_FILA
+            df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+
             novo_arquivo_excel = os.path.splitext(path)[0] + '_modificado.xlsx'
             df_filtrado.to_excel(novo_arquivo_excel, index=False)
             print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.\n")
