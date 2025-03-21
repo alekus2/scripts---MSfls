@@ -68,7 +68,7 @@ class OtimizadorIFQ6:
             
             for col in ['CD_01', 'CD_02', 'CD_03']:
                 if col in df_filtrado.columns:
-                    # Alteração aqui: usando apply corretamente
+                    # Alteração aqui: ajustar NM_COVA apenas se a condição for atendida
                     df_filtrado['NM_COVA'] = df_filtrado.apply(
                         lambda row: row['NM_COVA'] - 1 if str(row[col]) == 'L' else row['NM_COVA'],
                         axis=1
