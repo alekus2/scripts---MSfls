@@ -54,7 +54,6 @@ class OtimizadorIFQ6:
             
             df_filtrado = df[colunas_a_manter].copy()
             
-        
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
             df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
             df_filtrado.drop(columns=['grupo'], inplace=True)
@@ -93,67 +92,3 @@ arquivos = [
     '/content/Base_dados_EQ_03.xlsx'
 ]
 otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
-
-Processando o arquivo: /content/Base_dados_EQ_01.xlsx
-Códigos válidos encontrados na coluna 'CD_02' no arquivo '/content/Base_dados_EQ_01.xlsx':
-['O']
-Nenhum código válido encontrado na coluna 'CD_03' no arquivo '/content/Base_dados_EQ_01.xlsx'. A coluna será criada no DataFrame final, mas estará vazia.
----------------------------------------------------------------------------
-ValueError                                Traceback (most recent call last)
-<ipython-input-14-eb940e964d73> in <cell line: 0>()
-     93     '/content/Base_dados_EQ_03.xlsx'
-     94 ]
----> 95 otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
-     96 
-
-6 frames
-<ipython-input-14-eb940e964d73> in validacao(self, paths, colunas_codigos)
-     71             for col in ['CD_01', 'CD_02', 'CD_03']:
-     72                 if col in df_filtrado.columns:
----> 73                     df_filtrado['NM_COVA'] = df_filtrado.apply(
-     74                         lambda row: row['NM_COVA'] if row[col] != 'L' else row['NM_COVA'] - 1,
-     75                         axis=1
-
-/usr/local/lib/python3.11/dist-packages/pandas/core/frame.py in apply(self, func, axis, raw, result_type, args, by_row, engine, engine_kwargs, **kwargs)
-  10372             kwargs=kwargs,
-  10373         )
-> 10374         return op.apply().__finalize__(self, method="apply")
-  10375 
-  10376     def map(
-
-/usr/local/lib/python3.11/dist-packages/pandas/core/apply.py in apply(self)
-    914             return self.apply_raw(engine=self.engine, engine_kwargs=self.engine_kwargs)
-    915 
---> 916         return self.apply_standard()
-    917 
-    918     def agg(self):
-
-/usr/local/lib/python3.11/dist-packages/pandas/core/apply.py in apply_standard(self)
-   1061     def apply_standard(self):
-   1062         if self.engine == "python":
--> 1063             results, res_index = self.apply_series_generator()
-   1064         else:
-   1065             results, res_index = self.apply_series_numba()
-
-/usr/local/lib/python3.11/dist-packages/pandas/core/apply.py in apply_series_generator(self)
-   1079             for i, v in enumerate(series_gen):
-   1080                 # ignore SettingWithCopy here in case the user mutates
--> 1081                 results[i] = self.func(v, *self.args, **self.kwargs)
-   1082                 if isinstance(results[i], ABCSeries):
-   1083                     # If we have a view on v, we need to make a copy because
-
-<ipython-input-14-eb940e964d73> in <lambda>(row)
-     72                 if col in df_filtrado.columns:
-     73                     df_filtrado['NM_COVA'] = df_filtrado.apply(
----> 74                         lambda row: row['NM_COVA'] if row[col] != 'L' else row['NM_COVA'] - 1,
-     75                         axis=1
-     76                     )
-
-/usr/local/lib/python3.11/dist-packages/pandas/core/generic.py in __nonzero__(self)
-   1575     @final
-   1576     def __nonzero__(self) -> NoReturn:
--> 1577         raise ValueError(
-   1578             f"The truth value of a {type(self).__name__} is ambiguous. "
-   1579             "Use a.empty, a.bool(), a.item(), a.any() or a.all()."
-
-ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
