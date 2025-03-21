@@ -48,16 +48,15 @@ class OtimizadorIFQ6:
                     print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'.")
             
             df_filtrado = df[colunas_a_manter]
-            
+
             if 'NM_FILA' in df_filtrado.columns:
-                df_filtrado.loc[:, 'NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
-                print(f"Contagem de 'NM_FILA' registrada em 'NM_COVA' para o arquivo '{path}'.")
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('NM_FILA').cumcount() + 1
+                print(f"NM_COVA atualizado conforme padrão para o arquivo '{path}'.")
             else:
                 print(f"A coluna 'NM_FILA' não foi encontrada no arquivo '{path}'. Não foi possível registrar a contagem em 'NM_COVA'.")
+            
             novo_arquivo_excel = os.path.splitext(path)[0] + '_modificado.xlsx'
-            
             df_filtrado.to_excel(novo_arquivo_excel, index=False)
-            
             print(f"As colunas foram filtradas e o arquivo foi salvo como '{novo_arquivo_excel}'.\n")
 
 # Exemplo de uso:
