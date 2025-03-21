@@ -3,15 +3,12 @@ import os
 
 class OtimizadorIFQ6:
     def validacao(self, paths, colunas_codigos):
-        nomes_colunas = [
-            "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
-            "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
-            "NM_DEC_LAR_PARCELA", "NM_DEC_COM_PARCELA", "DT_INICIAL",
-            "DT_FINAL", "CD_EQUIPE", "NM_LATITUDE", "NM_LONGITUDE",
-            "NM_ALTITUDE", "DC_MATERIAL", "NM_FILA", "NM_COVA",
-            "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
-            "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01"
-        ]
+        nomes_colunas = [CD_PROJETO,CD_TALHAO,NM_PARCELA,DC_TIPO_PARCELA,DC_FORMA_PARCELA,
+                         NM_AREA_PARCELA,NM_LARG_PARCELA,NM_COMP_PARCELA,NM_DEC_LAR_PARCELA,
+                         NM_DEC_COM_PARCELA,DT_INICIAL,DT_FINAL,CD_EQUIPE,NM_LATITUDE,NM_LONGITUDE,
+                         NM_ALTITUDE,DC_MATERIAL,NM_FILA,NM_COVA,NM_FUSTE,NM_DAP_ANT,NM_ALTURA_ANT,
+                         NM_CAP_DAP1,NM_DAP2,NM_DAP,NM_ALTURA,CD_01,CD_02
+]
         
         codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
         
@@ -45,12 +42,8 @@ class OtimizadorIFQ6:
             
             df_filtrado = df[colunas_a_manter]
             
-            # NÃO alteramos a coluna NM_FILA. Apenas recalculamos NM_COVA.
-            # Criamos uma coluna auxiliar para identificar mudanças contíguas em NM_FILA.
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            # Dentro de cada grupo contíguo, NM_COVA recebe a contagem sequencial a partir de 1.
             df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
-            # Removemos a coluna auxiliar
             df_filtrado.drop(columns=['grupo'], inplace=True)
             
             novo_arquivo_excel = os.path.splitext(path)[0] + '_modificado.xlsx'
