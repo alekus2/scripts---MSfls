@@ -1,4 +1,3 @@
-
 import pandas as pd
 import os
 import re
@@ -43,11 +42,9 @@ class OtimizadorIFQ6:
                         print(df.loc[codigos_encontrados, coluna_codigos].unique())
                         colunas_a_manter.append(coluna_codigos)
                     else:
-                        print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna será criada no DataFrame final, mas estará vazia.")
                         df[coluna_codigos] = pd.NA
                         colunas_a_manter.append(coluna_codigos)
                 else:
-                    print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'. A coluna será criada no DataFrame final, mas estará vazia.")
                     df[coluna_codigos] = pd.NA
                     colunas_a_manter.append(coluna_codigos)
             
@@ -60,33 +57,39 @@ class OtimizadorIFQ6:
           
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
-            if match:
-                equipe = f"ep_{match.group(1).zfill(2)}"
-            else:
-                equipe = "ep_unknown"
+            equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
             
             for col in ['CD_01', 'CD_02', 'CD_03']:
                 if col in df_filtrado.columns:
                     df_filtrado['NM_COVA'] = df_filtrado.apply(
-                        lambda row: row['NM_COVA'] - 1 if str(row[col]) == 'L' else row['NM_COVA'],
+                        lambda row: row['NM_COVA'] if str(row[col]) != 'L' else row['NM_COVA'] - 1,
                         axis=1
                     )
-            #VALIDAÇÕES PARA CORREÇÃO
 
-            #dentro da planilha não pode existir 'nm_cova' == 0
-            #para verificar se o L esta dentro da cova correta o codigo deverá ver se existe covas com codigos repetidos e conforme as repetiçoes desses deverá adicionar +1 em fuste ate acabar a cova que esta em processo.
-            #exemplo: a 'nm_cova' é 1 e o 'cd_01' é N (caso contrario, não for N ele deverá alterar para N e continuar com as proximas verificações)  mas a proxima cova é 1 tambem e se o cd dela é  L então o fuste deverá ser == a 2, caso contrario deverá ajustar, e se a proxima cova for igual 1 denovo e cd for L o fuste deverá ser 3 e assim sucessivamente ate acabar esta 'nm_cova' ou seja suas repetições.
-            #em vez de ser -1 ele deverá ser == a 'nm_cova' anterior se o 'cd_01' for == L e se a 'nm_cova' anterior for == N, pois se não seguir esta ordem ele deverá entrar em outra validação. 
-            #se um grupo começar com 'cd_01' sendo L e a nm_cova for 1, 'cd_01' deverá ser == a N e sempre que tiver um L depois de um N o 'nm_fuste' tem que ser  == a 2 ou mais dependendo da quantidade de L que aparecer.
-            #uma possivel solução seria criar uma coluna temporaria somente para verificar os L que irao aparecer e se ficaram de acordo com oque foi pedido.
+            df_filtrado['TEMP_FUSTE'] = 1
+            for idx in range(1, len(df_filtrado)):
+                atual = df_filtrado.iloc[idx]
+                anterior = df_filtrado.iloc[idx - 1]
 
-            #CASO NÃO EXISTA JEITO DE FAZER ISSO.
+                if atual['NM_COVA'] == anterior['NM_COVA']:
+                    if atual['CD_01'] == 'L':
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
+                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
+                        df_filtrado.at[idx, 'CD_01'] = 'N'
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
 
-            #o codigo então deverá apresentar ao usuario cada erro para que o usuario veja a contagem de erros e as verifique que no caso são as validações citadas acima.
-            #a mensagem de erro tem que ser especifica dentro da junção das planihas ele deverá alterar a cor da linha em que o erro ocorreu para destacar este erro.
-            #ele deverá mostrar a causa do erro e sua solução para o usuario saber oque deve ser feito.
+                if atual['NM_COVA'] == 0:
+                    print(f"Erro: 'NM_COVA' igual a 0 na linha {idx + 1} do arquivo '{path}'.")
+
+            df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
+            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
             
+            erros = df_filtrado[df_filtrado['NM_COVA'] == 0]
+            if not erros.empty:
+                print(f"Erros encontrados no arquivo '{path}':")
+                print(erros)
+
             lista_df.append(df_filtrado)
         
         if lista_df:
