@@ -76,6 +76,14 @@ class OtimizadorIFQ6:
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
             df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
 
+            for nm_fila, grupo in df_filtrado.groupby('NM_FILA'):
+                if not (grupo['CD_01'] == 'N').any():
+                    cond = (grupo['CD_01'] == 'L') & (grupo['NM_COVA'] == 1) & (grupo['NM_FUSTE'] == 1)
+                    candidatos = grupo.loc[cond]
+                    if not candidatos.empty:
+                        idx_maior_altura = candidatos['NM_ALTURA'].idxmax()
+                        df_filtrado.at[idx_maior_altura, 'CD_01'] = 'N'
+
             lista_df.append(df_filtrado)
         
         if lista_df:
