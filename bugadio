@@ -4,6 +4,7 @@ import re
 
 class OtimizadorIFQ6:
     def validacao(self, paths, colunas_codigos):
+        # Colunas esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -14,6 +15,7 @@ class OtimizadorIFQ6:
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
         
+        # Códigos válidos (de A até W)
         codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
         
         lista_df = [] 
@@ -32,12 +34,12 @@ class OtimizadorIFQ6:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
             
+            # Inclui as colunas de código (caso existam) à lista final
             colunas_a_manter = nomes_colunas.copy()
             for coluna_codigos in colunas_codigos:
                 coluna_codigos = coluna_codigos.upper()
                 if coluna_codigos in df.columns:
-                    codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
-                    if codigos_encontrados.any():
+                    if df[coluna_codigos].astype(str).str.upper().isin(codigos_validos).any():
                         colunas_a_manter.append(coluna_codigos)
                     else:
                         df[coluna_codigos] = pd.NA
@@ -47,25 +49,31 @@ class OtimizadorIFQ6:
                     colunas_a_manter.append(coluna_codigos)
             
             df_filtrado = df[colunas_a_manter].copy()
-
+            
+            # Identifica a equipe a partir do nome do arquivo
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
 
+            # Inicializa TEMP_FUSTE e NM_COVA
             df_filtrado['TEMP_FUSTE'] = 1
             df_filtrado['NM_COVA'] = 1
 
+            # Calcula NM_FUSTE e NM_COVA com base no valor de CD_01
             for idx in range(1, len(df_filtrado)):
                 atual = df_filtrado.iloc[idx]
                 anterior = df_filtrado.iloc[idx - 1]
-
+                
+                # Se o registro atual for 'L' e o anterior for 'N' na mesma cova, incrementa o fuste
                 if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N' and atual['NM_COVA'] == anterior['NM_COVA']:
                     df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
                     df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                # Se for 'L' na mesma cova e não houver 'N' antes, define o fuste como 2
                 elif atual['CD_01'] == 'L' and atual['NM_COVA'] == anterior['NM_COVA']:
                     df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
                     df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                # Caso contrário, considera que um novo grupo de cova se inicia
                 else:
                     df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
                     df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
@@ -73,18 +81,13 @@ class OtimizadorIFQ6:
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
             df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
 
-            # Agrupando por 'NM_COVA' e ajustando o 'L' para 'N'
+            # Agrupa por NM_COVA e altera apenas o primeiro registro do grupo se for 'L'
             for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
-                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist()
-
-                if indices_l:
-                    # Encontrar o primeiro 'L' e verificar se há 'N' antes dele
-                    primeiro_l = indices_l[0]
-                    if not (grupo.loc[:primeiro_l, 'CD_01'] == 'N').any():
-                        # Alterar o primeiro 'L' para 'N'
-                        df_filtrado.at[primeiro_l, 'CD_01'] = 'N'
-                        print(f"Alterando o 'L' para 'N' no índice {primeiro_l}, grupo NM_COVA: {nm_cova}")
-
+                primeiro_indice = grupo.index[0]
+                if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
+                    df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
+                    print(f"Alterado para 'N' no índice {primeiro_indice} do grupo NM_COVA {nm_cova}")
+            
             lista_df.append(df_filtrado)
         
         if lista_df:
@@ -94,6 +97,7 @@ class OtimizadorIFQ6:
             print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
+
 
 # Exemplo de uso:
 otimizador = OtimizadorIFQ6()
