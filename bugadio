@@ -4,7 +4,6 @@ import re
 
 class OtimizadorIFQ6:
     def validacao(self, paths, colunas_codigos):
-        # Colunas esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -39,41 +38,50 @@ class OtimizadorIFQ6:
                 if coluna_codigos in df.columns:
                     codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
                     if codigos_encontrados.any():
-                        print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
-                        print(df.loc[codigos_encontrados, coluna_codigos].unique())
                         colunas_a_manter.append(coluna_codigos)
                     else:
-                        print(f"Nenhum código válido encontrado na coluna '{coluna_codigos}' no arquivo '{path}'. A coluna será criada no DataFrame final, mas estará vazia.")
                         df[coluna_codigos] = pd.NA
                         colunas_a_manter.append(coluna_codigos)
                 else:
-                    print(f"A coluna '{coluna_codigos}' não foi encontrada no arquivo '{path}'. A coluna será criada no DataFrame final, mas estará vazia.")
                     df[coluna_codigos] = pd.NA
                     colunas_a_manter.append(coluna_codigos)
             
             df_filtrado = df[colunas_a_manter].copy()
             
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
+            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
             df_filtrado.drop(columns=['grupo'], inplace=True)
             df_filtrado['CD_TALHAO'] = df_filtrado['CD_TALHAO'].astype(str).apply(lambda x: x.zfill(3)[-3:])
           
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
-            if match:
-                equipe = f"ep_{match.group(1).zfill(2)}"
-            else:
-                equipe = "ep_unknown"
+            equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
             
-            for col in ['CD_01', 'CD_02', 'CD_03']:
-                if col in df_filtrado.columns:
-                    # Alteração aqui: ajustar NM_COVA apenas se a condição for atendida
-                    df_filtrado['NM_COVA'] = df_filtrado.apply(
-                        lambda row: row['NM_COVA'] - 1 if str(row[col]) == 'L' else row['NM_COVA'],
-                        axis=1
-                    )
-            
+            df_filtrado['TEMP_FUSTE'] = 1
+
+            for idx in range(1, len(df_filtrado)):
+                atual = df_filtrado.iloc[idx]
+                anterior = df_filtrado.iloc[idx - 1]
+
+                if atual['NM_COVA'] == anterior['NM_COVA']:
+                    if atual['CD_01'] == 'L':
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
+                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
+                        df_filtrado.at[idx, 'CD_01'] = 'N'
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
+
+                if atual['NM_COVA'] == 0:
+                    print(f"Erro: 'NM_COVA' igual a 0 na linha {idx + 1} do arquivo '{path}'.")
+
+            df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
+            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
+
+            erros = df_filtrado[df_filtrado['NM_COVA'] == 0]
+            if not erros.empty:
+                print(f"Erros encontrados no arquivo '{path}':")
+                print(erros)
+
             lista_df.append(df_filtrado)
         
         if lista_df:
