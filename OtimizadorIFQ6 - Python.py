@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 import re
@@ -85,7 +86,10 @@ class OtimizadorIFQ6:
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
             df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
             
-            erros = df_filtrado[df_filtrado['NM_COVA'] == 0]
+            erros = df_filtrado[df_filtrado['NM_COVA'] == 0] 
+            #o codigo deveria pegar todos esses nm_cova com 0 e transformar para 1 E SE  o cd_01 for igual a L deverá ser N.
+            #o codigo nao pode fazer com que ele pule uma linha se tiver L ele devera continuar contando igualmente se a cova for igual 1 a proxima cova depois de L deverá ser 2 se não estiver dentro da cova que está o L.
+            #e ele tem q continuar contando conforme a quantidade de L seguidos que apareceu depois de ter um N ou seja o fuste vai sendo alterado para 1,2,3,4,5...etc infinitamente conforme a sequencia.
             if not erros.empty:
                 print(f"Erros encontrados no arquivo '{path}':")
                 print(erros)
