@@ -48,7 +48,7 @@ class OtimizadorIFQ6:
             
             df_filtrado = df[colunas_a_manter].copy()
             
-            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+            df_filtrado['grupo'] = (df_filtrado['NM_COVA'] != df_filtrado['NM_COVA'].shift()).cumsum()
             df_filtrado['NM_COVA'] = 1
             
             filename = os.path.basename(path)
@@ -62,7 +62,7 @@ class OtimizadorIFQ6:
                 atual = df_filtrado.iloc[idx]
                 anterior = df_filtrado.iloc[idx - 1]
 
-                if atual['NM_FILA'] == anterior['NM_FILA']:
+                if atual['NM_COVA'] == anterior['NM_COVA']:
                     if atual['CD_01'] == 'L':
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
                         if anterior['CD_01'] == 'N':
@@ -77,12 +77,12 @@ class OtimizadorIFQ6:
             df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
 
             # Verificar e corrigir o primeiro 'L' em cada grupo de NM_COVA
-            for (nm_fila, nm_cova), grupo in df_filtrado.groupby(['NM_FILA', 'NM_COVA']):
+            for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
                 primeiro_index = grupo.index[0]
                 
                 # Se o primeiro registro do grupo for 'L', altera para 'N'
                 if df_filtrado.at[primeiro_index, 'CD_01'] == 'L':
-                    print(f"Ajustando NM_FILA {nm_fila}, NM_COVA {nm_cova}: Alterando 'L' para 'N'.")
+                    print(f"Ajustando NM_COVA {nm_cova}: Alterando 'L' para 'N'.")
                     df_filtrado.at[primeiro_index, 'CD_01'] = 'N'
 
             lista_df.append(df_filtrado)
