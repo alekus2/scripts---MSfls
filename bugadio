@@ -84,6 +84,11 @@ class OtimizadorIFQ6:
                         idx_maior_altura = candidatos.sort_values(['NM_ALTURA', 'DT_INICIAL'], ascending=[False, True]).index[0]
                         df_filtrado.at[idx_maior_altura, 'CD_01'] = 'N'
 
+                        # Força a alteração do primeiro registro, se necessário
+                        idx_primeiro = candidatos.index[0]
+                        if idx_primeiro != idx_maior_altura:
+                            df_filtrado.at[idx_primeiro, 'CD_01'] = 'N'
+
             lista_df.append(df_filtrado)
         
         if lista_df:
