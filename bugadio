@@ -76,15 +76,13 @@ class OtimizadorIFQ6:
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
             df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
 
-            # Forçar a conversão do primeiro 'L' em 'N' se não houver 'N' antes dele para o mesmo NM_COVA
             for (nm_fila, nm_cova), grupo in df_filtrado.groupby(['NM_FILA', 'NM_COVA']):
-                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist()
+                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist() #o indice deveria ser da nm cova inteira pois fica mais facil pegar conforme o primeiro index dentro do grupo em nm cova, um exemplo seria nm cova = 1 e cd_01 = 'L' então tem que ser alterado para 'N'.
 
                 if indices_l:
                     primeiro_l = indices_l[0]
 
-                    # Se antes do primeiro 'L' não houver 'N' no mesmo NM_COVA, forçar a conversão
-                    if not (grupo.loc[:primeiro_l - 1, 'CD_01'] == 'N').any():
+                    if not (grupo.loc[:primeiro_l, 'CD_01'] == 'N').any():
                         df_filtrado.at[primeiro_l, 'CD_01'] = 'N'
 
             lista_df.append(df_filtrado)
