@@ -47,43 +47,43 @@ class OtimizadorIFQ6:
                     colunas_a_manter.append(coluna_codigos)
             
             df_filtrado = df[colunas_a_manter].copy()
-            
-            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            df_filtrado['NM_COVA'] = 1
-            
+
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
-            
+
             df_filtrado['TEMP_FUSTE'] = 1
-            
+            df_filtrado['NM_COVA'] = 1
+
             for idx in range(1, len(df_filtrado)):
                 atual = df_filtrado.iloc[idx]
                 anterior = df_filtrado.iloc[idx - 1]
 
-                if atual['NM_FILA'] == anterior['NM_FILA']:
-                    if atual['CD_01'] == 'L':
-                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                        if anterior['CD_01'] == 'N':
-                            df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
-                        else:
-                            df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
-                    else:
-                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
-                        df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
+                if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N' and atual['NM_COVA'] == anterior['NM_COVA']:
+                    df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
+                    df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                elif atual['CD_01'] == 'L' and atual['NM_COVA'] == anterior['NM_COVA']:
+                    df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
+                    df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                else:
+                    df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
+                    df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
 
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
-            df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
+            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
 
-            for (nm_fila, nm_cova), grupo in df_filtrado.groupby(['NM_FILA', 'NM_COVA']):
-                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist() #o indice deveria ser da nm cova inteira pois fica mais facil pegar conforme o primeiro index dentro do grupo em nm cova, um exemplo seria nm cova = 1 e cd_01 = 'L' então tem que ser alterado para 'N'.
+            # Agrupando por 'NM_COVA' e ajustando o 'L' para 'N'
+            for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
+                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist()
 
                 if indices_l:
+                    # Encontrar o primeiro 'L' e verificar se há 'N' antes dele
                     primeiro_l = indices_l[0]
-
                     if not (grupo.loc[:primeiro_l, 'CD_01'] == 'N').any():
+                        # Alterar o primeiro 'L' para 'N'
                         df_filtrado.at[primeiro_l, 'CD_01'] = 'N'
+                        print(f"Alterando o 'L' para 'N' no índice {primeiro_l}, grupo NM_COVA: {nm_cova}")
 
             lista_df.append(df_filtrado)
         
