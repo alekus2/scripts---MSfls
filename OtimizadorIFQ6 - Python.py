@@ -5,7 +5,6 @@ import re
 
 class OtimizadorIFQ6:
     def validacao(self, paths, colunas_codigos):
-        # Colunas esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -55,7 +54,7 @@ class OtimizadorIFQ6:
             df_filtrado = df[colunas_a_manter].copy()
             
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
+            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
             df_filtrado.drop(columns=['grupo'], inplace=True)
             df_filtrado['CD_TALHAO'] = df_filtrado['CD_TALHAO'].astype(str).apply(lambda x: x.zfill(3)[-3:])
           
@@ -73,6 +72,20 @@ class OtimizadorIFQ6:
                         lambda row: row['NM_COVA'] - 1 if str(row[col]) == 'L' else row['NM_COVA'],
                         axis=1
                     )
+            #VALIDAÇÕES PARA CORREÇÃO
+
+            #dentro da planilha não pode existir 'nm_cova' == 0
+            #para verificar se o L esta dentro da cova correta o codigo deverá ver se existe covas com codigos repetidos e conforme as repetiçoes desses deverá adicionar +1 em fuste ate acabar a cova que esta em processo.
+            #exemplo: a 'nm_cova' é 1 e o 'cd_01' é N (caso contrario, não for N ele deverá alterar para N e continuar com as proximas verificações)  mas a proxima cova é 1 tambem e se o cd dela é  L então o fuste deverá ser == a 2, caso contrario deverá ajustar, e se a proxima cova for igual 1 denovo e cd for L o fuste deverá ser 3 e assim sucessivamente ate acabar esta 'nm_cova' ou seja suas repetições.
+            #em vez de ser -1 ele deverá ser == a 'nm_cova' anterior se o 'cd_01' for == L e se a 'nm_cova' anterior for == N, pois se não seguir esta ordem ele deverá entrar em outra validação. 
+            #se um grupo começar com 'cd_01' sendo L e a nm_cova for 1, 'cd_01' deverá ser == a N e sempre que tiver um L depois de um N o 'nm_fuste' tem que ser  == a 2 ou mais dependendo da quantidade de L que aparecer.
+            #uma possivel solução seria criar uma coluna temporaria somente para verificar os L que irao aparecer e se ficaram de acordo com oque foi pedido.
+
+            #CASO NÃO EXISTA JEITO DE FAZER ISSO.
+
+            #o codigo então deverá apresentar ao usuario cada erro para que o usuario veja a contagem de erros e as verifique que no caso são as validações citadas acima.
+            #a mensagem de erro tem que ser especifica dentro da junção das planihas ele deverá alterar a cor da linha em que o erro ocorreu para destacar este erro.
+            #ele deverá mostrar a causa do erro e sua solução para o usuario saber oque deve ser feito.
             
             lista_df.append(df_filtrado)
         
