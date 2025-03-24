@@ -1,4 +1,3 @@
-
 import pandas as pd
 import os
 import re
@@ -39,8 +38,6 @@ class OtimizadorIFQ6:
                 if coluna_codigos in df.columns:
                     codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
                     if codigos_encontrados.any():
-                        print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
-                        print(df.loc[codigos_encontrados, coluna_codigos].unique())
                         colunas_a_manter.append(coluna_codigos)
                     else:
                         df[coluna_codigos] = pd.NA
@@ -52,47 +49,43 @@ class OtimizadorIFQ6:
             df_filtrado = df[colunas_a_manter].copy()
             
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
-            df_filtrado.drop(columns=['grupo'], inplace=True)
-            df_filtrado['CD_TALHAO'] = df_filtrado['CD_TALHAO'].astype(str).apply(lambda x: x.zfill(3)[-3:])
-          
+            df_filtrado['NM_COVA'] = 1
+            
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
             
-            for col in ['CD_01', 'CD_02', 'CD_03']:
-                if col in df_filtrado.columns:
-                    df_filtrado['NM_COVA'] = df_filtrado.apply(
-                        lambda row: row['NM_COVA'] if str(row[col]) != 'L' else row['NM_COVA'] - 1,
-                        axis=1
-                    )
-
             df_filtrado['TEMP_FUSTE'] = 1
+            
             for idx in range(1, len(df_filtrado)):
                 atual = df_filtrado.iloc[idx]
                 anterior = df_filtrado.iloc[idx - 1]
 
-                if atual['NM_COVA'] == anterior['NM_COVA']:
+                if atual['NM_FILA'] == anterior['NM_FILA']:
                     if atual['CD_01'] == 'L':
-                        df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
-                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
-                        df_filtrado.at[idx, 'CD_01'] = 'N'
+                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                        if anterior['CD_01'] == 'N':
+                            df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
+                        else:
+                            df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
+                    else:
+                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
                         df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
 
-                if atual['NM_COVA'] == 0:
-                    print(f"Erro: 'NM_COVA' igual a 0 na linha {idx + 1} do arquivo '{path}'.")
-
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
-            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
-            
-            erros = df_filtrado[df_filtrado['NM_COVA'] == 0] 
-            #o codigo deveria pegar todos esses nm_cova com 0 e transformar para 1 E SE  o cd_01 for igual a L deverá ser N.
-            #o codigo nao pode fazer com que ele pule uma linha se tiver L ele devera continuar contando igualmente se a cova for igual 1 a proxima cova depois de L deverá ser 2 se não estiver dentro da cova que está o L.
-            #e ele tem q continuar contando conforme a quantidade de L seguidos que apareceu depois de ter um N ou seja o fuste vai sendo alterado para 1,2,3,4,5...etc infinitamente conforme a sequencia.
-            if not erros.empty:
-                print(f"Erros encontrados no arquivo '{path}':")
-                print(erros)
+            df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
+
+            # Forçar a conversão do primeiro 'L' em 'N' dentro de cada NM_COVA, se não houver 'N' antes
+            for (nm_fila, nm_cova), grupo in df_filtrado.groupby(['NM_FILA', 'NM_COVA']):
+                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist()
+
+                if indices_l:
+                    primeiro_l = indices_l[0]
+
+                    # Se antes do primeiro 'L' não houver 'N' na mesma NM_FILA e NM_COVA, forçar a conversão
+                    if not (grupo.loc[:primeiro_l - 1, 'CD_01'] == 'N').any():
+                        df_filtrado.at[primeiro_l, 'CD_01'] = 'N'
 
             lista_df.append(df_filtrado)
         
