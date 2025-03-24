@@ -65,10 +65,14 @@ class OtimizadorIFQ6:
                 anterior = df_filtrado.iloc[idx - 1]
 
                 if atual['NM_COVA'] == anterior['NM_COVA']:
-                    if atual['CD_01'] == 'L':
+                    # Se for L e o anterior for N, o fuste deve ser 2
+                    if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N':
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
+                    # Se for L e já houver outro L antes, incrementa o fuste
+                    elif atual['CD_01'] == 'L' and anterior['CD_01'] == 'L':
                         df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
-                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
-                        df_filtrado.at[idx, 'CD_01'] = 'N'
+                    # Se for N e a cova é a mesma, resetar o fuste para 1
+                    elif atual['CD_01'] == 'N':
                         df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
 
                 if atual['NM_COVA'] == 0:
