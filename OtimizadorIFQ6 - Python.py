@@ -38,8 +38,6 @@ class OtimizadorIFQ6:
                 if coluna_codigos in df.columns:
                     codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
                     if codigos_encontrados.any():
-
-
                         colunas_a_manter.append(coluna_codigos)
                     else:
                         df[coluna_codigos] = pd.NA
@@ -47,6 +45,7 @@ class OtimizadorIFQ6:
                 else:
                     df[coluna_codigos] = pd.NA
                     colunas_a_manter.append(coluna_codigos)
+
             df_filtrado = df[colunas_a_manter].copy()
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
             df_filtrado['NM_COVA'] = 1
@@ -65,23 +64,25 @@ class OtimizadorIFQ6:
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
                         if anterior['CD_01'] == 'N':
                             df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
-                        elif atual['CD_01'] == 'L' and atual['NM_COVA'] == 1:
-                            df_filtrado.at[idx, 'CD_01'] = 'N'
+                        if atual['NM_COVA'] == 1:
+                            df_filtrado.at[idx, 'CD_01'] = 'N'  # Altera para 'N' se NM_COVA for 1
                         else:
                             df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
                     else:
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
                         df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
 
-            df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
+            # Contando fuste dos L
+            cont_fuste = 0
+            for idx in range(len(df_filtrado)):
+                if df_filtrado.at[idx, 'CD_01'] == 'L':
+                    cont_fuste += 1
+                    df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
+                else:
+                    cont_fuste = 0  # Reinicia o contador ao encontrar um código diferente de 'L'
+            
             df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
 
-            for (nm_fila, nm_cova), grupo in df_filtrado.groupby(['NM_FILA', 'NM_COVA']):
-                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist()
-                if indices_l:
-                    primeiro_l = indices_l[0]
-                    if not (grupo.loc[:primeiro_l - 1, 'CD_01'] == 'N').any():
-                        df_filtrado.at[primeiro_l, 'CD_01'] = 'N'
             lista_df.append(df_filtrado)
 
         if lista_df:
