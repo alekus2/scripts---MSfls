@@ -16,7 +16,7 @@ class OtimizadorIFQ6:
 
         codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
 
-        lista_df = []
+        lista_df = [] 
 
         for path in paths:
             if not os.path.exists(path):
@@ -38,49 +38,65 @@ class OtimizadorIFQ6:
                 if coluna_codigos in df.columns:
                     codigos_encontrados = df[coluna_codigos].astype(str).str.upper().isin(codigos_validos)
                     if codigos_encontrados.any():
+                        print(f"Códigos válidos encontrados na coluna '{coluna_codigos}' no arquivo '{path}':")
+                        print(df.loc[codigos_encontrados, coluna_codigos].unique())
                         colunas_a_manter.append(coluna_codigos)
                     else:
+
                         df[coluna_codigos] = pd.NA
                         colunas_a_manter.append(coluna_codigos)
                 else:
+
                     df[coluna_codigos] = pd.NA
                     colunas_a_manter.append(coluna_codigos)
 
             df_filtrado = df[colunas_a_manter].copy()
 
+            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+            df_filtrado.drop(columns=['grupo'], inplace=True)
+            df_filtrado['CD_TALHAO'] = df_filtrado['CD_TALHAO'].astype(str).apply(lambda x: x.zfill(3)[-3:])
+
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
+
+
+
             df_filtrado['EQUIPES'] = equipe
 
-            df_filtrado['TEMP_FUSTE'] = 1
-            df_filtrado['NM_COVA'] = 1
+            for col in ['CD_01', 'CD_02', 'CD_03']:
+                if col in df_filtrado.columns:
+                    df_filtrado['NM_COVA'] = df_filtrado.apply(
+                        lambda row: row['NM_COVA'] if str(row[col]) != 'L' else row['NM_COVA'] - 1,
+                        axis=1
+                    )
 
+
+            df_filtrado['TEMP_FUSTE'] = 1
             for idx in range(1, len(df_filtrado)):
                 atual = df_filtrado.iloc[idx]
                 anterior = df_filtrado.iloc[idx - 1]
 
-                if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N' and atual['NM_COVA'] == anterior['NM_COVA']:
-                    df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
-                    df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                elif atual['CD_01'] == 'L' and atual['NM_COVA'] == anterior['NM_COVA']:
-                    df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
-                    df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                else:
-                    df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
-                    df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
+                if atual['NM_COVA'] == anterior['NM_COVA']:
+                    if atual['CD_01'] == 'L':
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[anterior[idx], 'TEMP_FUSTE'] + 1
+                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
+                        df_filtrado.at[idx, 'CD_01'] = 'N'
+                        df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
+                    elif atual['CD_01'] == 'L' and not anterior['CD_01'] == 'N':
+                        df_filtrado.at[idx,'CD_01'] = 'N'
+                if atual['NM_COVA'] == 0:
+                    print(f"Erro: 'NM_COVA' igual a 0 na linha {idx} do arquivo '{path}'.")
 
             df_filtrado['NM_FUSTE'] = df_filtrado['TEMP_FUSTE']
-            df_filtrado.drop(columns='TEMP_FUSTE', inplace=True)
+            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
 
-            for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
-                indices_l = grupo.index[grupo['CD_01'] == 'L'].tolist()
 
-                if indices_l:
-                    primeiro_l = indices_l[0]
-
-                    if not (grupo.loc[:primeiro_l - 1, 'CD_01'] == 'N').any():
-                        df_filtrado.at[primeiro_l, 'CD_01'] = 'N'
+            erros = df_filtrado[df_filtrado['NM_COVA'] == 0]
+            if not erros.empty:
+                print(f"Erros encontrados no arquivo '{path}':")
+                print(erros)
 
             lista_df.append(df_filtrado)
 
@@ -91,7 +107,6 @@ class OtimizadorIFQ6:
             print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
-
 
 # Exemplo de uso:
 otimizador = OtimizadorIFQ6()
