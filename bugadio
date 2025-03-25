@@ -49,8 +49,8 @@ class OtimizadorIFQ6:
 
             df_filtrado = df[colunas_a_manter].copy()
 
-            # Formata CD_TALHAO com 3 dígitos (por exemplo, 001, 002, ...)
-            df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str.zfill(3)
+            # Formata CD_TALHAO: pega os últimos 3 dígitos e preenche com zeros à esquerda se necessário.
+            df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
             # Define a equipe a partir do nome do arquivo
             filename = os.path.basename(path)
