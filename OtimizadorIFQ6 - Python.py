@@ -3,7 +3,7 @@ import os
 import re
 
 class OtimizadorIFQ6:
-    def validacao(self, paths, colunas_codigos):
+    def validacao(self, paths):
         # Lista de colunas esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
@@ -14,7 +14,6 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-        # Códigos válidos (A até W)
         codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
 
         lista_df = []
@@ -33,36 +32,19 @@ class OtimizadorIFQ6:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
 
-            # Inclui as colunas de código, se existirem
             colunas_a_manter = nomes_colunas.copy()
-            for coluna_codigos in colunas_codigos:
-                coluna_codigos = coluna_codigos.upper()
-                if coluna_codigos in df.columns:
-                    if df[coluna_codigos].astype(str).str.upper().isin(codigos_validos).any():
-                        colunas_a_manter.append(coluna_codigos)
-                    else:
-                        df[coluna_codigos] = pd.NA
-                        colunas_a_manter.append(coluna_codigos)
-                else:
-                    df[coluna_codigos] = pd.NA
-                    colunas_a_manter.append(coluna_codigos)
-
             df_filtrado = df[colunas_a_manter].copy()
 
-            # Define a equipe a partir do nome do arquivo
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
 
-            # Inicializa NM_COVA e TEMP_FUSTE
             df_filtrado['NM_COVA'] = 1
             df_filtrado['TEMP_FUSTE'] = 1
 
-            # Atribui NM_COVA de forma sequencial dentro de cada NM_FILA
             for idx in range(1, len(df_filtrado)):
                 if df_filtrado.at[idx, 'NM_FILA'] == df_filtrado.at[idx - 1, 'NM_FILA']:
-                    # Se CD_01 for "L", mantém a mesma cova; caso contrário, inicia nova cova
                     if df_filtrado.at[idx, 'CD_01'] == 'L':
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
                     else:
@@ -70,22 +52,19 @@ class OtimizadorIFQ6:
                 else:
                     df_filtrado.at[idx, 'NM_COVA'] = 1
 
-            # Se o primeiro registro de uma cova for "L", forçamos a alteração para "N"
             for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
                 primeiro_indice = grupo.index[0]
                 if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
                     df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
                     print(f"Grupo NM_COVA {nm_cova}: alterado índice {primeiro_indice} de 'L' para 'N'.")
 
-            # Recalcula NM_FUSTE reiniciando a contagem para cada grupo (NM_COVA)
             for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
-                cont_fuste = 0  # reinicia para cada grupo
+                cont_fuste = 0 
                 for idx in sorted(grupo.index):
                     if df_filtrado.at[idx, 'CD_01'] == 'N':
-                        cont_fuste = 1  # padrão para N
+                        cont_fuste = 1  
                         df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
                     else:
-                        # Se for 'L' e for o primeiro 'L' do grupo, define como 2
                         if cont_fuste == 1:
                             cont_fuste = 2
                         else:
@@ -112,4 +91,4 @@ arquivos = [
     '/content/Base_dados_EQ_02.xlsx',
     '/content/Base_dados_EQ_03.xlsx'
 ]
-otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
+otimizador.validacao(arquivos)
