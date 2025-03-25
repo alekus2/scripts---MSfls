@@ -79,7 +79,7 @@ class OtimizadorIFQ6:
             for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
                 cont_fuste = 0  # reinicia para cada grupo
                 for idx in sorted(grupo.index):
-                    if df_filtrado.at[idx, 'CD_01'] == ('A','B','C','D',E,F,G,H,I,J,K,M,N,O,P,Q,U,V,W):
+                    if df_filtrado.at[idx, 'CD_01'] == ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W'):
                         cont_fuste = 1  # padrão para N
                         df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
                     else:
