@@ -49,51 +49,50 @@ class OtimizadorIFQ6:
 
             df_filtrado = df[colunas_a_manter].copy()
 
-            # Determina a equipe a partir do nome do arquivo
+            # Define a equipe a partir do nome do arquivo
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
 
-            # Inicializa NM_COVA. Aqui, para simplificar, a lógica atribui NM_COVA de forma sequencial:
+            # Inicializa NM_COVA e TEMP_FUSTE
             df_filtrado['NM_COVA'] = 1
+            df_filtrado['TEMP_FUSTE'] = 1
+
+            # Atribui NM_COVA de forma sequencial dentro de cada NM_FILA
             for idx in range(1, len(df_filtrado)):
-                # Se a linha atual pertencer à mesma fila (NM_FILA) que a anterior, 
-                # assume que se CD_01 for "L" o registro continua na mesma cova;
-                # caso contrário, considera-se o início de uma nova cova.
                 if df_filtrado.at[idx, 'NM_FILA'] == df_filtrado.at[idx - 1, 'NM_FILA']:
+                    # Se CD_01 for "L", mantém a mesma cova; caso contrário, inicia nova cova
                     if df_filtrado.at[idx, 'CD_01'] == 'L':
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
                     else:
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
                 else:
-                    # Se mudar de NM_FILA, reinicia NM_COVA para 1
                     df_filtrado.at[idx, 'NM_COVA'] = 1
 
-            # Se necessário, podemos ajustar CD_01 para o primeiro registro de cada NM_COVA
-            # caso seja "L" e não haja "N" antes dentro do grupo.
+            # Se o primeiro registro de uma cova for "L", forçamos a alteração para "N"
             for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
                 primeiro_indice = grupo.index[0]
                 if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
                     df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
-                    print(f"Grupo NM_COVA {nm_cova}: alterado CD_01 no índice {primeiro_indice} de 'L' para 'N'.")
+                    print(f"Grupo NM_COVA {nm_cova}: alterado índice {primeiro_indice} de 'L' para 'N'.")
 
-            # Agora, para contar o NM_FUSTE conforme a regra:
-            # Para cada grupo de NM_COVA, percorre os registros e:
-            # - Se CD_01 for "N", NM_FUSTE = 1.
-            # - Se CD_01 for "L", o primeiro "L" recebe 2 e os subsequentes incrementam.
-            for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
-                cont_fuste = 1  # Para registros "N" o padrão é 1.
-                for idx in grupo.index:
+            # Recalcula NM_FUSTE reiniciando a contagem para cada grupo (NM_COVA)
+            for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
+                cont_fuste = 0  # reinicia para cada grupo
+                for idx in sorted(grupo.index):
                     if df_filtrado.at[idx, 'CD_01'] == 'N':
-                        cont_fuste = 1
+                        cont_fuste = 1  # padrão para N
                         df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
-                    else:  # Caso seja 'L'
+                    else:
+                        # Se for 'L' e for o primeiro 'L' do grupo, define como 2
                         if cont_fuste == 1:
-                            cont_fuste = 2  # Primeiro 'L' passa a ser 2
+                            cont_fuste = 2
                         else:
                             cont_fuste += 1
                         df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
+
+            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
 
             lista_df.append(df_filtrado)
 
