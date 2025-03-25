@@ -16,7 +16,7 @@ class OtimizadorIFQ6:
 
         codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
 
-        lista_df = [] 
+        lista_df = []
 
         for path in paths:
             if not os.path.exists(path):
@@ -54,12 +54,13 @@ class OtimizadorIFQ6:
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
             df_filtrado['TEMP_FUSTE'] = 1
-            
+
             for idx in range(1, len(df_filtrado)):
                 atual = df_filtrado.iloc[idx]
                 anterior = df_filtrado.iloc[idx - 1]
 
                 if atual['NM_FILA'] == anterior['NM_FILA']:
+                    # Ajuste para manter o NM_COVA e alterar CD_01 conforme as regras
                     if atual['CD_01'] == 'L':
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
                         if anterior['CD_01'] == 'N':
@@ -72,15 +73,16 @@ class OtimizadorIFQ6:
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
                         df_filtrado.at[idx, 'TEMP_FUSTE'] = 1
 
-            # Contando fuste dos L
+            # Contando fuste de forma cumulativa e reiniciando quando encontrar algo diferente de 'L'
             cont_fuste = 0
             for idx in range(len(df_filtrado)):
                 if df_filtrado.at[idx, 'CD_01'] == 'L':
                     cont_fuste += 1
                     df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
                 else:
-                    cont_fuste = 0  # Reinicia o contador ao encontrar um código diferente de 'L'
-            
+                    cont_fuste = 1  # Reinicia para 1 quando encontra um código diferente de 'L'
+                    df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
+
             df_filtrado.drop(columns=['TEMP_FUSTE', 'grupo'], inplace=True)
 
             lista_df.append(df_filtrado)
