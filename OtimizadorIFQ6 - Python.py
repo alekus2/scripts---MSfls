@@ -64,8 +64,8 @@ class OtimizadorIFQ6:
                         df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
                         if anterior['CD_01'] == 'N':
                             df_filtrado.at[idx, 'TEMP_FUSTE'] = 2
-                        if atual['NM_COVA'] == 1:
-                            df_filtrado.at[idx, 'CD_01'] = 'N'  # Altera para 'N' se NM_COVA for 1
+                        if atual['NM_COVA'] == 1 and atual['CD_01'] == 'L':
+                            df_filtrado.at[idx, 'CD_01'] = 'N'  # Altera para 'N' se NM_COVA for 1 e CD_01 for 'L'
                         else:
                             df_filtrado.at[idx, 'TEMP_FUSTE'] = df_filtrado.at[idx - 1, 'TEMP_FUSTE'] + 1
                     else:
