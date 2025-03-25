@@ -3,7 +3,7 @@ import os
 import re
 
 class OtimizadorIFQ6:
-    def validacao(self, paths):
+    def validacao(self, paths, colunas_codigos):
         # Lista de colunas esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
@@ -14,6 +14,7 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
+        # Códigos válidos (A até W)
         codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
 
         lista_df = []
@@ -32,46 +33,59 @@ class OtimizadorIFQ6:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
 
+            # Acrescenta as colunas de código especificadas, se necessário
             colunas_a_manter = nomes_colunas.copy()
+            for coluna_codigos in colunas_codigos:
+                coluna_codigos = coluna_codigos.upper()
+                if coluna_codigos in df.columns:
+                    if df[coluna_codigos].astype(str).str.upper().isin(codigos_validos).any():
+                        colunas_a_manter.append(coluna_codigos)
+                    else:
+                        df[coluna_codigos] = pd.NA
+                        colunas_a_manter.append(coluna_codigos)
+                else:
+                    df[coluna_codigos] = pd.NA
+                    colunas_a_manter.append(coluna_codigos)
+
             df_filtrado = df[colunas_a_manter].copy()
 
+            # Ajuste da coluna CD_TALHAO para os 3 últimos dígitos preenchidos com zeros à esquerda
+            df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
+
+            # Extrai a equipe a partir do nome do arquivo
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
             df_filtrado['EQUIPES'] = equipe
 
+            # Define NM_COVA – neste exemplo, mantemos como 1
             df_filtrado['NM_COVA'] = 1
-            df_filtrado['TEMP_FUSTE'] = 1
 
-            for idx in range(1, len(df_filtrado)):
-                if df_filtrado.at[idx, 'NM_FILA'] == df_filtrado.at[idx - 1, 'NM_FILA']:
-                    if df_filtrado.at[idx, 'CD_01'] == 'L':
-                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                    else:
-                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
-                else:
-                    df_filtrado.at[idx, 'NM_COVA'] = 1
+            # Observação: Não realizamos transformação da coluna NM_FUSTE, usando os valores já existentes.
 
-            for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
-                primeiro_indice = grupo.index[0]
-                if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
-                    df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
-                    print(f"Grupo NM_COVA {nm_cova}: alterado índice {primeiro_indice} de 'L' para 'N'.")
+            # --- Verificação de Duplicidade ---
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
+            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
+                                               .map({True: 'verificar', False: 'ok'})
 
-            for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
-                cont_fuste = 0 
-                for idx in sorted(grupo.index):
-                    if df_filtrado.at[idx, 'CD_01'] == 'N':
-                        cont_fuste = 1  
-                        df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
-                    else:
-                        if cont_fuste == 1:
-                            cont_fuste = 2
-                        else:
-                            cont_fuste += 1
-                        df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
+            # --- Verificação dos Códigos em CD_01 ---
+            # Para linhas onde CD_01 NÃO é "L": NM_FUSTE deve ser 1.
+            df_filtrado['check cd'] = df_filtrado.apply(
+                lambda row: 'ok' if row['CD_01'] != 'L' and row['NM_FUSTE'] == 1 else
+                            ('verificar' if row['CD_01'] != 'L' else None),
+                axis=1
+            )
 
-            df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
+            # Para linhas onde CD_01 é "L": NM_FUSTE deve ser >= 2.
+            df_filtrado['check cd_02'] = df_filtrado.apply(
+                lambda row: 'ok' if row['CD_01'] == 'L' and row['NM_FUSTE'] >= 2 else
+                            ('verificar' if row['CD_01'] == 'L' else None),
+                axis=1
+            )
+
+            # Remove a coluna TEMP_FUSTE se existir (mantida do código original)
+            if 'TEMP_FUSTE' in df_filtrado.columns:
+                df_filtrado.drop(columns=['TEMP_FUSTE'], inplace=True)
 
             lista_df.append(df_filtrado)
 
@@ -83,7 +97,6 @@ class OtimizadorIFQ6:
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
-
 # Exemplo de uso:
 otimizador = OtimizadorIFQ6()
 arquivos = [
@@ -91,4 +104,4 @@ arquivos = [
     '/content/Base_dados_EQ_02.xlsx',
     '/content/Base_dados_EQ_03.xlsx'
 ]
-otimizador.validacao(arquivos)
+otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
