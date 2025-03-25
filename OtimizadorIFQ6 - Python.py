@@ -71,43 +71,42 @@ class OtimizadorIFQ6:
                     df_filtrado.at[idx, 'NM_COVA'] = 1
 
             # --- Ajuste do primeiro índice de cada grupo NM_COVA se CD_01 for 'L' ---
-            for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
-                primeiro_indice = grupo.index[0]
-                if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
-                    df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
-                    print(f"Grupo NM_COVA {nm_cova}: alterado índice {primeiro_indice} de 'L' para 'N'.")
+            # for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
+            #     primeiro_indice = grupo.index[0]
+            #     if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
+            #         df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
+            #         print(f"Grupo NM_COVA {nm_cova}: alterado índice {primeiro_indice} de 'L' para 'N'.")
 
             # --- Contagem de NM_FUSTE por grupo de NM_COVA ---
             valid_letters = ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W')
-            for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
-                cont_fuste = 0  # reinicia para cada grupo
-                for idx in sorted(grupo.index):
-                    if df_filtrado.at[idx, 'CD_01'] in valid_letters:
-                        cont_fuste = 1  # padrão para quando não for 'L'
-                        df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
-                    else:  # para CD_01 igual a 'L'
-                        if cont_fuste < 2:
-                            cont_fuste = 2
-                        else:
-                            cont_fuste += 1
-                        df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
+            # for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
+            #     cont_fuste = 0  # reinicia para cada grupo
+            #     for idx in sorted(grupo.index):
+            #         if df_filtrado.at[idx, 'CD_01'] in valid_letters:
+            #             cont_fuste = 1  # padrão para quando não for 'L'
+            #             df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
+            #         else:  # para CD_01 igual a 'L'
+            #             if cont_fuste < 2:
+            #                 cont_fuste = 2
+            #             else:
+            #                 cont_fuste += 1
+            #             df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
 
             # --- Verificação de Duplicidade ---
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
-                                               .map({True: 'verificar', False: 'ok'})
+                                               .map({True: 'VERIFICAR', False: 'OK'})
 
             # --- Verificação dos Códigos em CD_01 ---
             # Para linhas onde CD_01 NÃO é "L": NM_FUSTE deve ser 1.
             df_filtrado['check cd'] = df_filtrado.apply(
-                lambda row: 'ok' if row['CD_01'] != 'L' and row['NM_FUSTE'] == 1 else
-                            ('verificar' if row['CD_01'] != 'L' else None),
+                lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
+                            ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else None),
                 axis=1
             )
             # Para linhas onde CD_01 é "L": NM_FUSTE deve ser >= 2.
             df_filtrado['check cd_02'] = df_filtrado.apply(
-                lambda row: 'ok' if row['CD_01'] == 'L' and row['NM_FUSTE'] >= 2 else
-                            ('verificar' if row['CD_01'] == 'L' else None),
+                lambda row: 'OK' if row['CD_01'] == 'L' and row['NM_FUSTE'] >= 2 else None,
                 axis=1
             )
 
