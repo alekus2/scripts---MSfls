@@ -35,23 +35,20 @@ class OtimizadorIFQ6:
 
             df_filtrado = df[colunas_a_manter].copy()
 
-            # Identificar duplicatas
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
                                                .map({True: 'VERIFICAR', False: 'OK'})
 
-            # Criar a coluna de chave duplicada
             df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
 
-            # Se a linha estiver marcada como duplicada, manter a chave, senão deixar em branco
             df_filtrado['CHAVE_DUPLICADA'] = df_filtrado.apply(
                 lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
                 axis=1
             )
-
-            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
-            df_filtrado.drop(columns=['grupo'], inplace=True)
+            if not df_filtrado['check dup'] == 'VERIFICAR':
+              df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+              df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+              df_filtrado.drop(columns=['grupo'], inplace=True)
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
@@ -93,3 +90,21 @@ arquivos = [
     '/content/Base_dados_EQ_03.xlsx'
 ]
 otimizador.validacao(arquivos)
+
+Processando o arquivo: /content/Base_dados_EQ_01 - Copia.xlsx
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-8-961684d02176> in <cell line: 0>()
+     90     '/content/Base_dados_EQ_03.xlsx'
+     91 ]
+---> 92 otimizador.validacao(arquivos)
+
+1 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/generic.py in __nonzero__(self)
+   1575     @final
+   1576     def __nonzero__(self) -> NoReturn:
+-> 1577         raise ValueError(
+   1578             f"The truth value of a {type(self).__name__} is ambiguous. "
+   1579             "Use a.empty, a.bool(), a.item(), a.any() or a.all()."
+
+ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
