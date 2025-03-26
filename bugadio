@@ -44,7 +44,6 @@ class OtimizadorIFQ6:
                 axis=1
             )
             
-            # Verifica se existe alguma linha com 'VERIFICAR' em 'check dup'
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
                 df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
@@ -55,7 +54,7 @@ class OtimizadorIFQ6:
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
-            
+            print(equipe)
             df_filtrado['EQUIPES'] = equipe
 
             valid_letters = ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W')
@@ -76,7 +75,7 @@ class OtimizadorIFQ6:
             mes_atual = datetime.now().month 
             nome_mes = meses[mes_atual - 1]  
             
-            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), f'Base_dados_unificadas_{nome_mes}.xlsx')
+            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), f'IFQ6_dados_{nome_mes}_EPS01.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
         else:
@@ -84,9 +83,5 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = [
-    '/content/Base_dados_EQ_01 - Copia.xlsx',
-    '/content/Base_dados_EQ_02.xlsx',
-    '/content/Base_dados_EQ_03.xlsx'
-]
+arquivos = ['/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx','/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx','/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx']
 otimizador.validacao(arquivos)
