@@ -1,6 +1,7 @@
 import pandas as pd
 import os
 import re
+from datetime import datetime
 
 class OtimizadorIFQ6:
     def validacao(self, paths):
@@ -62,7 +63,15 @@ class OtimizadorIFQ6:
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), 'Base_dados_unificadas_modificado.xlsx')
+            # Mapeamento dos meses para português
+            meses = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ]
+            mes_atual = datetime.now().month  # Número do mês
+            nome_mes = meses[mes_atual - 1]  # Ajusta o índice para começar em 0
+            
+            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), f'Base_dados_unificadas_modificado_{nome_mes}.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
         else:
