@@ -1,17 +1,3 @@
-# Ordena o DataFrame apenas por NM_FILA e reseta o índice
-df_filtrado = df_filtrado.sort_values(by=['NM_FILA']).reset_index(drop=True)
-
-# Inicializa a coluna NM_COVA com 1 para a primeira linha
-df_filtrado['NM_COVA'] = 1
-
-# Itera sobre o DataFrame
-for idx in range(1, len(df_filtrado)):
-    # Se o valor de NM_FILA for igual ao da linha anterior, incrementa NM_COVA
-    if df_filtrado.at[idx, 'NM_FILA'] == df_filtrado.at[idx - 1, 'NM_FILA']:
-        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
-    else:
-        # Se NM_FILA mudar, reinicia NM_COVA para 1
-        df_filtrado.at[idx, 'NM_COVA'] = 1
 import pandas as pd
 import os
 import re
@@ -41,7 +27,9 @@ class OtimizadorIFQ6:
 
             df = pd.read_excel(path)
             df.columns = [col.upper() for col in df.columns]
-
+            
+          
+            
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
             if colunas_faltando:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
@@ -62,6 +50,10 @@ class OtimizadorIFQ6:
                     colunas_a_manter.append(coluna_codigos)
 
             df_filtrado = df[colunas_a_manter].copy()
+            
+            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+            df_filtrado.drop(columns=['grupo'], inplace=True)
 
             # Ajuste da coluna CD_TALHAO para os 3 últimos dígitos preenchidos com zeros à esquerda
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
@@ -70,19 +62,8 @@ class OtimizadorIFQ6:
             filename = os.path.basename(path)
             match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
             equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
+            
             df_filtrado['EQUIPES'] = equipe
-
-            # --- Contagem de NM_COVA por grupo (baseado em NM_FILA) ---
-            df_filtrado = df_filtrado.sort_values(by=['NM_FILA']).reset_index(drop=True)
-            df_filtrado['NM_COVA'] = 1  # valor inicial
-            for idx in range(1, len(df_filtrado)):
-                if df_filtrado.at[idx, 'NM_FILA'] == df_filtrado.at[idx - 1, 'NM_FILA']:
-                    if df_filtrado.at[idx, 'CD_01'] == 'L':
-                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                    else:
-                        df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA'] + 1
-                else:
-                    df_filtrado.at[idx, 'NM_COVA'] = 1
 
             # --- Ajuste do primeiro índice de cada grupo NM_COVA se CD_01 for 'L' ---
             # for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
@@ -106,19 +87,15 @@ class OtimizadorIFQ6:
             #                 cont_fuste += 1
             #             df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
 
-            # --- Verificação de Duplicidade ---
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
                                                .map({True: 'VERIFICAR', False: 'OK'})
 
-            # --- Verificação dos Códigos em CD_01 ---
-            # Para linhas onde CD_01 NÃO é "L": NM_FUSTE deve ser 1.
             df_filtrado['check cd'] = df_filtrado.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
                             ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else None),
                 axis=1
             )
-            # Para linhas onde CD_01 é "L": NM_FUSTE deve ser >= 2.
             df_filtrado['check cd_02'] = df_filtrado.apply(
                 lambda row: 'OK' if row['CD_01'] == 'L' and row['NM_FUSTE'] >= 2 else None,
                 axis=1
