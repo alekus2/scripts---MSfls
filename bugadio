@@ -51,13 +51,18 @@ class OtimizadorIFQ6:
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            filename = os.path.basename(path)
-            match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
-            equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
-            print(equipe)
+            # Verificar se algum dos nomes está no nome do arquivo
+            filename = os.path.basename(path).upper()  # Obtém o nome do arquivo em letras maiúsculas para comparação
+            equipes_possiveis = ['BRAVORE', 'LEBATEC', 'PROPRIA']
+            equipe = next((equipe for equipe in equipes_possiveis if equipe in filename), None)
+
+            if equipe is None:
+                equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ")
+            
+            print(f"Equipe identificada: {equipe}")
             df_filtrado['EQUIPES'] = equipe
 
-            valid_letters = ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W')
+            valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
 
             df_filtrado['check cd'] = df_filtrado.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
@@ -83,5 +88,5 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = ['/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx','/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx','/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx']
+arquivos = ['/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx', '/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx', '/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx']
 otimizador.validacao(arquivos)
