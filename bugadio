@@ -35,10 +35,19 @@ class OtimizadorIFQ6:
 
             df_filtrado = df[colunas_a_manter].copy()
 
+            # Identificar duplicatas
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
                                                .map({True: 'VERIFICAR', False: 'OK'})
-            #se estiver duplicado os dados da linha que esta duplicada não será alterada e o codigo deverá criar uma coluna nova com a chave onde estarao todas as colunas que foram duplicadas e seus dados algo tipo: 6663-003-1-1-1-4,2-N 
+
+            # Criar a coluna de chave duplicada
+            df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
+
+            # Se a linha estiver marcada como duplicada, manter a chave, senão deixar em branco
+            df_filtrado['CHAVE_DUPLICADA'] = df_filtrado.apply(
+                lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
+                axis=1
+            )
 
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
             df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
@@ -53,7 +62,6 @@ class OtimizadorIFQ6:
             df_filtrado['EQUIPES'] = equipe
 
             valid_letters = ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W')
-           
 
             df_filtrado['check cd'] = df_filtrado.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
@@ -77,6 +85,7 @@ class OtimizadorIFQ6:
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
+# Exemplo de uso
 otimizador = OtimizadorIFQ6()
 arquivos = [
     '/content/Base_dados_EQ_01 - Copia.xlsx',
