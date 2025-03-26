@@ -1,10 +1,10 @@
 import pandas as pd
 import os
 import re
+from datetime import datetime
 
 class OtimizadorIFQ6:
-    def validacao(self, paths, colunas_codigos):
-        # Lista de colunas esperadas
+    def validacao(self, paths):
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -14,11 +14,10 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-        # Códigos válidos (A até W)
-        codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
-
+        
         lista_df = []
-
+        equipes_utilizadas = {}
+        
         for path in paths:
             if not os.path.exists(path):
                 print(f"Erro: O arquivo '{path}' não foi encontrado.")
@@ -28,94 +27,94 @@ class OtimizadorIFQ6:
             df = pd.read_excel(path)
             df.columns = [col.upper() for col in df.columns]
             
-          
-            
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
             if colunas_faltando:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
 
-            # Acrescenta as colunas de código especificadas, se necessário
-            colunas_a_manter = nomes_colunas.copy()
-            for coluna_codigos in colunas_codigos:
-                coluna_codigos = coluna_codigos.upper()
-                if coluna_codigos in df.columns:
-                    if df[coluna_codigos].astype(str).str.upper().isin(codigos_validos).any():
-                        colunas_a_manter.append(coluna_codigos)
-                    else:
-                        df[coluna_codigos] = pd.NA
-                        colunas_a_manter.append(coluna_codigos)
-                else:
-                    df[coluna_codigos] = pd.NA
-                    colunas_a_manter.append(coluna_codigos)
+            df_filtrado = df[nomes_colunas].copy()
 
-            df_filtrado = df[colunas_a_manter].copy()
-            
-            df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-            df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
-            df_filtrado.drop(columns=['grupo'], inplace=True)
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
+            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
-            # Ajuste da coluna CD_TALHAO para os 3 últimos dígitos preenchidos com zeros à esquerda
+            df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
+
+            df_filtrado['CHAVE_DUPLICADA'] = df_filtrado.apply(
+                lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
+                axis=1
+            )
+
+            if 'VERIFICAR' not in df_filtrado['check dup'].values:
+                df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+                df_filtrado.drop(columns=['grupo'], inplace=True)
+
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Extrai a equipe a partir do nome do arquivo
-            filename = os.path.basename(path)
-            match = re.search(r'EQ_(\d+)', filename, re.IGNORECASE)
-            equipe = f"ep_{match.group(1).zfill(2)}" if match else "ep_unknown"
+            filename = os.path.basename(path).upper() 
+            equipes_possiveis = ['BRAVORE', 'LEBATEC', 'PROPRIA']
+            equipe = next((equipe for equipe in equipes_possiveis if equipe in filename), None)
+
+            if equipe is None:
+                equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ")
             
-            df_filtrado['EQUIPES'] = equipe
+            if equipe in equipes_utilizadas:
+                equipes_utilizadas[equipe] += 1
+                equipe_final = f"{equipe}_{equipes_utilizadas[equipe]}"
+            else:
+                equipes_utilizadas[equipe] = 1
+                equipe_final = equipe
+            
+            print(f"Equipe identificada: {equipe_final}")
+            df_filtrado['EQUIPES'] = equipe_final
 
-            # --- Ajuste do primeiro índice de cada grupo NM_COVA se CD_01 for 'L' ---
-            # for nm_cova, grupo in df_filtrado.groupby('NM_COVA'):
-            #     primeiro_indice = grupo.index[0]
-            #     if df_filtrado.at[primeiro_indice, 'CD_01'] == 'L':
-            #         df_filtrado.at[primeiro_indice, 'CD_01'] = 'N'
-            #         print(f"Grupo NM_COVA {nm_cova}: alterado índice {primeiro_indice} de 'L' para 'N'.")
-
-            # --- Contagem de NM_FUSTE por grupo de NM_COVA ---
-            valid_letters = ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W')
-            # for nm_cova, grupo in df_filtrado.groupby('NM_COVA', sort=False):
-            #     cont_fuste = 0  # reinicia para cada grupo
-            #     for idx in sorted(grupo.index):
-            #         if df_filtrado.at[idx, 'CD_01'] in valid_letters:
-            #             cont_fuste = 1  # padrão para quando não for 'L'
-            #             df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
-            #         else:  # para CD_01 igual a 'L'
-            #             if cont_fuste < 2:
-            #                 cont_fuste = 2
-            #             else:
-            #                 cont_fuste += 1
-            #             df_filtrado.at[idx, 'NM_FUSTE'] = cont_fuste
-
-            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
-            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
-                                               .map({True: 'VERIFICAR', False: 'OK'})
+            valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
 
             df_filtrado['check cd'] = df_filtrado.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
-                            ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else None),
+                            ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else 'OK'),
                 axis=1
             )
-            df_filtrado['check cd_02'] = df_filtrado.apply(
-                lambda row: 'OK' if row['CD_01'] == 'L' and row['NM_FUSTE'] >= 2 else None,
-                axis=1
-            )
-
             lista_df.append(df_filtrado)
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), 'Base_dados_unificadas_modificado.xlsx')
+            meses = [
+                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+            ]
+            mes_atual = datetime.now().month
+            nome_mes = meses[mes_atual - 1]
+
+            base_dir = os.path.dirname(paths[0])
+            pasta_mes = os.path.join(base_dir, nome_mes)
+            pasta_output = os.path.join(pasta_mes, 'output')
+            pasta_dados = os.path.join(pasta_mes, 'dados')
+
+            os.makedirs(pasta_output, exist_ok=True)
+            os.makedirs(pasta_dados, exist_ok=True)
+
+            for path in paths:
+                nome_arquivo = os.path.basename(path)
+                destino = os.path.join(pasta_dados, nome_arquivo)
+                os.rename(path, destino)
+
+            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS02.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
-            print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
+            print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
-# Exemplo de uso:
+# Exemplo de uso
 otimizador = OtimizadorIFQ6()
 arquivos = [
-    '/content/Base_dados_EQ_01.xlsx',
-    '/content/Base_dados_EQ_02.xlsx',
-    '/content/Base_dados_EQ_03.xlsx'
+    '/content/6271_TABOCA_SRP - IFQ6 (4).xlsx',
+    '/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx',
+    '/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx',
+    '/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx',
+    '/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx',
+    '/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx',
+    '/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx',
+    '/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx'
 ]
-otimizador.validacao(arquivos, ['cd_02', 'cd_03'])
+otimizador.validacao(arquivos)
