@@ -16,7 +16,8 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-
+        equipes_utilizadas = {}  # Dicionário para rastrear quantas vezes cada equipe foi utilizada
+        
         for path in paths:
             if not os.path.exists(path):
                 print(f"Erro: O arquivo '{path}' não foi encontrado.")
@@ -43,7 +44,7 @@ class OtimizadorIFQ6:
                 lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
                 axis=1
             )
-            
+
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
                 df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
@@ -59,8 +60,16 @@ class OtimizadorIFQ6:
             if equipe is None:
                 equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ")
             
-            print(f"Equipe identificada: {equipe}")
-            df_filtrado['EQUIPES'] = equipe
+            # Adiciona sufixo se a equipe já foi utilizada
+            if equipe in equipes_utilizadas:
+                equipes_utilizadas[equipe] += 1
+                equipe_final = f"{equipe}_{equipes_utilizadas[equipe]}"
+            else:
+                equipes_utilizadas[equipe] = 1
+                equipe_final = equipe
+            
+            print(f"Equipe identificada: {equipe_final}")
+            df_filtrado['EQUIPES'] = equipe_final
 
             valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
 
@@ -88,5 +97,7 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = ['/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx', '/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx', '/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx']
+arquivos = ['/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx', 
+            '/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx', 
+            '/content/IFQ6_MS_Florestal_Lebatec_24032025.xlsx']
 otimizador.validacao(arquivos)
