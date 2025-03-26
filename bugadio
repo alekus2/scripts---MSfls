@@ -1,2 +1,19 @@
 import os
+
+# Define o caminho do diretório
 path = r'\\glwfs02\lwc-florestal\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS01'
+
+# Nome do arquivo a ser criado
+file_name = 'novo_arquivo.txt'
+
+# Caminho completo do arquivo
+file_path = os.path.join(path, file_name)
+
+# Verifica se o diretório existe
+if not os.path.exists(path):
+    print(f"O diretório {path} não existe.")
+else:
+    # Cria e escreve no arquivo
+    with open(file_path, 'w') as file:
+        file.write("Este é o conteúdo do novo arquivo de texto.")
+    print(f"Arquivo {file_name} criado com sucesso em {path}.")
