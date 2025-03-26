@@ -14,8 +14,7 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-        codigos_validos = [chr(i) for i in range(ord('A'), ord('X'))]
-
+        
         lista_df = []
 
         for path in paths:
@@ -31,9 +30,8 @@ class OtimizadorIFQ6:
             if colunas_faltando:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
-            colunas_a_manter = nomes_colunas.copy()
 
-            df_filtrado = df[colunas_a_manter].copy()
+            df_filtrado = df[nomes_colunas].copy()
 
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
@@ -45,10 +43,12 @@ class OtimizadorIFQ6:
                 lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
                 axis=1
             )
-            if not df_filtrado['check dup'] == 'VERIFICAR':
-              df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-              df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
-              df_filtrado.drop(columns=['grupo'], inplace=True)
+            
+            # Verifica se existe alguma linha com 'VERIFICAR' em 'check dup'
+            if 'VERIFICAR' not in df_filtrado['check dup'].values:
+                df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+                df_filtrado.drop(columns=['grupo'], inplace=True)
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
@@ -90,21 +90,3 @@ arquivos = [
     '/content/Base_dados_EQ_03.xlsx'
 ]
 otimizador.validacao(arquivos)
-
-Processando o arquivo: /content/Base_dados_EQ_01 - Copia.xlsx
----------------------------------------------------------------------------
-ValueError                                Traceback (most recent call last)
-<ipython-input-8-961684d02176> in <cell line: 0>()
-     90     '/content/Base_dados_EQ_03.xlsx'
-     91 ]
----> 92 otimizador.validacao(arquivos)
-
-1 frames
-/usr/local/lib/python3.11/dist-packages/pandas/core/generic.py in __nonzero__(self)
-   1575     @final
-   1576     def __nonzero__(self) -> NoReturn:
--> 1577         raise ValueError(
-   1578             f"The truth value of a {type(self).__name__} is ambiguous. "
-   1579             "Use a.empty, a.bool(), a.item(), a.any() or a.all()."
-
-ValueError: The truth value of a Series is ambiguous. Use a.empty, a.bool(), a.item(), a.any() or a.all().
