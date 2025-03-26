@@ -5,7 +5,6 @@ from datetime import datetime
 
 class OtimizadorIFQ6:
     def validacao(self, paths):
-        # Lista de colunas esperadas
         nomes_colunas = [
             "CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA",
             "NM_AREA_PARCELA", "NM_LARG_PARCELA", "NM_COMP_PARCELA",
@@ -35,7 +34,12 @@ class OtimizadorIFQ6:
             colunas_a_manter = nomes_colunas.copy()
 
             df_filtrado = df[colunas_a_manter].copy()
-            
+
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
+            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
+                                               .map({True: 'VERIFICAR', False: 'OK'})
+            #se estiver duplicado os dados da linha que esta duplicada não será alterada e o codigo deverá criar uma coluna nova com a chave onde estarao todas as colunas que foram duplicadas e seus dados algo tipo: 6663-003-1-1-1-4,2-N 
+
             df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
             df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
             df_filtrado.drop(columns=['grupo'], inplace=True)
@@ -49,10 +53,7 @@ class OtimizadorIFQ6:
             df_filtrado['EQUIPES'] = equipe
 
             valid_letters = ('A','B','C','D','E','F','G','H','I','K','M','N','O','P','Q','R','S','T','U','V','W')
-            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
-         
-            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
-                                               .map({True: 'VERIFICAR', False: 'OK'})
+           
 
             df_filtrado['check cd'] = df_filtrado.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
@@ -63,21 +64,19 @@ class OtimizadorIFQ6:
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            # Mapeamento dos meses para português
             meses = [
                 "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
             ]
-            mes_atual = datetime.now().month  # Número do mês
-            nome_mes = meses[mes_atual - 1]  # Ajusta o índice para começar em 0
+            mes_atual = datetime.now().month 
+            nome_mes = meses[mes_atual - 1]  
             
-            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), f'Base_dados_unificadas_modificado_{nome_mes}.xlsx')
+            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), f'Base_dados_unificadas_{nome_mes}.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
-# Exemplo de uso:
 otimizador = OtimizadorIFQ6()
 arquivos = [
     '/content/Base_dados_EQ_01 - Copia.xlsx',
