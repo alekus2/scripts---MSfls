@@ -5,23 +5,15 @@ class Toolbox(object):
     def __init__(self):
         self.label = "Removedor de Parcelas"
         self.alias = "removetor_toolbox"
-        self.tools = [AlocadorDeParcelas]
+        self.tools = [RemovedorDeParcelas]
 
-class AlocadorDeParcelas(object):
+class RemovedorDeParcelas(object):
     def __init__(self):
         self.label = "Removedor de Parcelas"
         self.description = "Filtra e exporta parcelas com base em paridade."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
-        param_workspace = arcpy.Parameter(
-            displayName="Pasta de saída",
-            name="workspace",
-            datatype="DEWorkspace",
-            parameterType="Required",
-            direction="Input"
-        )
-
         param_layer = arcpy.Parameter(
             displayName="Camada base de dados",
             name="input_layer",
@@ -30,10 +22,9 @@ class AlocadorDeParcelas(object):
             direction="Input"
         )
 
-        return [param_workspace, param_layer]
+        return [param_layer]
 
     def execute(self, parameters):
-        workspace = parameters[0].valueAsText
         input_layer = parameters[1].valueAsText
 
         if not arcpy.Exists(input_layer):
