@@ -32,33 +32,22 @@ class AlocadorDeParcelas(object):
         )
 
         return [param_workspace, param_layer]
-
+#o codigo pega um shpfile de pontos onde estao localizadas as parcelas e ele verifica se o maximo da parcela é impar ou par e se for par ele modifica ela para 0 e dps apaga conforme as que forem igual a 1
     def execute(self, parameters):
         base_path = parameters[0].valueAsText
         workspace = parameters[1].valueAsText
-        input_layer = parameters[2].valueAsText
 
+#ele deve alterar isso tudo dentro do proprio shpfile ou seja dentro da sua tabela, e dentro dela ele deve verificar as colunas "NM_PARCELA" e o index da parcela seria a concatenação de "CD_PROJETO" e "CD_TALHAO" onde em nm ele pega o maximo de cada parcela dos index de talhao
         if not arcpy.Exists(base_path):
             arcpy.AddError(f"Erro: O arquivo {base_path} não foi encontrado.")
             return
 
         try:
-            # Carregar dados do Excel
-            df = pd.read_excel(base_path)
-
-            # Verificar se a coluna 'nm_parcela' existe
-            if 'nm_parcela' not in df.columns:
-                arcpy.AddError("Erro: A coluna 'nm_parcela' não foi encontrada no Excel.")
-                return
-
-            # Calcular o valor máximo de 'nm_parcela'
             max_parcela = df['nm_parcela'].max()
             arcpy.AddMessage(f"Valor máximo de nm_parcela: {max_parcela}")
-
-            # Criar coluna 'contador' com base na paridade do máximo
+#ele nao deve ultilizar o pandas para isso,ele tem que fazer nativamente pelo proprio arcgis pro, e assim que ele fzr isso ele tem q apagar as colunas criadas e excluir tudo que obtiver 0.
             df['contador'] = df['nm_parcela'].apply(lambda x: 0 if max_parcela % 2 == 0 and x % 2 == 0 else (1 if max_parcela % 2 != 0 and x % 2 != 0 else None))
             
-            # Filtrar para remover parcelas pares baseando-se na coluna 'contador'
             df_filtrado = df[df['contador'] == 1]
 
             if df_filtrado.empty:
