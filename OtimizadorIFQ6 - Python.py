@@ -18,10 +18,20 @@ class OtimizadorIFQ6:
         lista_df = []
         equipes_utilizadas = {}
         
+        base_dir = os.path.dirname(paths[0])
+        
         for path in paths:
             if not os.path.exists(path):
-                print(f"Erro: O arquivo '{path}' não foi encontrado.")
-                continue
+                # Verifica se o arquivo não foi encontrado no caminho original
+                print(f"Arquivo '{path}' não encontrado. Verificando na pasta 'dados'.")
+                dados_path = os.path.join(base_dir, 'dados', os.path.basename(path))
+                if not os.path.exists(dados_path):
+                    print(f"Erro: O arquivo '{dados_path}' também não foi encontrado.")
+                    continue
+                else:
+                    print(f"Arquivo encontrado na pasta 'dados': {dados_path}")
+                    path = dados_path  # Atualiza o caminho para o arquivo encontrado
+
             print(f"Processando o arquivo: {path}")
 
             df = pd.read_excel(path)
@@ -86,7 +96,6 @@ class OtimizadorIFQ6:
             mes_atual = datetime.now().month
             nome_mes = meses[mes_atual - 1]
 
-            base_dir = os.path.dirname(paths[0])
             pasta_mes = os.path.join(base_dir, nome_mes)
             pasta_output = os.path.join(pasta_mes, 'output')
             pasta_dados = os.path.join(pasta_mes, 'dados')
