@@ -29,7 +29,6 @@ class OtimizadorIFQ6:
         
         for path in paths:
             if not os.path.exists(path):
-                # Verifica se o arquivo não foi encontrado no caminho original
                 print(f"Arquivo '{path}' não encontrado. Verificando na pasta 'dados'.")
                 dados_path = os.path.join(base_dir, nome_mes, 'dados', os.path.basename(path))
                 if not os.path.exists(dados_path):
@@ -37,7 +36,7 @@ class OtimizadorIFQ6:
                     continue
                 else:
                     print(f"Arquivo encontrado na pasta 'dados': {dados_path}")
-                    path = dados_path  # Atualiza o caminho para o arquivo encontrado
+                    path = dados_path
 
             print(f"Processando o arquivo: {path}")
 
@@ -50,8 +49,10 @@ class OtimizadorIFQ6:
                 continue
 
             df_filtrado = df[nomes_colunas].copy()
+          
 
-            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
+
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
             df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
@@ -63,8 +64,16 @@ class OtimizadorIFQ6:
 
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
                 df_filtrado.drop(columns=['grupo'], inplace=True)
+                for idx in range(1, len(df_filtrado)):
+                              atual = df_filtrado.iloc[idx]
+                              anterior = df_filtrado.iloc[idx - 1]
+                              if atual['NM_FILA'] == anterior['NM_FILA']:
+                                  if atual['CD_01'] == 'L':
+                                      df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                                  else:
+                                    continue
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
@@ -101,18 +110,16 @@ class OtimizadorIFQ6:
             pasta_output = os.path.join(pasta_mes, 'output')
             pasta_dados = os.path.join(pasta_mes, 'dados')
 
-            # Verificar se a pasta do mês existe antes de tentar criá-la
             if not os.path.exists(pasta_mes):
                 os.makedirs(pasta_mes)
             
-            # Criar as pastas de saída e dados se não existirem
             os.makedirs(pasta_output, exist_ok=True)
             os.makedirs(pasta_dados, exist_ok=True)
 
             for path in paths:
                 nome_arquivo = os.path.basename(path)
                 destino = os.path.join(pasta_dados, nome_arquivo)
-                if os.path.exists(path):  # Apenas renomeia se o arquivo original existir
+                if os.path.exists(path):  
                     os.rename(path, destino)
 
             novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS02.xlsx')
@@ -124,13 +131,13 @@ class OtimizadorIFQ6:
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
 arquivos = [
-    '/content/6271_TABOCA_SRP - IFQ6 (4).xlsx',
-    '/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx',
-    '/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx',
-    '/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx',
-    '/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx',
-    '/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx',
-    '/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx',
-    '/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx'
+    '/content/Março/dados/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx',
+    '/content/Março/dados/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx',
+    '/content/Março/dados/6271_TABOCA_SRP - IFQ6 (4).xlsx',
+    '/content/Março/dados/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx',
+    '/content/Março/dados/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx',
+    '/content/Março/dados/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx',
+    '/content/Março/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx',
+    '/content/Março/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsxlel'
 ]
 otimizador.validacao(arquivos)
