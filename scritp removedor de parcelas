@@ -1,26 +1,3 @@
-DEU CERTO
-
-def calcular_maximo(talhao):
-    max_parcelas = {}
-    valores = [int(row[1]) for row in arcpy.da.SearchCursor("Nome da sua tabela", ["Index", "nm_parcela"]) if row[0] == talhao]
-    max_parcelas[talhao] = max(valores)
-    return max_parcelas[talhao]
-
-calcular_maximo(!Index!)
-
-DEU CERTO TAMBEM
-
-def autoIncrement(parcela, count):
-    parcela=int(parcela)
-    count=int(count)
-    if count <= 3:
-        return 1
-    return 1 if parcela % 2 != 0 else 0
-
-autoIncrement(!nm_parcela!, !CONTADOR!)
-
-
-
 import arcpy
 import os
 import pandas as pd
@@ -33,7 +10,7 @@ class Toolbox(object):
 
 class AlocadorDeParcelas(object):
     def __init__(self):
-        self.label = "Removedor de parcelas"
+        self.label = "Removedor de Parcelas"
         self.description = "Filtra e exporta parcelas com base em 0's e 1's"
         self.canRunInBackground = False
 
@@ -66,77 +43,35 @@ class AlocadorDeParcelas(object):
             return
 
         try:
+            # Carregar dados do Excel
             df = pd.read_excel(base_path)
 
-            if 'CD_USO_SOLO' not in df.columns:
-                arcpy.AddError("Erro: A coluna CD_USO_SOLO não foi encontrada no Excel.")
+            # Verificar se a coluna 'nm_parcela' existe
+            if 'nm_parcela' not in df.columns:
+                arcpy.AddError("Erro: A coluna 'nm_parcela' não foi encontrada no Excel.")
                 return
 
-            df['CD_USO_SOLO'] = df['CD_USO_SOLO'].astype(int)
+            # Calcular o valor máximo de 'nm_parcela'
+            max_parcela = df['nm_parcela'].max()
+            arcpy.AddMessage(f"Valor máximo de nm_parcela: {max_parcela}")
 
-            cd_uso_solo = df['CD_USO_SOLO'].dropna().unique()
+            # Criar coluna 'contador' com base na paridade do máximo
+            df['contador'] = df['nm_parcela'].apply(lambda x: 0 if max_parcela % 2 == 0 and x % 2 == 0 else (1 if max_parcela % 2 != 0 and x % 2 != 0 else None))
+            
+            # Filtrar para remover parcelas pares baseando-se na coluna 'contador'
+            df_filtrado = df[df['contador'] == 1]
 
-            cd_uso_solo_str = ",".join([str(x) for x in cd_uso_solo])
-            query = f"CD_USO_SOLO IN ({cd_uso_solo_str})"
-            arcpy.AddMessage(f"Query SQL gerada: {query}")
-
-            field_names = [f.name for f in arcpy.ListFields(input_layer)]
-            if "CD_USO_SOLO" not in field_names:
-                arcpy.AddMessage("Criando campo 'CD_USO_SOLO' temporariamente na camada base de dados...")
-                arcpy.AddField_management(input_layer, "CD_USO_SOLO", "LONG", field_length=50)
-
-            layer_temp = os.path.join(workspace, "TalhoesSelecionados.shp")
-            arcpy.Select_analysis(input_layer, layer_temp, query)
-
-            if int(arcpy.GetCount_management(layer_temp)[0]) == 0:
-                arcpy.AddError("Erro: Nenhum talhão corresponde à query.")
+            if df_filtrado.empty:
+                arcpy.AddError("Erro: Nenhuma parcela ímpar encontrada.")
                 return
 
-            arcpy.AddMessage(f"Shapefile exportado com {arcpy.GetCount_management(layer_temp)[0]} talhões.")
+            # Exportar as parcelas filtradas, por exemplo, para um novo arquivo Excel
+            output_path = os.path.join(workspace, "Parcelas_Impares.xlsx")
+            df_filtrado.to_excel(output_path, index=False)
+            arcpy.AddMessage(f"Parcelas ímpares exportadas para: {output_path}")
 
-            desc = arcpy.Describe(layer_temp)
-            origin_coord = f"{desc.extent.XMin} {desc.extent.YMin}"
-            y_axis_coord = f"{desc.extent.XMin} {desc.extent.YMax}"
-            corner_coord = f"{desc.extent.XMax} {desc.extent.YMax}"
-
-            total_area_m2 = df['AREA_HA'].sum() * 10000
-            cell_size = (total_area_m2 ** 0.5) / 9
-            arcpy.AddMessage(f"Tamanho da célula calculado: {cell_size}")
-
-            fishnet_shp = os.path.join(workspace, "Fishnet.shp")
-            arcpy.CreateFishnet_management(
-                out_feature_class=fishnet_shp,
-                origin_coord=origin_coord,
-                y_axis_coord=y_axis_coord,
-                cell_width=cell_size,
-                cell_height=cell_size,
-                number_rows="",
-                number_columns="",
-                corner_coord=corner_coord,
-                labels="NO_LABELS",
-                template=layer_temp,
-                geometry_type="POLYGON"
-            )
-
-            buffer_shp = os.path.join(workspace, "Buffer_30m.shp")
-            arcpy.Buffer_analysis(layer_temp, buffer_shp, "-30 Meters")
-
-            intersect_shp = os.path.join(workspace, "Intersected.shp")
-            arcpy.Intersect_analysis([buffer_shp, fishnet_shp], intersect_shp)
-
-            pontos_count = int(arcpy.GetCount_management(intersect_shp)[0])
-            planejado = len(cd_uso_solo)
-            if pontos_count != planejado:
-                arcpy.AddWarning(f"Quantidade de pontos ({pontos_count}) diferente do planejado ({planejado}).")
-
-            merged_shp = os.path.join(workspace, "Final_Points.shp")
-            arcpy.Merge_management([intersect_shp], merged_shp)
-            arcpy.AddMessage("Processo concluído.")
-
-            if "CD_USO_SOLO" not in [f.name for f in arcpy.ListFields(merged_shp)]:
-                arcpy.AddField_management(merged_shp, "CD_USO_SOLO", "LONG", field_length=50)
-
-            arcpy.AddMessage("Campo 'CD_USO_SOLO' atualizado no shapefile final.")
+            # Remover a coluna 'contador'
+            df.drop(columns=['contador'], inplace=True)
 
         except Exception as e:
             arcpy.AddError(f"Erro ao processar o arquivo Excel: {e}")
