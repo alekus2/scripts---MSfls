@@ -91,6 +91,11 @@ class OtimizadorIFQ6:
             pasta_output = os.path.join(pasta_mes, 'output')
             pasta_dados = os.path.join(pasta_mes, 'dados')
 
+            # Verificar se a pasta do mês existe antes de tentar criá-la
+            if not os.path.exists(pasta_mes):
+                os.makedirs(pasta_mes)
+            
+            # Criar as pastas de saída e dados se não existirem
             os.makedirs(pasta_output, exist_ok=True)
             os.makedirs(pasta_dados, exist_ok=True)
 
