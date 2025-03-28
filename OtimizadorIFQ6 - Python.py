@@ -20,11 +20,18 @@ class OtimizadorIFQ6:
         
         base_dir = os.path.dirname(paths[0])
         
+        meses = [
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        ]
+        mes_atual = datetime.now().month
+        nome_mes = meses[mes_atual - 1]
+        
         for path in paths:
             if not os.path.exists(path):
                 # Verifica se o arquivo não foi encontrado no caminho original
                 print(f"Arquivo '{path}' não encontrado. Verificando na pasta 'dados'.")
-                dados_path = os.path.join(base_dir, 'dados', os.path.basename(path))
+                dados_path = os.path.join(base_dir, nome_mes, 'dados', os.path.basename(path))
                 if not os.path.exists(dados_path):
                     print(f"Erro: O arquivo '{dados_path}' também não foi encontrado.")
                     continue
@@ -89,12 +96,6 @@ class OtimizadorIFQ6:
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            meses = [
-                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-            ]
-            mes_atual = datetime.now().month
-            nome_mes = meses[mes_atual - 1]
 
             pasta_mes = os.path.join(base_dir, nome_mes)
             pasta_output = os.path.join(pasta_mes, 'output')
@@ -111,7 +112,8 @@ class OtimizadorIFQ6:
             for path in paths:
                 nome_arquivo = os.path.basename(path)
                 destino = os.path.join(pasta_dados, nome_arquivo)
-                os.rename(path, destino)
+                if os.path.exists(path):  # Apenas renomeia se o arquivo original existir
+                    os.rename(path, destino)
 
             novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS02.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
