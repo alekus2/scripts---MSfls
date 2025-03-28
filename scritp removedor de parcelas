@@ -1,6 +1,5 @@
 import arcpy
 import os
-import pandas as pd
 
 class Toolbox(object):
     def __init__(self):
@@ -11,7 +10,7 @@ class Toolbox(object):
 class AlocadorDeParcelas(object):
     def __init__(self):
         self.label = "Removedor de Parcelas"
-        self.description = "Filtra e exporta parcelas com base em 0's e 1's"
+        self.description = "Filtra e exporta parcelas com base em paridade."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -32,35 +31,47 @@ class AlocadorDeParcelas(object):
         )
 
         return [param_workspace, param_layer]
-#o codigo pega um shpfile de pontos onde estao localizadas as parcelas e ele verifica se o maximo da parcela é impar ou par e se for par ele modifica ela para 0 e dps apaga conforme as que forem igual a 1
-    def execute(self, parameters):
-        base_path = parameters[0].valueAsText
-        workspace = parameters[1].valueAsText
 
-#ele deve alterar isso tudo dentro do proprio shpfile ou seja dentro da sua tabela, e dentro dela ele deve verificar as colunas "NM_PARCELA" e o index da parcela seria a concatenação de "CD_PROJETO" e "CD_TALHAO" onde em nm ele pega o maximo de cada parcela dos index de talhao
-        if not arcpy.Exists(base_path):
-            arcpy.AddError(f"Erro: O arquivo {base_path} não foi encontrado.")
+    def execute(self, parameters):
+        workspace = parameters[0].valueAsText
+        input_layer = parameters[1].valueAsText
+
+        if not arcpy.Exists(input_layer):
+            arcpy.AddError(f"Erro: A camada {input_layer} não foi encontrada.")
             return
 
         try:
-            max_parcela = df['nm_parcela'].max()
-            arcpy.AddMessage(f"Valor máximo de nm_parcela: {max_parcela}")
-#ele nao deve ultilizar o pandas para isso,ele tem que fazer nativamente pelo proprio arcgis pro, e assim que ele fzr isso ele tem q apagar as colunas criadas e excluir tudo que obtiver 0.
-            df['contador'] = df['nm_parcela'].apply(lambda x: 0 if max_parcela % 2 == 0 and x % 2 == 0 else (1 if max_parcela % 2 != 0 and x % 2 != 0 else None))
-            
-            df_filtrado = df[df['contador'] == 1]
+            # Criar um dicionário para armazenar o máximo de nm_parcela
+            max_values = {}
 
-            if df_filtrado.empty:
-                arcpy.AddError("Erro: Nenhuma parcela ímpar encontrada.")
-                return
+            # Usar um cursor para iterar sobre os registros
+            with arcpy.da.UpdateCursor(input_layer, ["CD_PROJETO", "CD_TALHAO", "NM_PARCELA"]) as cursor:
+                for row in cursor:
+                    index_key = f"{row[0]}_{row[1]}"
 
-            # Exportar as parcelas filtradas, por exemplo, para um novo arquivo Excel
-            output_path = os.path.join(workspace, "Parcelas_Impares.xlsx")
-            df_filtrado.to_excel(output_path, index=False)
-            arcpy.AddMessage(f"Parcelas ímpares exportadas para: {output_path}")
+                    if index_key not in max_values:
+                        max_values[index_key] = row[2]
+                    else:
+                        max_values[index_key] = max(max_values[index_key], row[2])
 
-            # Remover a coluna 'contador'
-            df.drop(columns=['contador'], inplace=True)
+            # Modificar a tabela conforme condição de paridade
+            with arcpy.da.UpdateCursor(input_layer, ["CD_PROJETO", "CD_TALHAO", "NM_PARCELA"]) as cursor:
+                for row in cursor:
+                    index_key = f"{row[0]}_{row[1]}"
+                    max_parcela = max_values[index_key]
+
+                    # Se o máximo é par, muda NM_PARCELA para 0
+                    if max_parcela % 2 == 0:
+                        row[2] = 0
+                    
+                    # Atualiza a linha na tabela
+                    cursor.updateRow(row)
+
+            # Excluir os registros que têm NM_PARCELA igual a 0
+            arcpy.management.SelectLayerByAttribute(input_layer, "NEW_SELECTION", "NM_PARCELA = 0")
+            arcpy.management.DeleteFeatures(input_layer)
+
+            arcpy.AddMessage("Processo concluído. Todas as parcelas pares foram removidas.")
 
         except Exception as e:
-            arcpy.AddError(f"Erro ao processar o arquivo Excel: {e}")
+            arcpy.AddError(f"Erro ao processar a camada: {e}")
