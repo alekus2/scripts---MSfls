@@ -140,4 +140,4 @@ arquivos = [
     '/content/Março/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx',
     '/content/Março/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsxlel'
 ]
-otimizador.validacao(arquivos)
+otimizador.validacao(arquivos)s
