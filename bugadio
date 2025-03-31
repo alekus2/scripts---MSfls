@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-import re
 from datetime import datetime
 
 class OtimizadorIFQ6:
@@ -16,12 +15,22 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-        equipes_utilizadas = {}  # Dicionário para rastrear quantas vezes cada equipe foi utilizada
+        equipes_utilizadas = {}
+        
+        base_dir = os.path.dirname(paths[0])
+        
+        meses = [
+            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
+        ]
+        mes_atual = datetime.now().month
+        nome_mes = meses[mes_atual - 1]
         
         for path in paths:
             if not os.path.exists(path):
-                print(f"Erro: O arquivo '{path}' não foi encontrado.")
-                continue
+                print(f"Arquivo '{path}' não encontrado. Verificando na pasta 'dados'.")
+                continue  # Adicionando continue para não processar se o arquivo não existir
+
             print(f"Processando o arquivo: {path}")
 
             df = pd.read_excel(path)
@@ -35,8 +44,7 @@ class OtimizadorIFQ6:
             df_filtrado = df[nomes_colunas].copy()
 
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
-            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False)\
-                                               .map({True: 'VERIFICAR', False: 'OK'})
+            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
             df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
 
@@ -59,6 +67,7 @@ class OtimizadorIFQ6:
             if equipe is None:
                 equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ")
             
+            # Atualizando a lógica para garantir que a equipe seja atribuída corretamente
             if equipe in equipes_utilizadas:
                 equipes_utilizadas[equipe] += 1
                 equipe_final = f"{equipe}_{equipes_utilizadas[equipe]}"
@@ -80,25 +89,31 @@ class OtimizadorIFQ6:
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            meses = [
-                "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-                "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-            ]
-            mes_atual = datetime.now().month 
-            nome_mes = meses[mes_atual - 1]  
+
+            # Criar a pasta do mês um nível acima
+            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
+            pasta_output = os.path.join(pasta_mes, 'output')
+            pasta_dados = os.path.join(pasta_mes, 'dados')
+
+            if not os.path.exists(pasta_mes):
+                os.makedirs(pasta_mes)
             
-            novo_arquivo_excel = os.path.join(os.path.dirname(paths[0]), f'IFQ6_dados_{nome_mes}_EPS02.xlsx')
+            os.makedirs(pasta_output, exist_ok=True)
+            os.makedirs(pasta_dados, exist_ok=True)
+
+            for path in paths:
+                nome_arquivo = os.path.basename(path)
+                destino = os.path.join(pasta_dados, nome_arquivo)
+                if os.path.exists(path):  
+                    os.rename(path, destino)
+
+            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS02.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
-            print(f"Todos os dados foram unificados e salvos como '{novo_arquivo_excel}'.")
+            print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = ['/content/6271_TABOCA_SRP - IFQ6 (4).xlsx', 
-            '/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx', 
-            '/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx','/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx',
-            '/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx','/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx',
-            '/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx','/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx'
-            ]
+arquivos = [r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS02\6271_TABOCA_SRP - IFQ6 (4).xlsx"]
 otimizador.validacao(arquivos)
