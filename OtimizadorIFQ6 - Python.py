@@ -35,22 +35,31 @@ class OtimizadorIFQ6:
         else:
             pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
 
-        # Define as pastas de output e dados dentro do diretório do mês
         pasta_output = os.path.join(pasta_mes, 'output')
         pasta_dados = os.path.join(pasta_mes, 'dados')
         
-        # Cria as pastas se não existirem
         os.makedirs(pasta_mes, exist_ok=True)
         os.makedirs(pasta_output, exist_ok=True)
         os.makedirs(pasta_dados, exist_ok=True)
         
         for path in paths:
-            # Verifica se o arquivo existe no caminho informado
             if not os.path.exists(path):
                 print(f"Arquivo '{path}' não encontrado.")
                 # Se não encontrar, sobe uma pasta e tenta em: <pasta_pai>/<nome_mes>/dados/<nome_arquivo>
+                while True:
+                    eqp = input("Selecione a equipe para localizar a pasta deste arquivo (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
+                    if eqp in [1, 2, 3]:
+                        break
+                    print("Escolha inválida. Digite 1, 2 ou 3.")
+                if eqp == 1:
+                    nome_equipe = "LEBATEC"
+                elif eqp == 2:
+                    nome_equipe = "BRAVORE"
+                else:
+                    nome_equipe = "PROPRIA"
+                
                 fallback_base = os.path.dirname(base_dir)
-                fallback_path = os.path.join(fallback_base, nome_mes, 'dados', os.path.basename(path))
+                fallback_path = os.path.join(fallback_base, nome_mes, 'dados', nome_equipe,os.path.basename(path))
                 print(f"Verificando no caminho de fallback: {fallback_path}")
                 if not os.path.exists(fallback_path):
                     print(f"Erro: O arquivo '{fallback_path}' também não foi encontrado.")
@@ -77,7 +86,6 @@ class OtimizadorIFQ6:
                 lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
                 axis=1
             )
-
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
                 df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
@@ -93,7 +101,6 @@ class OtimizadorIFQ6:
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Seleção da equipe por input numérico, informando o nome do arquivo para facilitar
             filename = os.path.basename(path)
             print(f"\nArquivo: {filename}")
             while True:
@@ -109,7 +116,6 @@ class OtimizadorIFQ6:
             else:
                 equipe_base = "PROPRIA"
 
-            # Gera a designação final (com sufixo se necessário)
             if equipe_base in equipes_utilizadas:
                 equipes_utilizadas[equipe_base] += 1
                 equipe_final = f"{equipe_base}_{equipes_utilizadas[equipe_base]}"
@@ -127,21 +133,17 @@ class OtimizadorIFQ6:
                 axis=1
             )
             lista_df.append(df_filtrado)
-            # Armazena o caminho final do arquivo processado e a equipe designada
             processed_files.append((path, equipe_final))
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            # Salva o arquivo consolidado na pasta output
-            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS01.xlsx')
+            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS02.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
-        # Cria pastas para cada equipe dentro de "dados" e move os arquivos para a respectiva pasta
         for file_path, equipe_final in processed_files:
-            # Utiliza a parte base da equipe para a pasta (ex: "LEBATEC" de "LEBATEC_2")
             pasta_equipe = os.path.join(pasta_dados, equipe_final.split('_')[0])
             os.makedirs(pasta_equipe, exist_ok=True)
             nome_arquivo = os.path.basename(file_path)
@@ -157,9 +159,14 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_24032025.xlsx"
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6271_TABOCA_SRP - IFQ6 (4).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS02\6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
 ]
 
 otimizador.validacao(arquivos)
