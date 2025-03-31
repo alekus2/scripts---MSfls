@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 import re
@@ -14,26 +15,18 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-
         lista_df = []
         equipes_utilizadas = {}
-
-        # O diretório base é obtido a partir do primeiro path informado
         base_dir = os.path.dirname(paths[0])
-
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ]
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
-
         for path in paths:
-            # Primeiro, verifica se o arquivo existe no caminho informado
             if not os.path.exists(path):
                 print(f"Arquivo '{path}' não encontrado.")
-                # Se não encontrar, sobe uma pasta (de "Dados Gerais IFQ6" para "Teste IFQ6")
-                # e busca dentro de: <pasta_teste_ifq6>/<nome_mes>/dados/<nome_arquivo>
                 fallback_base = os.path.dirname(base_dir)
                 fallback_path = os.path.join(fallback_base, nome_mes, 'dados', os.path.basename(path))
                 print(f"Verificando no caminho de fallback: {fallback_path}")
@@ -52,7 +45,6 @@ class OtimizadorIFQ6:
             if colunas_faltando:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
-
             df_filtrado = df[nomes_colunas].copy()
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
@@ -77,8 +69,6 @@ class OtimizadorIFQ6:
                             continue
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
-
-            # Lógica de identificação da equipe
             filename = os.path.basename(path).upper()
             equipes_possiveis = ['BRAVORE', 'LEBATEC', 'PROPRIA']
             equipe = next((e for e in equipes_possiveis if e in filename), None)
@@ -121,7 +111,7 @@ class OtimizadorIFQ6:
                 if os.path.exists(path):
                     os.rename(path, destino)
 
-            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS01.xlsx')
+            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_teste.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
@@ -130,10 +120,15 @@ class OtimizadorIFQ6:
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
 
+#Sempre manter o 'r' para ler o arquivo.
 arquivos = [
-    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_24032025.xlsx"
-]
-
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6271_TABOCA_SRP - IFQ6 (4).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx"
+            ]
 otimizador.validacao(arquivos)
