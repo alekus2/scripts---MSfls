@@ -16,10 +16,9 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-        equipes_utilizadas = {}  # Para controle dos sufixos (_2, _3, etc.)
-        processed_files = []     # Armazena tuplas (caminho_final, equipe_final) de arquivos processados
+        equipes_utilizadas = {}  
+        processed_files = []     
 
-        # O diretório base é obtido a partir do primeiro path informado
         base_dir = os.path.dirname(paths[0])
         
         meses = [
@@ -29,7 +28,6 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
-        # Se já estivermos na pasta do mês (ex: "Março"), use-a; senão, construa o caminho
         if os.path.basename(os.path.normpath(base_dir)).upper() == nome_mes.upper():
             pasta_mes = base_dir
         else:
@@ -57,7 +55,6 @@ class OtimizadorIFQ6:
                 else:
                     nome_equipe = "PROPRIA"
         
-                  # Defina o novo caminho com base na equipe selecionada
                 novo_caminho = os.path.join(pasta_mes, 'dados', nome_equipe, os.path.basename(path))
                 print(f"Verificando no caminho: {novo_caminho}")
         
@@ -67,10 +64,9 @@ class OtimizadorIFQ6:
                 else:
                     print(f"Erro: O arquivo '{novo_caminho}' também não foi encontrado.")
                     continue
-            # Continue com o processamento do arquivo
 
             print(f"Processando o arquivo: {path}")
-            df = pd.read_excel(path)
+            df = pd.read_excel(path, if colunas_faltando == True sheet_name=1 else sheet_name=0)
             df.columns = [str(col).strip().upper() for col in df.columns]
 
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
@@ -161,14 +157,16 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS03\base_dados_IFQ6_propria_fev.xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\IFQ6_dados_Março_EPS01.xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6271_TABOCA_SRP - IFQ6 (4).xlsx",
+r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\dados\LEBATEC\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx"
 
 ]
 
 otimizador.validacao(arquivos)
-
-PS F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6> & C:/Users/alex_santos4/AppData/Local/Programs/Python/Python39/python.exe "f:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automações em python/Automatizacao_IFQ6/script/OtimizadorIFQ6 - Python.py"
-Processando o arquivo: F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS03\base_dados_IFQ6_propria_fev.xlsx
-colunas da planilha: Index(['NM_FILA', '1'], dtype='object')
-Erro: As colunas esperadas não foram encontradas no arquivo 'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\IFQ6_dados_teste_EPS03\base_dados_IFQ6_propria_fev.xlsx': CD_PROJETO, CD_TALHAO, NM_PARCELA, DC_TIPO_PARCELA, NM_AREA_PARCELA, NM_LARG_PARCELA, NM_COMP_PARCELA, NM_DEC_LAR_PARCELA, NM_DEC_COM_PARCELA, DT_INICIAL, DT_FINAL, CD_EQUIPE, NM_LATITUDE, NM_LONGITUDE, NM_ALTITUDE, DC_MATERIAL, NM_COVA, NM_FUSTE, NM_DAP_ANT, NM_ALTURA_ANT, NM_CAP_DAP1, NM_DAP2, NM_DAP, NM_ALTURA, CD_01, CD_02, CD_03
-Nenhum arquivo foi processado com sucesso.
