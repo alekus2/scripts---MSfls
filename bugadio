@@ -64,22 +64,23 @@ class OtimizadorIFQ6:
                 df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
                 df_filtrado.drop(columns=['grupo'], inplace=True)
                 for idx in range(1, len(df_filtrado)):
-                              atual = df_filtrado.iloc[idx]
-                              anterior = df_filtrado.iloc[idx - 1]
-                              if atual['NM_FILA'] == anterior['NM_FILA']:
-                                  if atual['CD_01'] == 'L':
-                                      df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                                  else:
-                                    continue
+                    atual = df_filtrado.iloc[idx]
+                    anterior = df_filtrado.iloc[idx - 1]
+                    if atual['NM_FILA'] == anterior['NM_FILA']:
+                        if atual['CD_01'] == 'L':
+                            df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                        else:
+                            continue
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            filename = os.path.basename(path).upper() 
+            # Ajuste na lógica de identificação da equipe
+            filename = os.path.basename(path).upper()
             equipes_possiveis = ['BRAVORE', 'LEBATEC', 'PROPRIA']
-            equipe = next((equipe for equipe in equipes_possiveis if equipe in filename), None)
+            equipe = next((e for e in equipes_possiveis if e in filename), None)
 
             if equipe is None:
-                equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ")
+                equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ").strip().upper()
 
             if equipe in equipes_utilizadas:
                 equipes_utilizadas[equipe] += 1
@@ -128,14 +129,14 @@ class OtimizadorIFQ6:
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
 
-arquivos = [r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-            ]
+arquivos = [
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+]
 
-otimizador.validacao(arquivos)  
-
+otimizador.validacao(arquivos)
