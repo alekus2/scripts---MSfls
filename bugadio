@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import re
 from datetime import datetime
 
 class OtimizadorIFQ6:
@@ -13,37 +14,42 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-        
+
         lista_df = []
         equipes_utilizadas = {}
-        
+
         base_dir = os.path.dirname(paths[0])
-        
+
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ]
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
-        
+
         for path in paths:
             if not os.path.exists(path):
                 print(f"Arquivo '{path}' não encontrado. Verificando na pasta 'dados'.")
-                continue  # Adicionando continue para não processar se o arquivo não existir
+                dados_path = os.path.join(base_dir, nome_mes, 'dados', os.path.basename(path))
+                if not os.path.exists(dados_path):
+                    print(f"Erro: O arquivo '{dados_path}' também não foi encontrado.")
+                    continue
+                else:
+                    print(f"Arquivo encontrado na pasta 'dados': {dados_path}")
+                    path = dados_path
 
             print(f"Processando o arquivo: {path}")
 
             df = pd.read_excel(path)
             df.columns = [col.upper() for col in df.columns]
-            
+
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
             if colunas_faltando:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
                 continue
 
             df_filtrado = df[nomes_colunas].copy()
-
-            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
             df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
@@ -55,8 +61,16 @@ class OtimizadorIFQ6:
 
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
                 df_filtrado.drop(columns=['grupo'], inplace=True)
+                for idx in range(1, len(df_filtrado)):
+                              atual = df_filtrado.iloc[idx]
+                              anterior = df_filtrado.iloc[idx - 1]
+                              if atual['NM_FILA'] == anterior['NM_FILA']:
+                                  if atual['CD_01'] == 'L':
+                                      df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
+                                  else:
+                                    continue
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
@@ -66,15 +80,14 @@ class OtimizadorIFQ6:
 
             if equipe is None:
                 equipe = input("Nenhum time válido encontrado no nome do arquivo. Por favor, insira o nome da equipe: ")
-            
-            # Atualizando a lógica para garantir que a equipe seja atribuída corretamente
+
             if equipe in equipes_utilizadas:
                 equipes_utilizadas[equipe] += 1
                 equipe_final = f"{equipe}_{equipes_utilizadas[equipe]}"
             else:
                 equipes_utilizadas[equipe] = 1
                 equipe_final = equipe
-            
+
             print(f"Equipe identificada: {equipe_final}")
             df_filtrado['EQUIPES'] = equipe_final
 
@@ -90,14 +103,13 @@ class OtimizadorIFQ6:
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
 
-            # Criar a pasta do mês um nível acima
             pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
             pasta_output = os.path.join(pasta_mes, 'output')
             pasta_dados = os.path.join(pasta_mes, 'dados')
 
             if not os.path.exists(pasta_mes):
                 os.makedirs(pasta_mes)
-            
+
             os.makedirs(pasta_output, exist_ok=True)
             os.makedirs(pasta_dados, exist_ok=True)
 
@@ -115,5 +127,15 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = [r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS02\6271_TABOCA_SRP - IFQ6 (4).xlsx"]
-otimizador.validacao(arquivos)
+
+arquivos = [r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+            ]
+
+otimizador.validacao(arquivos)  
+
