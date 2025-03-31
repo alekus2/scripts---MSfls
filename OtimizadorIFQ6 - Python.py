@@ -87,7 +87,8 @@ class OtimizadorIFQ6:
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
 
-            pasta_mes = os.path.join(base_dir, nome_mes)
+            # Criar a pasta do mês um nível acima
+            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
             pasta_output = os.path.join(pasta_mes, 'output')
             pasta_dados = os.path.join(pasta_mes, 'dados')
 
