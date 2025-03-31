@@ -1,5 +1,6 @@
 import pandas as pd
 import os
+import re
 from datetime import datetime
 
 class OtimizadorIFQ6:
@@ -13,12 +14,14 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-
+        
         lista_df = []
-        equipes_utilizadas = {}
+        equipes_utilizadas = {}  # Para controle dos sufixos (_2, _3, etc.)
+        processed_files = []     # Armazena tuplas (caminho_final, equipe_final) de arquivos processados
 
+        # O diretório base é obtido a partir do primeiro path informado
         base_dir = os.path.dirname(paths[0])
-
+        
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -26,9 +29,26 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
+        # Se já estivermos na pasta do mês (ex: "Março"), use-a; senão, construa o caminho
+        if os.path.basename(os.path.normpath(base_dir)).upper() == nome_mes.upper():
+            pasta_mes = base_dir
+        else:
+            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
+
+        # Define as pastas de output e dados dentro do diretório do mês
+        pasta_output = os.path.join(pasta_mes, 'output')
+        pasta_dados = os.path.join(pasta_mes, 'dados')
+        
+        # Cria as pastas se não existirem
+        os.makedirs(pasta_mes, exist_ok=True)
+        os.makedirs(pasta_output, exist_ok=True)
+        os.makedirs(pasta_dados, exist_ok=True)
+        
         for path in paths:
+            # Verifica se o arquivo existe no caminho informado
             if not os.path.exists(path):
                 print(f"Arquivo '{path}' não encontrado.")
+                # Se não encontrar, sobe uma pasta e tenta em: <pasta_pai>/<nome_mes>/dados/<nome_arquivo>
                 fallback_base = os.path.dirname(base_dir)
                 fallback_path = os.path.join(fallback_base, nome_mes, 'dados', os.path.basename(path))
                 print(f"Verificando no caminho de fallback: {fallback_path}")
@@ -73,27 +93,29 @@ class OtimizadorIFQ6:
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
+            # Seleção da equipe por input numérico, informando o nome do arquivo para facilitar
             filename = os.path.basename(path)
             print(f"\nArquivo: {filename}")
             while True:
-                escolha = input("Selecione a equipe para este arquivo: \n1 - LEBATEC \n2 - BRAVORE \n3 - PROPRIA\nDigite o numero:").strip()
+                escolha = input("Selecione a equipe para este arquivo (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ").strip()
                 if escolha in ['1', '2', '3']:
                     break
                 print("Escolha inválida. Digite 1, 2 ou 3.")
 
             if escolha == '1':
-                equipe = "LEBATEC"
+                equipe_base = "LEBATEC"
             elif escolha == '2':
-                equipe = "BRAVORE"
+                equipe_base = "BRAVORE"
             else:
-                equipe = "PROPRIA"
+                equipe_base = "PROPRIA"
 
-            if equipe in equipes_utilizadas:
-                equipes_utilizadas[equipe] += 1
-                equipe_final = f"{equipe}_{equipes_utilizadas[equipe]}"
+            # Gera a designação final (com sufixo se necessário)
+            if equipe_base in equipes_utilizadas:
+                equipes_utilizadas[equipe_base] += 1
+                equipe_final = f"{equipe_base}_{equipes_utilizadas[equipe_base]}"
             else:
-                equipes_utilizadas[equipe] = 1
-                equipe_final = equipe
+                equipes_utilizadas[equipe_base] = 1
+                equipe_final = equipe_base
 
             print(f"Equipe identificada: {equipe_final}")
             df_filtrado['EQUIPES'] = equipe_final
@@ -105,36 +127,39 @@ class OtimizadorIFQ6:
                 axis=1
             )
             lista_df.append(df_filtrado)
+            # Armazena o caminho final do arquivo processado e a equipe designada
+            processed_files.append((path, equipe_final))
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
-            pasta_output = os.path.join(pasta_mes, 'output')
-            pasta_dados = os.path.join(pasta_mes, 'dados')
-
-            if not os.path.exists(pasta_mes):
-                os.makedirs(pasta_mes)
-            os.makedirs(pasta_output, exist_ok=True)
-            os.makedirs(pasta_dados, exist_ok=True)
-
-            for path in paths:
-                nome_arquivo = os.path.basename(path)
-                destino = os.path.join(pasta_dados, nome_arquivo)
-                if os.path.exists(path):
-                    os.rename(path, destino)
-
-            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_teste2.xlsx')
+            # Salva o arquivo consolidado na pasta output
+            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_EPS01.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
+        # Cria pastas para cada equipe dentro de "dados" e move os arquivos para a respectiva pasta
+        for file_path, equipe_final in processed_files:
+            # Utiliza a parte base da equipe para a pasta (ex: "LEBATEC" de "LEBATEC_2")
+            pasta_equipe = os.path.join(pasta_dados, equipe_final.split('_')[0])
+            os.makedirs(pasta_equipe, exist_ok=True)
+            nome_arquivo = os.path.basename(file_path)
+            destino = os.path.join(pasta_equipe, nome_arquivo)
+            if os.path.exists(file_path):
+                try:
+                    os.rename(file_path, destino)
+                    print(f"Arquivo '{nome_arquivo}' movido para '{pasta_equipe}'.")
+                except Exception as e:
+                    print(f"Erro ao mover '{nome_arquivo}' para '{pasta_equipe}': {e}")
+
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
 
-#Sempre manter o 'r' para ler o arquivo.
 arquivos = [
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\output\IFQ6_dados_Março_EPS01.xlsx",
-            r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Março\output\IFQ6_dados_Março_EPS02.xlsx"
-            ]
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+    r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\Dados Gerais IFQ6\IFQ6_MS_Florestal_Bravore_24032025.xlsx"
+]
+
 otimizador.validacao(arquivos)
