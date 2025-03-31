@@ -29,14 +29,6 @@ class OtimizadorIFQ6:
         for path in paths:
             if not os.path.exists(path):
                 print(f"Arquivo '{path}' não encontrado. Verificando na pasta 'dados'.")
-                dados_path = os.path.join(base_dir, nome_mes, 'dados', os.path.basename(path))
-                if not os.path.exists(dados_path):
-                    print(f"Erro: O arquivo '{dados_path}' também não foi encontrado.")
-                    continue
-                else:
-                    print(f"Arquivo encontrado na pasta 'dados': {dados_path}")
-                    path = dados_path
-
             print(f"Processando o arquivo: {path}")
 
             df = pd.read_excel(path)
@@ -119,5 +111,5 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = [r'\\glwfs02\lwc-florestal\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\dados\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8)']
+arquivos = [r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS02\6271_TABOCA_SRP - IFQ6 (4).xlsx"]
 otimizador.validacao(arquivos)
