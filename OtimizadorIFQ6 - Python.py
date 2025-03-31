@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-import re
 from datetime import datetime
 
 class OtimizadorIFQ6:
@@ -49,10 +48,8 @@ class OtimizadorIFQ6:
                 continue
 
             df_filtrado = df[nomes_colunas].copy()
-          
 
-
-            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA', 'CD_01']
             df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
             df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
@@ -64,16 +61,8 @@ class OtimizadorIFQ6:
 
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1 
                 df_filtrado.drop(columns=['grupo'], inplace=True)
-                for idx in range(1, len(df_filtrado)):
-                              atual = df_filtrado.iloc[idx]
-                              anterior = df_filtrado.iloc[idx - 1]
-                              if atual['NM_FILA'] == anterior['NM_FILA']:
-                                  if atual['CD_01'] == 'L':
-                                      df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                                  else:
-                                    continue
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
@@ -130,14 +119,5 @@ class OtimizadorIFQ6:
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
-arquivos = [
-    '/content/Março/dados/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx',
-    '/content/Março/dados/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx',
-    '/content/Março/dados/6271_TABOCA_SRP - IFQ6 (4).xlsx',
-    '/content/Março/dados/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx',
-    '/content/Março/dados/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx',
-    '/content/Março/dados/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx',
-    '/content/Março/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx',
-    '/content/Março/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsxlel'
-]
-otimizador.validacao(arquivos)s
+arquivos = [r'\\glwfs02\lwc-florestal\Qualidade_Florestal\02- MATO GROSSO DO SUL\05- Inventário Florestal Qualitativo\Teste IFQ6\dados\6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8)']
+otimizador.validacao(arquivos)
