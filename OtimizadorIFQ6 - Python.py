@@ -54,11 +54,25 @@ class OtimizadorIFQ6:
 
             df = pd.read_excel(path, sheet_name=0)
             df.columns = [str(col).strip().upper() for col in df.columns]
-
+            
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
+
             if colunas_faltando:
+                print(f"Colunas da planilha: {df.columns}")
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
-                continue
+                print("Vamos verificar na segunda aba...")
+                try:
+                    df = pd.read_excel(path, sheet_name=1)
+                    df.columns = [str(col).strip().upper() for col in df.columns]
+                    colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
+                    if colunas_faltando:
+                        print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
+                        continue
+                    else:
+                        print("Tudo certo, processando...")
+                except Exception as e:
+                    print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
+                    continue  
 
             df_filtrado = df[nomes_colunas].copy()
             df_filtrado['EQUIPE'] = nome_equipe
@@ -77,8 +91,17 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            mask = (df_final['check dup'] != 'VERIFICAR') & (df_final['check cd_01'] != 'VERIFICAR')
-            df_final.loc[mask, 'NM_COVA'] = df_final[mask].groupby('NM_FILA').cumcount() + 1
+            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
+            df_final['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
+            df_final.drop(columns=['grupo'], inplace=True)
+            for idx in range(1, len(df_final)):
+                    atual = df_final.iloc[idx]
+                    anterior = df_final.iloc[idx - 1]
+                    if atual['NM_FILA'] == anterior['NM_FILA']:
+                        if atual['CD_01'] == 'L':
+                            df_final.at[idx, 'NM_COVA'] = df_final.at[idx - 1, 'NM_COVA']
+                        else:
+                            continue
 
             if len(equipes) == 1:
                 nome_base = f"IFQ6_{nome_mes}_{list(equipes.keys())[0]}_{data_emissao}"
@@ -97,3 +120,35 @@ class OtimizadorIFQ6:
             print(f"✅ Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("❌ Nenhum arquivo foi processado com sucesso.")
+          
+# Exemplo de uso
+otimizador = OtimizadorIFQ6()
+
+arquivos = [
+    "/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
+    "/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    "/6271_TABOCA_SRP - IFQ6 (4).xlsx"
+]
+
+otimizador.validacao(arquivos)
+KeyError                                  Traceback (most recent call last)
+<ipython-input-27-a62ca018bfc4> in <cell line: 0>()
+    137 ]
+    138 
+--> 139 otimizador.validacao(arquivos)
+
+3 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/groupby/grouper.py in get_grouper(obj, key, axis, level, sort, observed, validate, dropna)
+   1041                 in_axis, level, gpr = False, gpr, None
+   1042             else:
+-> 1043                 raise KeyError(gpr)
+   1044         elif isinstance(gpr, Grouper) and gpr.key is not None:
+   1045             # Add key to exclusions
+
+KeyError: 'grupo'
