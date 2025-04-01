@@ -17,7 +17,6 @@ class OtimizadorIFQ6:
         lista_df = []
         processed_files = []
 
-        # Define o nome do mês corrente
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -25,26 +24,20 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
-        # Verifica se o primeiro arquivo já contém o nome do mês na sua estrutura de pastas
         base_path = os.path.abspath(paths[0])
         if nome_mes.lower() in base_path.lower():
-            # Se a pasta que contém o arquivo é "output", usamos essa mesma pasta
             parent_dir = os.path.dirname(base_path)
             if os.path.basename(parent_dir).lower() == 'output':
                 pasta_output = parent_dir
             else:
-                # Caso contrário, cria ou usa a subpasta "output" dentro da pasta atual
                 pasta_output = os.path.join(parent_dir, 'output')
                 os.makedirs(pasta_output, exist_ok=True)
         else:
-            # Se o arquivo não estiver em uma pasta que contenha o nome do mês,
-            # cria a estrutura padrão: <pasta_base>/<nome_mes>/output
             base_dir = os.path.dirname(paths[0])
             pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
             pasta_output = os.path.join(pasta_mes, 'output')
             os.makedirs(pasta_output, exist_ok=True)
 
-        # Processamento dos arquivos
         for path in paths:
             if not os.path.exists(path):
                 print(f"Erro: Arquivo '{path}' não encontrado.")
@@ -133,8 +126,6 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-    # Exemplo de caminhos:
-    # Se os arquivos já estiverem em uma pasta contendo "Abril", usará essa estrutura.
     "/Abril/output/dados_bravore_01.xlsx",
     "/Abril/output/dados_lebatec_01.xlsx",
     "/Abril/output/dados_propria_01.xlsx"
