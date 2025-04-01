@@ -15,11 +15,9 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-        equipes_utilizadas = {}  
-        processed_files = []     
+        processed_files = []
 
         base_dir = os.path.dirname(paths[0])
-        
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -27,81 +25,50 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
-        # Define a pasta base para o mês atual
         pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
-
         pasta_output = os.path.join(pasta_mes, 'output')
-        pasta_dados = os.path.join(pasta_mes, 'dados')
-        
         os.makedirs(pasta_output, exist_ok=True)
-        os.makedirs(pasta_dados, exist_ok=True)
-        
+
         for path in paths:
             if not os.path.exists(path):
-                print(f"Arquivo '{path}' não encontrado.")
+                print(f"Erro: Arquivo '{path}' não encontrado.")
+                continue
+
+            nome_arquivo = os.path.basename(path).upper()
+            if 'LEBATEC' in nome_arquivo:
+                nome_equipe = "LEBATEC"
+            elif 'BRAVORE' in nome_arquivo:
+                nome_equipe = "BRAVORE"
+            elif 'PROPRIA' in nome_arquivo:
+                nome_equipe = "PROPRIA"
+            else:
                 while True:
-                    eqp = input("Selecione a equipe para localizar a pasta deste arquivo (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
+                    eqp = input("Selecione a equipe (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
                     if eqp in ['1', '2', '3']:
                         break
-                    print("Escolha inválida. Digite 1, 2 ou 3.")
-                if eqp == '1':
-                    nome_equipe = "LEBATEC"
-                elif eqp == '2':
-                    nome_equipe = "BRAVORE"
-                else:
-                    nome_equipe = "PROPRIA"
-        
-                novo_caminho = os.path.join(pasta_mes, 'dados', nome_equipe, os.path.basename(path))
-                print(f"Verificando no caminho: {novo_caminho}")
-        
-                if os.path.exists(novo_caminho):
-                    path = novo_caminho
-                    print(f"Arquivo encontrado no caminho: {novo_caminho}")
-                else:
-                    print(f"Erro: O arquivo '{novo_caminho}' também não foi encontrado.")
-                    continue
-            else:
-                # Identificação automática da equipe pelo nome do arquivo se corresponder
-                nome_arquivo = os.path.basename(path).upper()
-                if 'LEBATEC' in nome_arquivo:
-                    nome_equipe = "LEBATEC"
-                elif 'BRAVORE' in nome_arquivo:
-                    nome_equipe = "BRAVORE"
-                elif 'PROPRIA' in nome_arquivo:
-                    nome_equipe = "PROPRIA"
-                else:
-                    # Se o nome da equipe não estiver no arquivo, solicitar ao usuário
-                    while True:
-                        eqp = input("Nome da equipe não encontrado no arquivo. Selecione a equipe (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
-                        if eqp in ['1', '2', '3']:
-                            break
-                        print("Escolha inválida. Digite 1, 2 ou 3.")
-                    if eqp == '1':
-                        nome_equipe = "LEBATEC"
-                    elif eqp == '2':
-                        nome_equipe = "BRAVORE"
-                    else:
-                        nome_equipe = "PROPRIA"
+                nome_equipe = ["LEBATEC", "BRAVORE", "PROPRIA"][int(eqp) - 1]
 
-            print(f"Processando o arquivo: {path}")
+            print(f"Processando: {path}")
             df = pd.read_excel(path, sheet_name=0)
-
             df.columns = [str(col).strip().upper() for col in df.columns]
 
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
+           
             if colunas_faltando:
                 print(f"colunas da planilha: {df.columns}")
-                print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
+                print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)} \n Vamos verificar na segunda aba..." )
                 try:
                     df = pd.read_excel(path, sheet_name=1)
                     df.columns = [str(col).strip().upper() for col in df.columns]
                     colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
                     if colunas_faltando:
-                        print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
-                        continue  
+                          print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
+                          continue
+                    else:
+                          print("Tudo certo, processando..")  
                 except Exception as e:
-                    print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
-                    continue 
+                      print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
+                      continue  
 
             df_filtrado = df[nomes_colunas].copy()
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
@@ -112,16 +79,14 @@ class OtimizadorIFQ6:
                 lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
                 axis=1
             )
+
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
-                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cum
-::contentReference[oaicite:5]{index=5}
-
-
                 df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
                 df_filtrado.drop(columns=['grupo'], inplace=True)
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
+            df_filtrado['EQUIPE'] = nome_equipe
 
             lista_df.append(df_filtrado)
             processed_files.append((path, nome_equipe))
@@ -148,5 +113,34 @@ class OtimizadorIFQ6:
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
+# Exemplo de uso
+otimizador = OtimizadorIFQ6()
 
- 
+arquivos = [
+            # Coloque os caminhos dos arquivos aqui
+            # "/content/base_dados_IFQ6_propria_fev.xlsx",
+            # "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+            # "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+            # "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+            # "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+            # "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+            # "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+            # "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+            # "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+            # "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+            "/Abril/output/dados_bravore_01.xlsx",
+            "/Abril/output/dados_lebatec_01.xlsx",
+            "/Abril/output/dados_propria_01.xlsx"
+
+    ]
+
+otimizador.validacao(arquivos)
+
+
+
+Processando: /Abril/output/dados_bravore_01.xlsx
+Processando: /Abril/output/dados_lebatec_01.xlsx
+Processando: /Abril/output/dados_propria_01.xlsx
+Todos os dados foram unificados e salvos em '/Abril/Abril/output/dados_geral_juncao_01.xlsx'.
