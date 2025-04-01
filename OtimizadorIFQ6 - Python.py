@@ -74,10 +74,11 @@ class OtimizadorIFQ6:
 
             df_final['check cd_01'] = df_final.apply(lambda row: 'VERIFICAR' if row['NM_COVA'] == 'L' and row['NM_FUSTE'] == '1' else 'OK', axis=1)
 
-            if 'VERIFICAR' not in df_final['check dup'].values:
-                df_final['NM_COVA'] = df_final.groupby('NM_FILA').cumcount() + 1
-
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
+
+            # Atualizar NM_COVA apenas para linhas sem 'VERIFICAR' nos checks
+            mask = (df_final['check dup'] != 'VERIFICAR') & (df_final['check cd_01'] != 'VERIFICAR')
+            df_final.loc[mask, 'NM_COVA'] = df_final[mask].groupby('NM_FILA').cumcount() + 1
 
             if len(equipes) == 1:
                 nome_base = f"IFQ6_{nome_mes}_{list(equipes)[0]}_{data_emissao}"
@@ -96,20 +97,3 @@ class OtimizadorIFQ6:
             print(f"✅ Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("❌ Nenhum arquivo foi processado com sucesso.")
-
-# Exemplo de uso
-otimizador = OtimizadorIFQ6()
-
-arquivos = [
-    "/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
-    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
-    "/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-    "/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-    "/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-    "/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-    "/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-    "/6271_TABOCA_SRP - IFQ6 (4).xlsx"
-]
-
-otimizador.validacao(arquivos)
