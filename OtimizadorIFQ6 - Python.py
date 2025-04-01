@@ -28,15 +28,12 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
-        if os.path.basename(os.path.normpath(base_dir)).upper() == nome_mes.upper():
-            pasta_mes = base_dir
-        else:
-            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
+        # Define a pasta base para o mês atual
+        pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
 
         pasta_output = os.path.join(pasta_mes, 'output')
         pasta_dados = os.path.join(pasta_mes, 'dados')
         
-        os.makedirs(pasta_mes, exist_ok=True)
         os.makedirs(pasta_output, exist_ok=True)
         os.makedirs(pasta_dados, exist_ok=True)
         
@@ -64,6 +61,28 @@ class OtimizadorIFQ6:
                 else:
                     print(f"Erro: O arquivo '{novo_caminho}' também não foi encontrado.")
                     continue
+            else:
+                # Identificação automática da equipe pelo nome do arquivo se corresponder
+                nome_arquivo = os.path.basename(path).upper()
+                if 'LEBATEC' in nome_arquivo:
+                    nome_equipe = "LEBATEC"
+                elif 'BRAVORE' in nome_arquivo:
+                    nome_equipe = "BRAVORE"
+                elif 'PROPRIA' in nome_arquivo:
+                    nome_equipe = "PROPRIA"
+                else:
+                    # Se o nome da equipe não estiver no arquivo, solicitar ao usuário
+                    while True:
+                        eqp = input("Nome da equipe não encontrado no arquivo. Selecione a equipe (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
+                        if eqp in ['1', '2', '3']:
+                            break
+                        print("Escolha inválida. Digite 1, 2 ou 3.")
+                    if eqp == '1':
+                        nome_equipe = "LEBATEC"
+                    elif eqp == '2':
+                        nome_equipe = "BRAVORE"
+                    else:
+                        nome_equipe = "PROPRIA"
 
             print(f"Processando o arquivo: {path}")
             df = pd.read_excel(path, sheet_name=0)
@@ -72,18 +91,18 @@ class OtimizadorIFQ6:
 
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
             if colunas_faltando:
-              print(f"colunas da planilha: {df.columns}")
-              print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
-              try:
-                  df = pd.read_excel(path, sheet_name=1)
-                  df.columns = [str(col).strip().upper() for col in df.columns]
-                  colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
-                  if colunas_faltando:
-                      print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
-                      continue  
-              except Exception as e:
-                  print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
-                  continue 
+                print(f"colunas da planilha: {df.columns}")
+                print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
+                try:
+                    df = pd.read_excel(path, sheet_name=1)
+                    df.columns = [str(col).strip().upper() for col in df.columns]
+                    colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
+                    if colunas_faltando:
+                        print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
+                        continue  
+                except Exception as e:
+                    print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
+                    continue 
 
             df_filtrado = df[nomes_colunas].copy()
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
@@ -145,6 +164,7 @@ class OtimizadorIFQ6:
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
+            # Verifica se o arquivo de saída já existe na pasta do mês atual
             novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_junção_EPS.xlsx')
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
@@ -167,6 +187,7 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
+            # Coloque os caminhos dos arquivos aqui
             # "/content/base_dados_IFQ6_propria_fev.xlsx",
             # "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
             # "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
@@ -179,10 +200,6 @@ arquivos = [
             # "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
             # "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
             # "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
-            # "/Abril/output/IFQ6_dados_Abril_EPS01.xlsx",
-            # "/Abril/output/IFQ6_dados_Abril_EPS02.xlsx",
-            # "/Abril/output/IFQ6_dados_Abril_EPS03.xlsx"
-
     ]
 
 otimizador.validacao(arquivos)
