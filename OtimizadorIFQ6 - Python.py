@@ -15,7 +15,7 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-        equipes = set()
+        equipes = {}
 
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -37,19 +37,20 @@ class OtimizadorIFQ6:
 
             nome_arquivo = os.path.basename(path).upper()
             if 'LEBATEC' in nome_arquivo:
-                nome_equipe = "LEBATEC"
+                nome_equipe_base = "lebatec"
             elif 'BRAVORE' in nome_arquivo:
-                nome_equipe = "BRAVORE"
+                nome_equipe_base = "bravore"
             elif 'PROPRIA' in nome_arquivo:
-                nome_equipe = "PROPRIA"
+                nome_equipe_base = "propria"
             else:
                 while True:
                     eqp = input("Selecione a equipe (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
                     if eqp in ['1', '2', '3']:
                         break
-                nome_equipe = ["LEBATEC", "BRAVORE", "PROPRIA"][int(eqp) - 1]
+                nome_equipe_base = ["lebatec", "bravore", "propria"][int(eqp) - 1]
 
-            equipes.add(nome_equipe)
+            equipes[nome_equipe_base] = equipes.get(nome_equipe_base, 0) + 1
+            nome_equipe = nome_equipe_base if equipes[nome_equipe_base] == 1 else f"{nome_equipe_base}_{equipes[nome_equipe_base]:02d}"
 
             df = pd.read_excel(path, sheet_name=0)
             df.columns = [str(col).strip().upper() for col in df.columns]
@@ -76,14 +77,13 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Atualizar NM_COVA apenas para linhas sem 'VERIFICAR' nos checks
             mask = (df_final['check dup'] != 'VERIFICAR') & (df_final['check cd_01'] != 'VERIFICAR')
             df_final.loc[mask, 'NM_COVA'] = df_final[mask].groupby('NM_FILA').cumcount() + 1
 
             if len(equipes) == 1:
-                nome_base = f"IFQ6_{nome_mes}_{list(equipes)[0]}_{data_emissao}"
+                nome_base = f"IFQ6_{nome_mes}_{list(equipes.keys())[0]}_{data_emissao}"
             elif len(equipes) == 2:
-                nome_base = f"IFQ6_{list(equipes)[0]}_e_{list(equipes)[1]}_{data_emissao}"
+                nome_base = f"IFQ6_{list(equipes.keys())[0]}_e_{list(equipes.keys())[1]}_{data_emissao}"
             else:
                 nome_base = f"IFQ6_{nome_mes}_{data_emissao}"
 
