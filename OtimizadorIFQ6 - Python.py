@@ -66,17 +66,21 @@ class OtimizadorIFQ6:
                     continue
 
             print(f"Processando o arquivo: {path}")
-            try:
-                df = pd.read_excel(path, sheet_name=0)
-            except:
-                df = pd.read_excel(path, sheet_name=1)
+            df = pd.read_excel(path, sheet_name=0)
+
             df.columns = [str(col).strip().upper() for col in df.columns]
 
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
             if colunas_faltando:
                 print(f"colunas da planilha: {df.columns}")
+
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
-                continue
+                if colunas_faltando: 
+                  try:
+                   print("tentando com sheet 1 agora")  
+                   df == pd.read_excel(path, sheet_name=1)
+                  finally:
+                   continue
 
             df_filtrado = df[nomes_colunas].copy()
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
@@ -160,9 +164,19 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS01\IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS01\IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-r"F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automações em python\Automatizacao_IFQ6\IFQ6_dados_teste_EPS01\IFQ6_MS_Florestal_Bravore_17032025.xlsx"
-]
+            "/content/base_dados_IFQ6_propria_fev.xlsx",
+            # "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+            # "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+            # "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+            # "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+            # "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+            # "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+            # "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+            # "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+            # "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx"
+
+    ]
 
 otimizador.validacao(arquivos)
