@@ -92,7 +92,7 @@ class OtimizadorIFQ6:
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
             df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
-            df_final['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
+            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
             df_final.drop(columns=['grupo'], inplace=True)
             for idx in range(1, len(df_final)):
                     atual = df_final.iloc[idx]
@@ -137,18 +137,3 @@ arquivos = [
 ]
 
 otimizador.validacao(arquivos)
-KeyError                                  Traceback (most recent call last)
-<ipython-input-27-a62ca018bfc4> in <cell line: 0>()
-    137 ]
-    138 
---> 139 otimizador.validacao(arquivos)
-
-3 frames
-/usr/local/lib/python3.11/dist-packages/pandas/core/groupby/grouper.py in get_grouper(obj, key, axis, level, sort, observed, validate, dropna)
-   1041                 in_axis, level, gpr = False, gpr, None
-   1042             else:
--> 1043                 raise KeyError(gpr)
-   1044         elif isinstance(gpr, Grouper) and gpr.key is not None:
-   1045             # Add key to exclusions
-
-KeyError: 'grupo'
