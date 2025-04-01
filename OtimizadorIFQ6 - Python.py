@@ -15,7 +15,7 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-        equipe_contador = {}
+        equipes = set()
 
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
@@ -23,6 +23,7 @@ class OtimizadorIFQ6:
         ]
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
+        data_emissao = datetime.now().strftime("%Y%m%d")
 
         base_dir = os.path.dirname(paths[0])
         pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
@@ -48,8 +49,7 @@ class OtimizadorIFQ6:
                         break
                 nome_equipe = ["LEBATEC", "BRAVORE", "PROPRIA"][int(eqp) - 1]
 
-            equipe_contador[nome_equipe] = equipe_contador.get(nome_equipe, 0) + 1
-            nome_equipe_incrementado = f"{nome_equipe}_{str(equipe_contador[nome_equipe]).zfill(2)}"
+            equipes.add(nome_equipe)
 
             df = pd.read_excel(path, sheet_name=0)
             df.columns = [str(col).strip().upper() for col in df.columns]
@@ -60,7 +60,7 @@ class OtimizadorIFQ6:
                 continue
 
             df_filtrado = df[nomes_colunas].copy()
-            df_filtrado['EQUIPE'] = nome_equipe_incrementado
+            df_filtrado['EQUIPE'] = nome_equipe
             lista_df.append(df_filtrado)
 
         if lista_df:
@@ -72,15 +72,20 @@ class OtimizadorIFQ6:
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
+            df_final['check cd_01'] = df_final.apply(lambda row: 'VERIFICAR' if row['NM_COVA'] == 'L' and row['NM_FUSTE'] == '1' else 'OK', axis=1)
+
             if 'VERIFICAR' not in df_final['check dup'].values:
-                df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
-                df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
-                df_final.drop(columns=['grupo'], inplace=True)
+                df_final['NM_COVA'] = df_final.groupby('NM_FILA').cumcount() + 1
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            equipes_juntadas = sorted(set(df_final['EQUIPE'].unique()))
-            nome_base = "_".join(nome_equipe)
+            if len(equipes) == 1:
+                nome_base = f"IFQ6_{nome_mes}_{list(equipes)[0]}_{data_emissao}"
+            elif len(equipes) == 2:
+                nome_base = f"IFQ6_{list(equipes)[0]}_e_{list(equipes)[1]}_{data_emissao}"
+            else:
+                nome_base = f"IFQ6_{nome_mes}_{data_emissao}"
+
             contador = 1
             novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
             while os.path.exists(novo_arquivo_excel):
@@ -108,12 +113,3 @@ arquivos = [
 ]
 
 otimizador.validacao(arquivos)
-
-#COISAS FALTANDO NO CODIGO:
-
-#1)NM_COVA tem que ser com base no NM_FILA por exemplo:
-#nm_fila tem 1,1,1,1 entao nm_cova sera igual a 1,2,3,4 ai outro nm_fila será 2,2,2 entao nm_cova sera 1,2,3 e assim sucessivamente.
-#2)verificação do L se tem fuste == 1 e se tiver lançar verificar em 'check cd_01' se nao lançar um 'ok'.
-#3)tratar de arrumar o nome nao deveria ser o nome de todos os arquivos juntos e sim somente a equipe que o usuario escolher e tem que ter como base o nome "IFQ6_{nome do mes}_{nome da equipe que foi selecionada}_{e a data de emissao do arquivo}"
-#4)a logica dos nomes deve continuar se tiver mais de uma equipe fica IFQ6_{nome da equipe primaria} e {nome da equipe segundaria}_{data de emissao} e se for todas equipes "IFQ6_{nome do mes}_{data de emissão}"
-#5)os outros parametros devem ser os mesmos oque deve ser mudado é oque está aqui.
