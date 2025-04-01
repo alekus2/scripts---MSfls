@@ -17,7 +17,7 @@ class OtimizadorIFQ6:
         lista_df = []
         processed_files = []
 
-        base_dir = os.path.dirname(paths[0])
+        # Define o nome do mês corrente
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -25,10 +25,26 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
-        pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
-        pasta_output = os.path.join(pasta_mes, 'output')
-        os.makedirs(pasta_output, exist_ok=True)
+        # Verifica se o primeiro arquivo já contém o nome do mês na sua estrutura de pastas
+        base_path = os.path.abspath(paths[0])
+        if nome_mes.lower() in base_path.lower():
+            # Se a pasta que contém o arquivo é "output", usamos essa mesma pasta
+            parent_dir = os.path.dirname(base_path)
+            if os.path.basename(parent_dir).lower() == 'output':
+                pasta_output = parent_dir
+            else:
+                # Caso contrário, cria ou usa a subpasta "output" dentro da pasta atual
+                pasta_output = os.path.join(parent_dir, 'output')
+                os.makedirs(pasta_output, exist_ok=True)
+        else:
+            # Se o arquivo não estiver em uma pasta que contenha o nome do mês,
+            # cria a estrutura padrão: <pasta_base>/<nome_mes>/output
+            base_dir = os.path.dirname(paths[0])
+            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
+            pasta_output = os.path.join(pasta_mes, 'output')
+            os.makedirs(pasta_output, exist_ok=True)
 
+        # Processamento dos arquivos
         for path in paths:
             if not os.path.exists(path):
                 print(f"Erro: Arquivo '{path}' não encontrado.")
@@ -53,22 +69,22 @@ class OtimizadorIFQ6:
             df.columns = [str(col).strip().upper() for col in df.columns]
 
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
-           
             if colunas_faltando:
-                print(f"colunas da planilha: {df.columns}")
-                print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)} \n Vamos verificar na segunda aba..." )
+                print(f"Colunas da planilha: {df.columns}")
+                print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
+                print("Vamos verificar na segunda aba...")
                 try:
                     df = pd.read_excel(path, sheet_name=1)
                     df.columns = [str(col).strip().upper() for col in df.columns]
                     colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
                     if colunas_faltando:
-                          print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
-                          continue
+                        print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
+                        continue
                     else:
-                          print("Tudo certo, processando..")  
+                        print("Tudo certo, processando...")
                 except Exception as e:
-                      print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
-                      continue  
+                    print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
+                    continue  
 
             df_filtrado = df[nomes_colunas].copy()
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
@@ -117,30 +133,11 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-            # Coloque os caminhos dos arquivos aqui
-            # "/content/base_dados_IFQ6_propria_fev.xlsx",
-            # "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-            # "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-            # "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-            # "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-            # "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
-            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-            # "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-            # "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-            # "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-            # "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
-            "/Abril/output/dados_bravore_01.xlsx",
-            "/Abril/output/dados_lebatec_01.xlsx",
-            "/Abril/output/dados_propria_01.xlsx"
-
-    ]
+    # Exemplo de caminhos:
+    # Se os arquivos já estiverem em uma pasta contendo "Abril", usará essa estrutura.
+    "/Abril/output/dados_bravore_01.xlsx",
+    "/Abril/output/dados_lebatec_01.xlsx",
+    "/Abril/output/dados_propria_01.xlsx"
+]
 
 otimizador.validacao(arquivos)
-
-
-
-Processando: /Abril/output/dados_bravore_01.xlsx
-Processando: /Abril/output/dados_lebatec_01.xlsx
-Processando: /Abril/output/dados_propria_01.xlsx
-Todos os dados foram unificados e salvos em '/Abril/Abril/output/dados_geral_juncao_01.xlsx'.
