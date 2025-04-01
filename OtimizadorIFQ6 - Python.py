@@ -1,6 +1,5 @@
 import pandas as pd
 import os
-import re
 from datetime import datetime
 
 class OtimizadorIFQ6:
@@ -115,91 +114,39 @@ class OtimizadorIFQ6:
             )
             if 'VERIFICAR' not in df_filtrado['check dup'].values:
                 df_filtrado['grupo'] = (df_filtrado['NM_FILA'] != df_filtrado['NM_FILA'].shift()).cumsum()
+                df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cum
+::contentReference[oaicite:5]{index=5}
+
+
                 df_filtrado['NM_COVA'] = df_filtrado.groupby('grupo').cumcount() + 1
                 df_filtrado.drop(columns=['grupo'], inplace=True)
-                for idx in range(1, len(df_filtrado)):
-                    atual = df_filtrado.iloc[idx]
-                    anterior = df_filtrado.iloc[idx - 1]
-                    if atual['NM_FILA'] == anterior['NM_FILA']:
-                        if atual['CD_01'] == 'L':
-                            df_filtrado.at[idx, 'NM_COVA'] = df_filtrado.at[idx - 1, 'NM_COVA']
-                        else:
-                            continue
 
             df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            filename = os.path.basename(path)
-            print(f"\nArquivo: {filename}")
-            while True:
-                escolha = input("Selecione a equipe para este arquivo (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ").strip()
-                if escolha in ['1', '2', '3']:
-                    break
-                print("Escolha inválida. Digite 1, 2 ou 3.")
-
-            if escolha == '1':
-                equipe_base = "LEBATEC"
-            elif escolha == '2':
-                equipe_base = "BRAVORE"
-            else:
-                equipe_base = "PROPRIA"
-
-            if equipe_base in equipes_utilizadas:
-                equipes_utilizadas[equipe_base] += 1
-                equipe_final = f"{equipe_base}_{equipes_utilizadas[equipe_base]}"
-            else:
-                equipes_utilizadas[equipe_base] = 1
-                equipe_final = equipe_base
-
-            print(f"Equipe identificada: {equipe_final}")
-            df_filtrado['EQUIPES'] = equipe_final
-
-            valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
-            df_filtrado['check cd'] = df_filtrado.apply(
-                lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
-                            ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else 'OK'),
-                axis=1
-            )
             lista_df.append(df_filtrado)
-            processed_files.append((path, equipe_final))
+            processed_files.append((path, nome_equipe))
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            # Verifica se o arquivo de saída já existe na pasta do mês atual
-            novo_arquivo_excel = os.path.join(pasta_output, f'IFQ6_dados_{nome_mes}_junção_EPS.xlsx')
+            equipes_juntadas = sorted(set(equipe for _, equipe in processed_files))
+
+            if len(equipes_juntadas) == 1:
+                nome_base = f"dados_{equipes_juntadas[0].lower()}"
+            elif len(equipes_juntadas) == 2:
+                nome_base = f"dados_{equipes_juntadas[0].lower()}_{equipes_juntadas[1].lower()}"
+            else:
+                nome_base = "dados_geral_juncao"
+
+            contador = 1
+            novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
+            while os.path.exists(novo_arquivo_excel):
+                contador += 1
+                novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
+
             df_final.to_excel(novo_arquivo_excel, index=False)
             print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("Nenhum arquivo foi processado com sucesso.")
 
-        for file_path, equipe_final in processed_files:
-            pasta_equipe = os.path.join(pasta_dados, equipe_final.split('_')[0])
-            os.makedirs(pasta_equipe, exist_ok=True)
-            nome_arquivo = os.path.basename(file_path)
-            destino = os.path.join(pasta_equipe, nome_arquivo)
-            if os.path.exists(file_path):
-                try:
-                    os.rename(file_path, destino)
-                    print(f"Arquivo '{nome_arquivo}' movido para '{pasta_equipe}'.")
-                except Exception as e:
-                    print(f"Erro ao mover '{nome_arquivo}' para '{pasta_equipe}': {e}")
 
-# Exemplo de uso
-otimizador = OtimizadorIFQ6()
-
-arquivos = [
-            # Coloque os caminhos dos arquivos aqui
-            # "/content/base_dados_IFQ6_propria_fev.xlsx",
-            # "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-            # "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-            # "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-            # "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-            # "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
-            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-            # "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-            # "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-            # "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-            # "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-            # "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
-    ]
-
-otimizador.validacao(arquivos)
+ 
