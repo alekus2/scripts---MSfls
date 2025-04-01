@@ -66,22 +66,21 @@ class OtimizadorIFQ6:
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
 
-            # Padronização antes da verificação de duplicatas
             for col in ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']:
                 df_final[col] = df_final[col].astype(str).str.strip().str.upper()
 
-            # Verificação de duplicatas antes da modificação do NM_COVA
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
-            # Ajuste do NM_COVA somente depois da verificação de duplicatas
-            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
-            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
-            df_final.drop(columns=['grupo'], inplace=True)
+            if 'VERIFICAR' not in df_final['check dup'].values:
+                df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
+                df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
+                df_final.drop(columns=['grupo'], inplace=True)
 
-            # Nome do arquivo de saída
+            df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
+
             equipes_juntadas = sorted(set(df_final['EQUIPE'].unique()))
-            nome_base = "_".join([equipe.lower() for equipe in equipes_juntadas])
+            nome_base = "_".join(nome_equipe)
             contador = 1
             novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
             while os.path.exists(novo_arquivo_excel):
@@ -97,9 +96,24 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-    "/Abril/output/dados_bravore_01.xlsx",
-    "/Abril/output/dados_lebatec_01.xlsx",
-    "/Abril/output/dados_propria_01.xlsx"
+    "/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
+    "/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    "/6271_TABOCA_SRP - IFQ6 (4).xlsx"
 ]
 
 otimizador.validacao(arquivos)
+
+#COISAS FALTANDO NO CODIGO:
+
+#1)NM_COVA tem que ser com base no NM_FILA por exemplo:
+#nm_fila tem 1,1,1,1 entao nm_cova sera igual a 1,2,3,4 ai outro nm_fila será 2,2,2 entao nm_cova sera 1,2,3 e assim sucessivamente.
+#2)verificação do L se tem fuste == 1 e se tiver lançar verificar em 'check cd_01' se nao lançar um 'ok'.
+#3)tratar de arrumar o nome nao deveria ser o nome de todos os arquivos juntos e sim somente a equipe que o usuario escolher e tem que ter como base o nome "IFQ6_{nome do mes}_{nome da equipe que foi selecionada}_{e a data de emissao do arquivo}"
+#4)a logica dos nomes deve continuar se tiver mais de uma equipe fica IFQ6_{nome da equipe primaria} e {nome da equipe segundaria}_{data de emissao} e se for todas equipes "IFQ6_{nome do mes}_{data de emissão}"
+#5)os outros parametros devem ser os mesmos oque deve ser mudado é oque está aqui.
