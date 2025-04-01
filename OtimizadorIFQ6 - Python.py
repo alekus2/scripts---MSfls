@@ -15,7 +15,6 @@ class OtimizadorIFQ6:
         ]
         
         lista_df = []
-        processed_files = []
         equipe_contador = {}
 
         meses = [
@@ -25,16 +24,10 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
 
-        base_path = os.path.abspath(paths[0])
-        if nome_mes.lower() in base_path.lower():
-            parent_dir = os.path.dirname(base_path)
-            pasta_output = parent_dir if os.path.basename(parent_dir).lower() == 'output' else os.path.join(parent_dir, 'output')
-            os.makedirs(pasta_output, exist_ok=True)
-        else:
-            base_dir = os.path.dirname(paths[0])
-            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
-            pasta_output = os.path.join(pasta_mes, 'output')
-            os.makedirs(pasta_output, exist_ok=True)
+        base_dir = os.path.dirname(paths[0])
+        pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
+        pasta_output = os.path.join(pasta_mes, 'output')
+        os.makedirs(pasta_output, exist_ok=True)
 
         for path in paths:
             if not os.path.exists(path):
@@ -58,58 +51,37 @@ class OtimizadorIFQ6:
             equipe_contador[nome_equipe] = equipe_contador.get(nome_equipe, 0) + 1
             nome_equipe_incrementado = f"{nome_equipe}_{str(equipe_contador[nome_equipe]).zfill(2)}"
 
-            print(f"Processando: {path}")
             df = pd.read_excel(path, sheet_name=0)
             df.columns = [str(col).strip().upper() for col in df.columns]
 
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
             if colunas_faltando:
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
-                print("Vamos verificar na segunda aba...")
-                try:
-                    df = pd.read_excel(path, sheet_name=1)
-                    df.columns = [str(col).strip().upper() for col in df.columns]
-                    colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
-                    if colunas_faltando:
-                        print(f"Erro: As colunas esperadas não foram encontradas na segunda aba do arquivo '{path}': {', '.join(colunas_faltando)}")
-                        continue
-                except Exception as e:
-                    print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
-                    continue  
+                continue
 
             df_filtrado = df[nomes_colunas].copy()
-            
-            # Normalizando tipos de dados para garantir detecção correta de duplicatas
-            for col in ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']:
-                df_filtrado[col] = df_filtrado[col].astype(str).str.strip()
-
-            # Verificação de duplicatas
-            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
-            df_filtrado['check dup'] = df_filtrado.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
-            df_filtrado['CHAVE_DUPLICADA'] = df_filtrado[dup_columns].astype(str).agg('-'.join, axis=1)
-            df_filtrado['CHAVE_DUPLICADA'] = df_filtrado.apply(
-                lambda row: row['CHAVE_DUPLICADA'] if row['check dup'] == 'VERIFICAR' else '',
-                axis=1
-            )
-
-            # Nova verificação para 'CD_01' com código "L" e 'NM_FUSTE' == 1
-            df_filtrado['check cd_01'] = df_filtrado.apply(
-                lambda row: 'VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == '1' else 'OK',
-                axis=1
-            )
-
-            df_filtrado["CD_TALHAO"] = df_filtrado["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
             df_filtrado['EQUIPE'] = nome_equipe_incrementado
-
             lista_df.append(df_filtrado)
-            processed_files.append((path, nome_equipe))
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-            equipes_juntadas = sorted(set(equipe for _, equipe in processed_files))
 
+            # Padronização antes da verificação de duplicatas
+            for col in ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']:
+                df_final[col] = df_final[col].astype(str).str.strip().str.upper()
+
+            # Verificação de duplicatas antes da modificação do NM_COVA
+            dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
+            df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
+
+            # Ajuste do NM_COVA somente depois da verificação de duplicatas
+            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
+            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
+            df_final.drop(columns=['grupo'], inplace=True)
+
+            # Nome do arquivo de saída
+            equipes_juntadas = sorted(set(df_final['EQUIPE'].unique()))
             nome_base = "_".join([equipe.lower() for equipe in equipes_juntadas])
-
             contador = 1
             novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
             while os.path.exists(novo_arquivo_excel):
@@ -117,9 +89,9 @@ class OtimizadorIFQ6:
                 novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
 
             df_final.to_excel(novo_arquivo_excel, index=False)
-            print(f"Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
+            print(f"✅ Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
-            print("Nenhum arquivo foi processado com sucesso.")
+            print("❌ Nenhum arquivo foi processado com sucesso.")
 
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
