@@ -87,7 +87,12 @@ class OtimizadorIFQ6:
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
-            df_final['check cd_01'] = df_final.apply(lambda row: 'VERIFICAR' if row['NM_COVA'] == 'L' and row['NM_FUSTE'] == '1' else 'OK', axis=1)
+            valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
+            df_final['check cd'] = df_filtrado.apply(
+                lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
+                            ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else 'OK'),
+                axis=1
+            )
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
@@ -102,7 +107,9 @@ class OtimizadorIFQ6:
                             df_final.at[idx, 'NM_COVA'] = df_final.at[idx - 1, 'NM_COVA']
                         else:
                             continue
-
+            
+            df_final['check SQC'] = df_final.apply(lambda row: 'OK' if atual['NM_COVA'] == anterior['NM_COVA'] and anterior['CD_01'] == 'N' else ('VERIFICAR' if anterior['CD_01'] == 'L' and atual['CD_01'] == 'N'), axis=1)
+            
             if len(equipes) == 1:
                 nome_base = f"IFQ6_{nome_mes}_{list(equipes.keys())[0]}_{data_emissao}"
             elif len(equipes) == 2:
@@ -125,15 +132,9 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-    "/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
-    "/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
-    "/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-    "/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-    "/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-    "/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-    "/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-    "/6271_TABOCA_SRP - IFQ6 (4).xlsx"
-]
+        "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+        "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+        "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx"
+        ]
 
 otimizador.validacao(arquivos)
