@@ -17,6 +17,9 @@ class CadastroSGF:
             "Classe", "FlagCTOVirtual", "Registro", "Ativo"
         ]
 
+        # Normaliza os nomes das colunas da lista
+        nomes_colunas_normalizados = [col.lower().strip() for col in nomes_colunas]
+
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -47,12 +50,15 @@ class CadastroSGF:
             print(f"Processando: {path}")
             df = pd.read_excel(path, sheet_name=0)
 
+            # Normaliza os nomes das colunas do DataFrame
+            colunas_df_normalizadas = [col.lower().strip() for col in df.columns]
+
             colunas_presentes = []
             colunas_faltando = []
 
             # Verifica quais colunas estão presentes
-            for col in nomes_colunas:
-                if col in df.columns:
+            for col in nomes_colunas_normalizados:
+                if col in colunas_df_normalizadas:
                     colunas_presentes.append(col)
                 else:
                     colunas_faltando.append(col)
@@ -63,7 +69,8 @@ class CadastroSGF:
                 continue  # Pula para o próximo arquivo se nenhuma coluna estiver presente
             
             # Reorganiza as colunas na ordem especificada, apenas com as colunas que foram encontradas
-            df_reorganizado = df[colunas_presentes]
+            colunas_presentes_originais = [nomes_colunas[i] for i, col in enumerate(nomes_colunas_normalizados) if col in colunas_presentes]
+            df_reorganizado = df[colunas_presentes_originais]
 
             # Salvar o DataFrame reorganizado
             nome_base = f"SGF_{nome_mes}_{data_emissao}"
