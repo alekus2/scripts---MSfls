@@ -50,6 +50,7 @@ class CadastroSGF:
             colunas_presentes = []
             colunas_faltando = []
 
+            # Verifica quais colunas estão presentes
             for col in nomes_colunas:
                 if col in df.columns:
                     colunas_presentes.append(col)
@@ -61,7 +62,7 @@ class CadastroSGF:
                 print(f"Erro: Nenhuma coluna esperada encontrada no arquivo '{path}'. Pulando...")
                 continue  # Pula para o próximo arquivo se nenhuma coluna estiver presente
             
-            # Cria um DataFrame com as colunas encontradas, na ordem especificada
+            # Reorganiza as colunas na ordem especificada, apenas com as colunas que foram encontradas
             df_reorganizado = df[colunas_presentes]
 
             # Salvar o DataFrame reorganizado
