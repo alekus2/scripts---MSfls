@@ -53,6 +53,9 @@ class CadastroSGF:
             # Normaliza os nomes das colunas do DataFrame
             colunas_df_normalizadas = [col.lower().strip() for col in df.columns]
 
+            # Printar as colunas do DataFrame para comparação
+            print(f"Colunas encontradas no DataFrame: {colunas_df_normalizadas}")
+
             colunas_presentes = []
             colunas_faltando = []
 
