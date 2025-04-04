@@ -85,31 +85,40 @@ class OtimizadorIFQ6:
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
             valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
-            df_final['check cd'] = df_filtrado.apply(
+            df_final['check cd'] = df_final.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
                             ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else 'OK'),
                 axis=1
             )
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
+
+            # Ajuste para NM_COVA
+            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
+            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
+
             for idx in range(1, len(df_final)):
                 atual = df_final.iloc[idx]
                 anterior = df_final.iloc[idx - 1]
+
                 if atual['NM_FILA'] == anterior['NM_FILA']:
                     if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N':
-                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA']
-                  
-            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
-            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
+                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA']  # Igualar NM_COVA se for 'L' após 'N'
+                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
+                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA']  # Igualar NM_COVA se for 'N' após 'L'
+                    else:
+                        # Caso padrão, garantir que NM_COVA continue a sequência correta
+                        df_final.at[idx, 'NM_COVA'] = df_final.at[idx - 1, 'NM_COVA'] + 1
+
             df_final.drop(columns=['grupo'], inplace=True)
-           
+
             df_final['check SQC'] = 'OK'  
             for idx in range(1, len(df_final)):
                 atual = df_final.iloc[idx]
                 anterior = df_final.iloc[idx - 1]
-                
+
                 if atual['NM_COVA'] == anterior['NM_COVA']:
-                    if atual['CD_01'] == 'N' and anterior['CD_01'] == 'L' and anterior['NM_FUSTE']==2:
+                    if atual['CD_01'] == 'N' and anterior['CD_01'] == 'L' and anterior['NM_FUSTE'] == 2:
                         df_final.at[idx, 'check SQC'] = 'VERIFICAR'
 
             if len(equipes) == 1:
