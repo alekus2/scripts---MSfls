@@ -93,10 +93,10 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Dicionário para rastrear as últimas bifurcações de NM_COVA por NM_FILA
+            # Dicionário para rastrear a última bifurcação de NM_COVA por NM_FILA
             ultima_bifurcacao = {}
 
-            # Verificação e ajuste de NM_COVA
+            # Ajuste para NM_COVA
             for idx in range(len(df_final)):
                 atual = df_final.iloc[idx]
                 nm_fila = atual['NM_FILA']
@@ -105,13 +105,18 @@ class OtimizadorIFQ6:
                 if nm_fila not in ultima_bifurcacao:
                     ultima_bifurcacao[nm_fila] = 0  # Começa a contagem em zero
 
+                # Verifica se o NM_COVA atual está correto
                 if atual['CD_01'] == 'L':
-                    # Se for 'L', usa a última bifurcação
+                    # Se for 'L', mantém o NM_COVA da última bifurcação
                     df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila]
                 else:
-                    # Se for 'N', verifica a sequência
-                    df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila] + 1
-                    ultima_bifurcacao[nm_fila] += 1  # Incrementa a última bifurcação
+                    # Se for 'N', verifica se NM_COVA está como esperado
+                    if atual['NM_COVA'] != ultima_bifurcacao[nm_fila] + 1:
+                        # Se não estiver correto, corrige
+                        df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila] + 1
+
+                    # Atualiza a última bifurcação
+                    ultima_bifurcacao[nm_fila] += 1  # Incrementa a contagem
 
             df_final['check SQC'] = 'OK'  
             for idx in range(1, len(df_final)):
