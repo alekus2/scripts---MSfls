@@ -95,6 +95,7 @@ class OtimizadorIFQ6:
                 axis=1
             )
 
+            # Ajuste no formato de CD_TALHAO
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
             def is_sequential(group):
@@ -121,13 +122,66 @@ class OtimizadorIFQ6:
                     bifurcacao_necessaria = True
                     break
 
+            # Ajusta a coluna check SQC com valor padrão "OK"
             df_final['check SQC'] = 'OK'  
-            for idx in range(1, len(df_final)):
-                atual = df_final.iloc[idx]
-                anterior = df_final.iloc[idx - 1]
-                if atual['NM_COVA'] == anterior['NM_COVA']:
-                    if atual['CD_01'] == 'N' and anterior['CD_01'] == 'L' and anterior['NM_FUSTE'] == 2:
-                        df_final.at[idx, 'check SQC'] = 'VERIFICAR'
+
+            # Se a sequência não estiver correta em algum grupo, recalcula a sequência de NM_COVA
+            if bifurcacao_necessaria:
+                # Para cada grupo (fila) reinicia a contagem de 1 até n
+                for fila, grupo in df_final.groupby('NM_FILA'):
+                    # Obter os índices do grupo na ordem original
+                    indices = grupo.index.tolist()
+                    nova_sequencia = []
+                    contador = 1
+                    for pos, idx in enumerate(indices):
+                        cod = df_final.at[idx, 'CD_01']
+                        original_cova = df_final.at[idx, 'NM_COVA']
+                        
+                        # Se for a primeira linha do grupo, atribui o contador
+                        if pos == 0:
+                            nova_sequencia.append(contador)
+                        else:
+                            # Para linhas não iniciais
+                            if cod == 'L':
+                                # Verifica se a cova original é igual à da linha anterior
+                                idx_ant = indices[pos - 1]
+                                original_cova_ant = df_final.at[idx_ant, 'NM_COVA']
+                                if original_cova == original_cova_ant:
+                                    # Repete o valor anterior
+                                    nova_sequencia.append(nova_sequencia[-1])
+                                else:
+                                    # Se não for igual à linha anterior, verifica se há próxima linha
+                                    if pos < len(indices) - 1:
+                                        idx_prox = indices[pos + 1]
+                                        original_cova_prox = df_final.at[idx_prox, 'NM_COVA']
+                                        if original_cova == original_cova_prox:
+                                            # Atribui o próximo número (mantendo a contagem) e marca "VERIFICAR"
+                                            contador += 1
+                                            nova_sequencia.append(contador)
+                                            df_final.at[idx, 'check SQC'] = 'VERIFICAR'
+                                        else:
+                                            contador += 1
+                                            nova_sequencia.append(contador)
+                                    else:
+                                        contador += 1
+                                        nova_sequencia.append(contador)
+                            else:
+                                # Para código diferente de 'L', contagem normal
+                                contador += 1
+                                nova_sequencia.append(contador)
+                    
+                    # Atualiza os valores de NM_COVA para as linhas deste grupo
+                    for pos, idx in enumerate(indices):
+                        df_final.at[idx, 'NM_COVA'] = nova_sequencia[pos]
+            
+            # Caso não haja bifurcação, mantém a verificação padrão entre linhas (conforme já feito)
+            else:
+                for idx in range(1, len(df_final)):
+                    atual = df_final.iloc[idx]
+                    anterior = df_final.iloc[idx - 1]
+                    if atual['NM_COVA'] == anterior['NM_COVA']:
+                        if atual['CD_01'] == 'N' and anterior['CD_01'] == 'L' and anterior['NM_FUSTE'] == 2:
+                            df_final.at[idx, 'check SQC'] = 'VERIFICAR'
 
             if len(equipes) == 1:
                 nome_base = f"IFQ6_{nome_mes}_{list(equipes.keys())[0]}_{data_emissao}"
@@ -146,7 +200,7 @@ class OtimizadorIFQ6:
             print(f"✅ Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
         else:
             print("❌ Nenhum arquivo foi processado com sucesso.")
-          
+
 # Exemplo de uso
 otimizador = OtimizadorIFQ6()
 
