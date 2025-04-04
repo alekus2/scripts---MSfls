@@ -52,9 +52,13 @@ class OtimizadorIFQ6:
             equipes[nome_equipe_base] = equipes.get(nome_equipe_base, 0) + 1
             nome_equipe = nome_equipe_base if equipes[nome_equipe_base] == 1 else f"{nome_equipe_base}_{equipes[nome_equipe_base]:02d}"
 
-            df = pd.read_excel(path, sheet_name=0)
+            try:
+                df = pd.read_excel(path, sheet_name=0)
+            except Exception as e:
+                print(f"Erro ao ler a primeira aba do arquivo '{path}': {e}")
+                continue
+
             df.columns = [str(col).strip().upper() for col in df.columns]
-            
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
 
             if colunas_faltando:
@@ -81,9 +85,11 @@ class OtimizadorIFQ6:
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
 
+            # Validação de duplicidade
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
+            # Validação de CD_01 e NM_FUSTE
             valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
             df_final['check cd'] = df_final.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
@@ -93,36 +99,62 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Dicionário para rastrear a última bifurcação de NM_COVA por NM_FILA
-            ultima_bifurcacao = {}
+            # ––– Verificação da sequência de NM_COVA por NM_FILA –––
+            # Função para verificar se a sequência de NM_COVA está conforme o esperado
+            def is_sequential(group):
+                last_value = None
+                for _, row in group.iterrows():
+                    if row['CD_01'] == 'L':
+                        # Se for a primeira ocorrência, aceita o valor que está
+                        if last_value is None:
+                            last_value = row['NM_COVA']
+                        else:
+                            if row['NM_COVA'] != last_value:
+                                return False
+                    elif row['CD_01'] == 'N':
+                        if last_value is None:
+                            last_value = row['NM_COVA']
+                        else:
+                            if row['NM_COVA'] != last_value + 1:
+                                return False
+                            last_value = row['NM_COVA']
+                return True
 
-            # Ajuste para NM_COVA
-            for idx in range(len(df_final)):
-                atual = df_final.iloc[idx]
-                nm_fila = atual['NM_FILA']
+            # Checa se para cada NM_FILA a sequência já está correta
+            bifurcacao_necessaria = False
+            for fila, grupo in df_final.groupby('NM_FILA'):
+                if not is_sequential(grupo):
+                    bifurcacao_necessaria = True
+                    break
 
-                # Inicializa a bifurcação para NM_FILA se não existir
-                if nm_fila not in ultima_bifurcacao:
-                    ultima_bifurcacao[nm_fila] = 0  # Começa a contagem em zero
+            # Se a sequência não estiver na ordem, executa a verificação de bifurcação sem alterar os dados originais
+            if bifurcacao_necessaria:
+                df_final['check COVA'] = 'OK'
+                ultima_bifurcacao = {}
+                for idx in range(len(df_final)):
+                    atual = df_final.iloc[idx]
+                    nm_fila = atual['NM_FILA']
+                    if nm_fila not in ultima_bifurcacao:
+                        ultima_bifurcacao[nm_fila] = 0  # Inicia a contagem para essa fila
 
-                # Verifica se o NM_COVA atual está correto
-                if atual['CD_01'] == 'L':
-                    # Se for 'L', mantém o NM_COVA da última bifurcação
-                    df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila]
-                else:
-                    # Se for 'N', verifica se NM_COVA está como esperado
-                    if atual['NM_COVA'] != ultima_bifurcacao[nm_fila] + 1:
-                        # Se não estiver correto, corrige
-                        df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila] + 1
+                    if atual['CD_01'] == 'L':
+                        # Se for 'L', o valor de NM_COVA deve ser o último valor contado
+                        if atual['NM_COVA'] != ultima_bifurcacao[nm_fila]:
+                            df_final.at[idx, 'check COVA'] = 'VERIFICAR'
+                    elif atual['CD_01'] == 'N':
+                        # Se for 'N', o valor de NM_COVA deve ser o último valor contado + 1
+                        if atual['NM_COVA'] != ultima_bifurcacao[nm_fila] + 1:
+                            df_final.at[idx, 'check COVA'] = 'VERIFICAR'
+                        ultima_bifurcacao[nm_fila] += 1  # Atualiza para o próximo valor esperado
+            else:
+                # Se a sequência estiver correta, apenas marca a verificação como OK, sem alterar dados
+                df_final['check COVA'] = 'OK'
 
-                    # Atualiza a última bifurcação
-                    ultima_bifurcacao[nm_fila] += 1  # Incrementa a contagem
-
+            # Validação adicional para check SQC
             df_final['check SQC'] = 'OK'  
             for idx in range(1, len(df_final)):
                 atual = df_final.iloc[idx]
                 anterior = df_final.iloc[idx - 1]
-
                 if atual['NM_COVA'] == anterior['NM_COVA']:
                     if atual['CD_01'] == 'N' and anterior['CD_01'] == 'L' and anterior['NM_FUSTE'] == 2:
                         df_final.at[idx, 'check SQC'] = 'VERIFICAR'
@@ -149,7 +181,7 @@ class OtimizadorIFQ6:
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
-        "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx"
-        ]
+    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx"
+]
 
 otimizador.validacao(arquivos)
