@@ -93,18 +93,27 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
+            # Ajuste para NM_COVA
             df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
             df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
 
-            for idx in range(1, len(df_final)):
-                atual = df_final.iloc[idx]
-                anterior = df_final.iloc[idx - 1]
+            # Dicionário para rastrear a última bifurcação de NM_COVA
+            ultima_bifurcacao = {}
 
-                if atual['NM_FILA'] == anterior['NM_FILA']:
-                    if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N':
-                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA'] #ele teria que verificar dentro da planilha de qual bifurcação o L pertence pq se por exemplo existir um cd_01 'N' depois 'L' e depois novamente 'N' o codigo deverá ver na planilha original qual seria a sua bifurcação adequada. 
-                    else:#teria que ver se foi a primeira ou a segunda que seria os 'N's
-                        df_final.at[idx, 'NM_COVA'] = df_final.at[idx - 1, 'NM_COVA'] + 1
+            for idx in range(len(df_final)):
+                atual = df_final.iloc[idx]
+                nm_fila = atual['NM_FILA']
+
+                if nm_fila not in ultima_bifurcacao:
+                    ultima_bifurcacao[nm_fila] = 0  # Inicializa a bifurcação
+
+                if atual['CD_01'] == 'L':
+                    # Se for 'L', iguala à última bifurcação
+                    df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila]
+                else:
+                    # Se for 'N', incrementa a última bifurcação
+                    ultima_bifurcacao[nm_fila] += 1
+                    df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila]
 
             df_final.drop(columns=['grupo'], inplace=True)
 
