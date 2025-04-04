@@ -93,7 +93,6 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Ajuste para NM_COVA
             df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
             df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
 
@@ -103,11 +102,8 @@ class OtimizadorIFQ6:
 
                 if atual['NM_FILA'] == anterior['NM_FILA']:
                     if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N':
-                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA']  # Igualar NM_COVA se for 'L' após 'N'
-                    elif atual['CD_01'] == 'N' and anterior['CD_01'] == 'L':
-                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA']  # Igualar NM_COVA se for 'N' após 'L'
-                    else:
-                        # Caso padrão, garantir que NM_COVA continue a sequência correta
+                        df_final.at[idx, 'NM_COVA'] = anterior['NM_COVA'] #ele teria que verificar dentro da planilha de qual bifurcação o L pertence pq se por exemplo existir um cd_01 'N' depois 'L' e depois novamente 'N' o codigo deverá ver na planilha original qual seria a sua bifurcação adequada. 
+                    else:#teria que ver se foi a primeira ou a segunda que seria os 'N's
                         df_final.at[idx, 'NM_COVA'] = df_final.at[idx - 1, 'NM_COVA'] + 1
 
             df_final.drop(columns=['grupo'], inplace=True)
