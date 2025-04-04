@@ -93,11 +93,9 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            # Ajuste para NM_COVA
             df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
             df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
 
-            # Dicionário para rastrear a última bifurcação de NM_COVA
             ultima_bifurcacao = {}
 
             for idx in range(len(df_final)):
@@ -105,13 +103,10 @@ class OtimizadorIFQ6:
                 nm_fila = atual['NM_FILA']
 
                 if nm_fila not in ultima_bifurcacao:
-                    ultima_bifurcacao[nm_fila] = 0  # Inicializa a bifurcação
-
+                    ultima_bifurcacao[nm_fila] = 0 
                 if atual['CD_01'] == 'L':
-                    # Se for 'L', iguala à última bifurcação
                     df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila]
                 else:
-                    # Se for 'N', incrementa a última bifurcação
                     ultima_bifurcacao[nm_fila] += 1
                     df_final.at[idx, 'NM_COVA'] = ultima_bifurcacao[nm_fila]
 
