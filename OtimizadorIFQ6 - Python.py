@@ -81,9 +81,6 @@ class OtimizadorIFQ6:
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
 
-            for col in ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']:
-                df_final[col] = df_final[col].astype(str).str.strip().str.upper()
-
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
 
@@ -96,19 +93,22 @@ class OtimizadorIFQ6:
 
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
-            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
-            df_final.drop(columns=['grupo'], inplace=True)
+
             for idx in range(1, len(df_final)):
                     atual = df_final.iloc[idx]
                     anterior = df_final.iloc[idx - 1]
                     if atual['NM_FILA'] == anterior['NM_FILA']:
-                        if atual['CD_01'] == 'L':
-                            df_final.at[idx, 'NM_COVA'] = df_final.at[idx - 1, 'NM_COVA']
+                        if atual['CD_01'] == 'L' and anterior['CD_01'] == 'N':
+                            df_final.at[idx, 'NM_COVA'] = df_final.at[atual['NM_COVA'] - 1]
                         else:
                             continue
-            
-            df_final['check SQC'] = df_final.apply(lambda row: 'OK' if atual['NM_COVA'] == anterior['NM_COVA'] and anterior['CD_01'] == 'N' else ('VERIFICAR' if anterior['CD_01'] == 'L' and atual['CD_01'] == 'N'), axis=1)
+
+            df_final['check SQC'] = df_final.apply(lambda row: 'OK' if atual['NM_COVA'] == anterior['NM_COVA'] and anterior['CD_01'] == 'N' else ('VERIFICAR' if anterior['CD_01'] == 'L' and atual['CD_01'] == 'N' else 'OK'), axis=1)
+
+                            
+            df_final['grupo'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
+            df_final['NM_COVA'] = df_final.groupby('grupo').cumcount() + 1
+            df_final.drop(columns=['grupo'], inplace=True)
             
             if len(equipes) == 1:
                 nome_base = f"IFQ6_{nome_mes}_{list(equipes.keys())[0]}_{data_emissao}"
