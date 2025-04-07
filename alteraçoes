@@ -1,1 +1,15 @@
 process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_parcela, distancia.minima, update_progress, grid_existente) {
+
+
+grid_existente <- st_transform(grid_existente, 31982)
+# Ajuste o index do grid, supondo que ele possua os campos PROJETO e TALHAO
+grid_existente$Index <- paste0(grid_existente$PROJETO, grid_existente$TALHAO)
+
+
+# Filtra o grid existente para o polígono atual (usando o Index)
+grid <- grid_existente[grid_existente$Index == poly_idx, ]
+# Faz a interseção entre o grid existente e o sub-polígono (sg)
+grid <- st_intersection(grid, sg) %>% st_sf()
+grid$area.grid <- round(as.numeric(st_area(grid)))
+# Opcional: filtrar grids com área mínima
+grid <- grid %>% filter(area.grid >= 400)
