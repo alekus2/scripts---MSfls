@@ -1,142 +1,308 @@
-process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_parcela, distancia.minima, grid_existente, update_progress) {
+library(shiny)
+
+server <- function(input, output, session) {
   
-  parc_exist <- st_read(parc_exist_path)
-  
-  shape <- st_transform(shape, 31982)
-  parc_exist <- st_transform(parc_exist, 31982)
-  
-  shape$Index <- paste0(shape$ID_PROJETO, shape$ID_TALHAO)
-  parc_exist$Index <- paste0(parc_exist$PROJETO, parc_exist$TALHAO)
-  
-  buffer_distance <- -15
-  
-  shapeb <- list()
-  empty_indexes <- c()
-  
-  for (i in 1:nrow(shape)) {
-    if (st_is_empty(st_buffer(shape[i,], buffer_distance))) {
-      empty_indexes <- c(empty_indexes, i)
-    } else {
-      dt_aux <- st_buffer(shape[i,], buffer_distance)
-      shapeb[[i]] <- dt_aux
-    }
-  }
-  
-  if(!is.null(empty_indexes)) {
-    shapeb <- shapeb[-empty_indexes]
-  }
-  shapeb <- do.call("rbind", shapeb)
-  
-  result_points <- list()
-  points2 <- NULL
-  aux <- 1
-  tempo <- 0
-  
-  total_poly_idx <- length(unique(shapeb$Index)) 
-  completed_poly_idx <- 0
-  
-  for (poly_idx in unique(shapeb$Index)) { 
-    poly <- shapeb[shapeb$Index == poly_idx,]
-    subgeoms <- split_subgeometries(poly)
+  observeEvent(input$confirmar, {
+    output$shape_text <- renderText({
+      req(input$shape)
+      paste("Upload realizado referente aos talhões:", input$shape$name)
+    })
     
-    for (i in 1:nrow(subgeoms)) {
-      if(as.numeric(st_area(subgeoms[i,])) < 400) {
-        next
+    output$recomend_text <- renderText({
+      req(input$recomend)
+      paste("Upload realizado referente a recomendação de parcelas:", input$recomend$name)
+    })
+    
+    output$parc_exist_text <- renderText({
+      if (input$parcelas_existentes_lancar == 1) {
+        req(input$parc_exist)
+        paste("Upload realizado referente as parcelas já existentes:", input$parc_exist$name)
       } else {
-        sg <- subgeoms[i,]
-        sg_area <- as.numeric(st_area(sg))
-        active_points_all <- parc_exist[parc_exist$STATUS == "ATIVA" & parc_exist$Index == poly_idx,]
-        active_points <- st_intersection(st_geometry(active_points_all), st_geometry(sg))
+        paste0("Upload de parcelas existentes não realizado.")
+      }
+    })
+    
+    output$confirmation <- renderText({
+      req(input$forma_parcela, input$tipo_parcela, input$distancia_minima)
+      paste("Forma Parcela:", input$forma_parcela, "Tipo Parcela:", input$tipo_parcela, "Distância Mínima:", input$distancia_minima)
+    })
+  })
+  
+  
+  forma_parcela <- reactive({
+    input$forma_parcela
+  })
+  
+  tipo_parcela <- reactive({
+    input$tipo_parcela
+  })
+  
+  distancia_minima <- reactive({
+    input$distancia_minima
+  })
+  
+  shape_path <- reactive({
+    req(input$shape)
+    shape_zip <- unzip(input$shape$datapath, exdir = tempdir())
+    grep(shape_zip, pattern = ".shp$", value = TRUE)
+  })
+  
+  shape <- reactive({
+    req(shape_path())
+    
+    shp <- st_read(shape_path())
+    
+    if(input$shape_input_pergunta_arudek == 0) {
+      shp <- shp %>%
+        rename(ID_PROJETO := !!input$mudar_nome_arudek_projeto,
+               ID_TALHAO := !!input$mudar_nome_arudek_talhao,
+               CICLO := !!input$mudar_nome_arudek_ciclo,
+               ROTACAO := !!input$mudar_nome_arudek_rotacao)
+    }
+    
+    shp <- shp %>%
+      mutate(ID_PROJETO = str_pad(ID_PROJETO, 4, pad = 0),
+             ID_TALHAO = str_pad(ID_TALHAO, 3, pad = 0))
+    
+    return(shp)
+  })
+  
+  
+  parc_exist_path <- reactive({
+    
+    if(input$parcelas_existentes_lancar == 1) {
+      req(input$parc_exist)
+      parc_exist_zip <- unzip(input$parc_exist$datapath, exdir = tempdir())
+      grep(parc_exist_zip, pattern = ".shp$", value = TRUE)
+      
+    } else {
+      paste0("data/parc.shp")
+    }
+  })
+  
+  recomend <- reactive({
+    
+    if(input$recomendacao_pergunta_upload == 1) {
+      req(input$recomend)
+      recomends <- read.csv2(input$recomend$datapath) %>% 
+        mutate(Projeto = str_pad(Projeto, 4, pad = 0),
+               Talhao = str_pad(Talhao, 3, pad = 0),
+               Index = paste(Projeto, Talhao, sep = "")) %>%
+        rename(Num.parc = N, ID_PROJETO = Projeto, ID_TALHAO = Talhao)
+      return(recomends) 
+    } else {
+      
+      req(shape(), input$recomend_intensidade)
+      shape <- shape() %>% st_make_valid()
+      
+      recomends <- shape %>% 
+        group_by(ID_PROJETO, ID_TALHAO) %>%
+        summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
+        mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
+               Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
+        select(ID_PROJETO, ID_TALHAO, Num.parc, Index) %>%
+        as.data.frame() %>%
+        select(-geometry)
+      
+      return(recomends)
+    }
+  })
+  
+  output$download_recomend <- downloadHandler(
+    filename = function() {
+      paste(input$download_recomend_name, ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv2(recomend(), file, row.names = FALSE)
+    },
+    contentType = "text/csv"
+  )
+  
+  
+  progress_percentage <- reactiveVal(0)
+  values <- reactiveValues(result_points = NULL, process_complete = FALSE)
+  
+  observeEvent(input$gerar_parcelas, {
+    session$sendCustomMessage("hide_completed", message = "")
+    
+    
+    result <- process_data(shape(), recomend(), parc_exist_path(), forma_parcela(), tipo_parcela(), distancia_minima(), function(percent) {
+      session$sendCustomMessage("update_progress", percent)
+    })
+    
+    if(input$lancar_sobrevivencia == 1){
+      unique_indexes <- unique(result$Index)
+      
+      for (idx in unique_indexes) {
+        idx_rows <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
+        s30_count <- round(length(idx_rows) * 0.3)
+        s30_idx <- sample(idx_rows, s30_count)
         
-        if (sg_area >= 400 & sg_area <= 1000) {
-          if (length(active_points) > 0) {
-            next
-          } else {
-            cell.point <- st_centroid(st_geometry(sg))
-            
-            conf.point <- st_buffer(cell.point, dist = sqrt(400 / pi))
-            conf.point <- st_intersection(conf.point, sg) %>% st_sf()
-            
-            points2 <- st_sf(data.frame(Area = sg_area,
-                                         Index = poly_idx,
-                                         PROJETO = poly$ID_PROJETO,
-                                         TALHAO = poly$ID_TALHAO,
-                                         CICLO = poly$CICLO,
-                                         ROTACAO = poly$ROTACAO,
-                                         STATUS = "ATIVA",
-                                         FORMA = forma_parcela, 
-                                         TIPO_INSTA = tipo_parcela,
-                                         TIPO_ATUAL = tipo_parcela, 
-                                         DATA = Sys.Date(),
-                                         DATA_ATUAL = Sys.Date(),
-                                         COORD_X = st_coordinates(cell.point)[1],
-                                         COORD_Y = st_coordinates(cell.point)[2]),
-                                   geometry = st_geometry(cell.point))
+        result$TIPO_ATUAL[s30_idx] <- "S30"
+        result[result$TIPO_ATUAL == "IPC" & result$Index == idx,]$STATUS <- "DESATIVADA"
+      }
+      
+      for(i in unique(result$Index)) {
+        dt_aux <- result[result$Index == i, ]
+        
+        s30_counts <- sum(dt_aux$TIPO_ATUAL == "S30")
+        
+        if (nrow(dt_aux) >= 2 && s30_counts < 2) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 2 - s30_counts) {
+            s30_idx <- sample(idx_rows, 2 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
           }
-        } else {
-          num_parc <- recomend[recomend$Index == poly_idx, "Num.parc"]
-          
-          # Use the existing grid instead of creating a new one
-          grid <- grid_existente[grid_existente$Index == poly_idx,] # Filtre o grid existente para o polígono atual
-          
-          grid <- st_intersection(grid, sg) %>% st_sf() # Interseccione com a subgeometria
-          
-          if(nrow(grid) == 0) {
-            next
+        } else if (nrow(dt_aux) < 2 && s30_counts < 1) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 1 - s30_counts) {
+            s30_idx <- sample(idx_rows, 1 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
           }
-          
-          if(num_parc > nrow(grid)) {
-            num_parc <- nrow(grid)
-          }
-          
-          indices_grid <- sample(nrow(grid), num_parc) # Se quiser manter a aleatoriedade, mantenha esta linha
-          grid_selecionado <- grid[indices_grid,]
-          
-          points_list <- list()
-          for (j in 1:nrow(grid_selecionado)) {
-            cell <- grid_selecionado[j,]
-            active_points_cell <- st_intersection(st_geometry(active_points), st_geometry(cell))
-            
-            if (length(active_points_cell) == 0) {
-              cell.point <- st_centroid(st_geometry(cell))
-              
-              area_vector <- as.numeric(st_area(cell))
-              index_vector <- rep(poly_idx, length(area_vector))
-              
-              points_list[[j]] <- st_sf(data.frame(Area = area_vector,
-                                                   Index = index_vector,
-                                                   PROJETO = poly$ID_PROJETO,
-                                                   TALHAO = poly$ID_TALHAO,
-                                                   CICLO = poly$CICLO,
-                                                   ROTACAO = poly$ROTACAO,
-                                                   STATUS = "ATIVA",
-                                                   FORMA = forma_parcela, 
-                                                   TIPO_INSTA = tipo_parcela,
-                                                   TIPO_ATUAL = tipo_parcela, 
-                                                   DATA = Sys.Date(),
-                                                   DATA_ATUAL = Sys.Date(),
-                                                   COORD_X = st_coordinates(cell.point)[1],
-                                                   COORD_Y = st_coordinates(cell.point)[2]),
-                                        geometry = st_geometry(cell.point))
-            } else {
-              next
-            }
-          }
-          points2 <- do.call("rbind", points_list)
         }
-        
-        result_points[[paste(poly_idx, i, sep = "-" )]] <- points2
+        result[result$TIPO_ATUAL == "IPC" & result$Index == i,]$STATUS <- "DESATIVADA"
       }
     }
     
-    completed_poly_idx <- completed_poly_idx + 1
-    progress_percent <- round((completed_poly_idx / total_poly_idx) * 100, 2)
-    update_progress(progress_percent)
-  }
+    result[result$TIPO_ATUAL == "S30",]$STATUS <- "ATIVA"
+    values$result_points <- result
+    session$sendCustomMessage("show_completed", message = "")
+  })
   
-  result_points <- do.call("rbind", result_points)
+  output$index_filter <- renderUI({
+    req(recomend())
+    aux <- recomend()
+    
+    selectInput("selected_index", "Select Index:", choices = unique(aux$Index))
+  })
   
-  # Continue com o restante do código...
+  observeEvent(input$gerar_novamente, {
+    selected_index <- input$selected_index
+    values$result_points <- values$result_points %>% 
+      mutate(Index = paste0(PROJETO, TALHAO)) %>%
+      filter(Index != selected_index)
+    
+    
+    session$sendCustomMessage("hide_completed", message = "")
+    shape_selected <- shape() %>%
+      mutate( Index = paste0(ID_PROJETO, ID_TALHAO)) %>% 
+      filter(Index == selected_index)
+    
+    recomend_selected <- recomend() %>% 
+      mutate(Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
+      filter(Index == selected_index)
+    
+    result <- process_data(shape_selected, recomend_selected, parc_exist_path(), forma_parcela(), tipo_parcela(), distancia_minima(), function(percent) {
+      session$sendCustomMessage("update_progress", percent)
+    })
+    
+    if(input$lancar_sobrevivencia == 1){
+      unique_indexes <- unique(result$Index)
+      
+      for (idx in unique_indexes) {
+        idx_rows <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
+        s30_count <- round(length(idx_rows) * 0.3)
+        s30_idx <- sample(idx_rows, s30_count)
+        
+        result$TIPO_ATUAL[s30_idx] <- "S30"
+        result[result$TIPO_ATUAL == "IPC" & result$Index == idx,]$STATUS <- "DESATIVADA"
+      }
+      
+      for(i in unique(result$Index)) {
+        dt_aux <- result[result$Index == i, ]
+        
+        s30_counts <- sum(dt_aux$TIPO_ATUAL == "S30")
+        
+        if (nrow(dt_aux) >= 2 && s30_counts < 2) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 2 - s30_counts) {
+            s30_idx <- sample(idx_rows, 2 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
+          }
+        } else if (nrow(dt_aux) < 2 && s30_counts < 1) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 1 - s30_counts) {
+            s30_idx <- sample(idx_rows, 1 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
+          }
+        }
+        result[result$TIPO_ATUAL == "IPC" & result$Index == i,]$STATUS <- "DESATIVADA"
+      }
+    }
+    
+    result[result$TIPO_ATUAL == "S30",]$STATUS <- "ATIVA"
+    values$result_points <- rbind(values$result_points, result) 
+    session$sendCustomMessage("show_completed", message = "")
+  })
   
-  return(result_points)
+  indexes <- reactive({
+    unique(recomend()$Index)
+  })
+  
+  current_index <- reactiveVal(1)
+  
+  observeEvent(input$proximo, {
+    indexes_list <- indexes()
+    next_index <- current_index() + 1
+    if (next_index > length(indexes_list)) {
+      next_index <- 1
+    }
+    current_index(next_index)
+    updateSelectInput(session, "selected_index", selected = indexes_list[next_index])
+  })
+  
+  observeEvent(input$anterior, {
+    indexes_list <- indexes()
+    prev_index <- current_index() - 1
+    if (prev_index < 1) {
+      prev_index <- length(indexes_list)
+    }
+    current_index(prev_index)
+    updateSelectInput(session, "selected_index", selected = indexes_list[prev_index])
+  })
+  
+  
+
+  output$plot <- renderPlot({
+    req(values$result_points, input$selected_index, shape())
+    selected_index <- input$selected_index
+    result_aux <- values$result_points
+    shape_aux <- shape()
+    shape_aux <- st_transform(shape_aux, 31982)
+    
+    shape_aux$Index <- paste0(shape_aux$ID_PROJETO, shape_aux$ID_TALHAO)
+    shape_filtrado <- shape_aux %>% filter(Index == selected_index)
+    points_df <- result_aux %>% filter(Index == selected_index)
+    
+    num_parc_title <- shape_filtrado %>% 
+      group_by(ID_PROJETO, ID_TALHAO) %>%
+      summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
+      mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
+             Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
+      pull(Num.parc)
+    
+    area_titulo <- round(sum(st_area(shape_filtrado)) / 10000, 2)
+    
+    ggplot() + 
+      geom_sf(aes(), data = shape_filtrado) + 
+      geom_sf(aes(), data = points_df) + 
+      custom_theme +
+      ggtitle(paste0("Número de parcelas recomendado: ", num_parc_title, " (Área: ", area_titulo, " ha)"))
+  })
+  
+  output$download_result <- downloadHandler(
+    filename = function() {
+      paste0(input$download_name, ".zip")
+    },
+    content = function(file) {
+      req(values$result_points)
+      temp_dir <- tempdir()
+      shapefile_name <- paste(input$download_name, ".shp", sep = "")
+      shapefile_path <- file.path(temp_dir, shapefile_name)
+      st_write(values$result_points, shapefile_path, "ESRI Shapefile")
+      shapefile_files <- list.files(temp_dir, pattern = paste0(input$download_name, "\\..*"), full.names = TRUE)
+      zip(file, shapefile_files)
+    }
+  )
+  
 }
