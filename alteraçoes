@@ -1,0 +1,36 @@
+grid <- st_intersection(grid_existente, sg) %>% st_sf()
+grid$area.grid <- round(as.numeric(st_area(grid)))
+grid <- grid %>% filter(area.grid >= 400)
+
+
+grid_existente <- st_transform(grid_existente, 31982)
+
+
+fileInput("grid_file", "Selecione o shapefile do grid existente (.shp)", accept = c(".shp"))
+
+
+grid_existente <- reactive({
+  req(input$grid_file)
+  
+  # Cria um diretório temporário
+  temp_dir <- tempdir()
+  files <- input$grid_file
+  
+  # Copia os arquivos para o diretório temporário
+  for (i in 1:nrow(files)) {
+    file.copy(from = files$datapath[i], to = file.path(temp_dir, files$name[i]), overwrite = TRUE)
+  }
+  
+  # Encontra o .shp
+  shp_name <- files$name[grep(".shp$", files$name)]
+  shp_path <- file.path(temp_dir, shp_name)
+  
+  st_read(shp_path)
+})
+
+
+result <- process_data(shape, recomend, parc_exist_path, forma_parcela,
+                       tipo_parcela, distancia.minima, update_progress,
+                       grid_existente = grid_existente())
+
+
