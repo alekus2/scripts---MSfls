@@ -1,0 +1,37 @@
+/* assets/custom_theme.css */
+
+/* Estilização do logo */
+#logo {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    width: 100px;
+    height: auto;
+    z-index: 1000;
+}
+
+/* Estilização da navbar (se houver) */
+.navbar-default {
+    background-color: #0054A4;
+}
+
+/* Estilização do texto da aba "Sobre" */
+.sobre-texto {
+    font-family: Arial, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    text-align: justify;
+}
+.sobre-texto h2 {
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+.sobre-texto p {
+    margin-bottom: 16px;
+}
+
+/* Estilização dos botões customizados */
+#DivCompClear, #FinderClear, #EnterTimes {
+    background: DodgerBlue;
+    font-size: 15px;
+}
