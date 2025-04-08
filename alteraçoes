@@ -16,3 +16,21 @@ tabPanel("Download", icon = icon("download"),
     mainPanel()  # Você pode manter o mainPanel vazio se não precisar de nada aqui
   )
 )
+
+tabPanel("Parcelas Plotadas", icon = icon("map"),
+  sidebarLayout(
+    sidebarPanel(
+      uiOutput("index_filter"),
+      actionButton("anterior", "Anterior"),
+      actionButton("proximo", "Próximo"),
+      actionButton("gerar_novamente", "Gerar novamente as parcelas"),
+      tags$p("Para recalcular a distribuição do talhão:"),
+      tags$p(style = "color:red; font-weight:bold;", "O número de parcelas alocadas pode diferir do número recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!")  # Mover a nota para cá
+    ),
+    mainPanel(
+      plotOutput("plot")
+    )
+  )
+)
+
+
