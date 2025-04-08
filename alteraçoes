@@ -1,9 +1,11 @@
-.navbar.navbar-default {
-  min-height: 70px !important;
+.navbar {
+  width: 100% !important;
+  margin: 0 auto !important;
+  border-radius: 0 !important;
 }
 
-.navbar .navbar-brand {
-  line-height: 70px !important;
-  height: 70px !important;
-  padding-top: 0 !important;
+.container {
+  width: 100% !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
 }
