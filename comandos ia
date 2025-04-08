@@ -1,12 +1,6 @@
-**Assunto:** Melhoria de Processos – Sugestões  
-
-Olá, Leticia, tudo bem?  
-
-Pensando na evolução dos nossos processos de automação, gostaria de entender quais atividades você acredita que podem ser otimizadas e como podemos melhorá-las. Se possível, poderia me enviar um arquivo com detalhes sobre os pontos que deseja aperfeiçoar e as suas expectativas para a otimização? Dessa forma, posso garantir que a solução atenda ao máximo às suas necessidades.  
-
-Fico à disposição para alinharmos essa melhoria juntos.  
-
-Obrigado pela atenção!  
-
-Atenciosamente,  
-Alex
+> library(shiny); runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoParc/AutoParc.R')
+Erro: carregamento do pacote ou namespace falhou para ‘shiny’ in inDL(x, as.logical(local), as.logical(now), ...):
+ impossível carregar objeto compartilhado 'C:/Users/alex_santos4/AppData/Local/R/win-library/4.4/httpuv/libs/x64/httpuv.dll':
+  LoadLibrary failure:  Não foi possível encontrar o procedimento especificado.
+Além disso: Mensagen de aviso:
+pacote ‘shiny’ foi compilado no R versão 4.4.3 
