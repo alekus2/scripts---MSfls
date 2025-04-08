@@ -1,7 +1,7 @@
 library(shiny)
 library(shinythemes)
 
-ui <- fluidPage(
+ui <- tagList(
   tags$head(
     tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
     tags$style(HTML("
@@ -13,12 +13,15 @@ ui <- fluidPage(
         height: auto;
         z-index: 1000;
       }
-      .navbar-default {
-        background-color: #0054A4;
+      .navbar {
+        background-color: #0054A4 !important;
+        border: none !important;
+        margin-bottom: 0;
       }
-      .container {
-        width: 100% !important;
-        max-width: 100% !important;
+      .navbar .navbar-nav > li > a, .navbar .navbar-brand {
+        color: white !important;
+      }
+      .container-fluid {
         padding-left: 30px !important;
         padding-right: 30px !important;
       }
@@ -40,7 +43,7 @@ ui <- fluidPage(
 
   tags$img(src = "logo.png", id = "logo"),
 
-  navbarPage("AutoParc - Alocador de Parcelas", id = "main_nav", fluid = TRUE,
+  navbarPage(title = "AutoParc - Alocador de Parcelas", id = "main_nav", fluid = TRUE,
 
     tabPanel("Sobre", icon = icon("info"),
       tags$div(class = "sobre-texto",
@@ -79,7 +82,6 @@ ui <- fluidPage(
         )
       )
     )
-
   ),
 
   tags$script(HTML("
