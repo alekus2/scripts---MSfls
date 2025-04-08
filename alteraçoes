@@ -37,8 +37,9 @@ ui <- fluidPage(
       }
     "))
   ),
+
   tags$img(src = "logo.png", id = "logo"),
-  
+
   navbarPage("AutoParc - Alocador de Parcelas", id = "main_nav", fluid = TRUE,
 
     tabPanel("Sobre", icon = icon("info"),
@@ -49,8 +50,36 @@ ui <- fluidPage(
       )
     ),
 
-    # (outros tabs mantêm a mesma estrutura, você pode colar do original)
-    
+    tabPanel("Dados", icon = icon("table"),
+      sidebarLayout(
+        sidebarPanel(
+          fileInput("grid_file", "Selecione o shapefile do grid", multiple = TRUE),
+          fileInput("talhoes_file", "Selecione o shapefile dos talhões", multiple = TRUE),
+          fileInput("parcela_file", "Selecione o shapefile das parcelas históricas", multiple = TRUE),
+          fileInput("excel_file", "Selecione o arquivo Excel com a recomendação", accept = c(".xlsx")),
+          actionButton("process_button", "Processar", class = "btn-primary")
+        ),
+        mainPanel(
+          uiOutput("progress_ui"),
+          verbatimTextOutput("log_output"),
+          uiOutput("completed_ui")
+        )
+      )
+    ),
+
+    tabPanel("Resultados", icon = icon("chart-bar"),
+      sidebarLayout(
+        sidebarPanel(
+          selectInput("plot_select", "Selecione o gráfico:", choices = c("Recomendada x Alocada", "Taxa de Alocação")),
+          downloadButton("download_shapefile", "Download do Shapefile")
+        ),
+        mainPanel(
+          plotOutput("result_plot"),
+          tableOutput("result_table")
+        )
+      )
+    )
+
   ),
 
   tags$script(HTML("
