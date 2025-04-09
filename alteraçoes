@@ -1,22 +1,18 @@
-
 library(shiny)
 library(shinythemes)
 
 ui <- tagList(
   tags$head(
     tags$style(HTML("
-      /* Remove margens padrão */
       body {
         margin: 0;
         padding: 0;
       }
-      /* Garante que a navbar ocupe 100% da largura */
       .navbar {
         width: 100%;
         margin: 0;
         border-radius: 0;
       }
-      /* Ajusta a logo para ficar fixa no topo direito, sobrepondo a navbar */
       #logo {
         position: fixed;
         top: 10px;
@@ -25,7 +21,6 @@ ui <- tagList(
         height: auto;
         z-index: 9999;
       }
-      /* Estilização dos textos dentro dos painéis */
       .sobre-texto {
         font-family: 'Arial', sans-serif;
         font-size: 16px;
@@ -45,6 +40,7 @@ ui <- tagList(
   tags$img(src = "logo.png", id = "logo"),
   navbarPage("AutoParc - Alocador de Parcelas", theme = shinytheme("sandstone"),
              windowTitle = "Window Title",
+             
              tabPanel("Sobre", icon = icon("info"),
                       fluidRow(
                         column(12,
@@ -133,7 +129,7 @@ ui <- tagList(
                       )
              ),
              
-             tabPanel("Resultados", icon = icon("chart-bar"),
+             tabPanel("Parcelas Plotadas", icon = icon("chart-bar"),
                       tabsetPanel(
                         tabPanel("Status", icon = icon("clock"),
                                  sidebarLayout(
@@ -153,24 +149,24 @@ ui <- tagList(
                                    )
                                  )
                         ),
+                        
                         tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
                                  fluidPage(
                                    br(),
                                    fluidRow(
-                                     column(2,
+                                     column(2, offset = 1,
                                             actionButton("anterior", "ANTERIOR", class = "btn btn-dark")
                                      ),
                                      column(2,
                                             actionButton("proximo", "PRÓXIMO", class = "btn btn-dark")
                                      ),
-                                     column(4,
+                                     column(5,
                                             actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger")
                                      )
                                    ),
-                                   
                                    br(), br(),
                                    fluidRow(
-                                     column(12,
+                                     column(10, offset = 1,
                                             div(style = "color:red; font-weight:bold; font-size:16px; text-align:justify;",
                                                 "O número de parcelas alocadas pode diferir do número recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!"
                                             )
@@ -178,6 +174,7 @@ ui <- tagList(
                                    )
                                  )
                         ),
+                        
                         tabPanel("DOWNLOAD",
                                  fluidPage(
                                    br(),
@@ -188,6 +185,8 @@ ui <- tagList(
                                      textInput("nome_arquivo", "Insira o nome do arquivo para download:", 
                                                value = paste0("Parcelas_", Sys.Date())),
                                      
+                                     br(),
+                                     
                                      downloadButton("download_parcelas", "DOWNLOAD PARCELAS", class = "btn btn-dark"),
                                      
                                      br(), br(),
@@ -195,6 +194,7 @@ ui <- tagList(
                                      div(style = "color:red; font-weight:bold;",
                                          "Nota: Será necessário alterar o nome para cada arquivo a ser salvo.")
                                    )
+                                 )
                         )
                       )
              )
@@ -214,3 +214,4 @@ ui <- tagList(
       $('#completed-message').hide();
     });
   "))
+)
