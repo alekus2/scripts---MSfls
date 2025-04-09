@@ -1,185 +1,190 @@
 library(shiny)
+library(shinythemes)
+
 ui <- fluidPage(
-  tags$head(tags$style(HTML("
-  #logo {
-    position: absolute;
-    top: 10px;
-    right: 10px;
-    width: 100px;
-    height: auto;
-    z-index: 1000;
-  }
-"))),
+  tags$head(
+    tags$style(HTML("
+      #logo {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        width: 100px;
+        height: auto;
+        z-index: 1000;
+      }
+      .navbar-default {
+        background-color: #0054A4;
+      }
+      .sobre-texto {
+        font-family: 'Arial', sans-serif;
+        font-size: 16px;
+        line-height: 1.5;
+        text-align: justify;
+      }
+      .sobre-texto h2 {
+        font-size: 24px;
+        margin-bottom: 16px;
+      }
+      .sobre-texto p {
+        margin-bottom: 16px;
+      }
+    "))
+  ),
   tags$img(src = "logo.png", id = "logo"),
-  tags$head(tags$style(HTML("
-    .navbar-default {
-      background-color: #0054A4;
-    }
-  "))),
-  tags$style(HTML("
-    .sobre-texto {
-      font-family: 'Arial', sans-serif;
-      font-size: 16px;
-      line-height: 1.5;
-      text-align: justify;
-    }
-    .sobre-texto h2 {
-      font-size: 24px;
-      margin-bottom: 16px;
-    }
-    .sobre-texto p {
-      margin-bottom: 16px;
-    }
-  ")),
-  
+
   navbarPage("AutoParc - Alocador de Parcelas", theme = shinytheme("sandstone"),
-             
              windowTitle = "Window Title",
-             tags$head(tags$link(rel = "stylesheet", type = "text/css", href = "styles.css")),
-             tabPanel("Sobre", icon = icon("info"), tags$style(button_color_css),
-                      tags$div(class = "sobre-texto",
-                               tags$h2("Sobre"),
-                               tags$p("Ferramenta desenvolvida em Shiny (R) para o lanÁamento de parcelas com grid da organizaÁ„o, que integra informaÁıes de recomendaÁ„o, shapefile dos talhıes e parcelas histÛricas. Essa aplicaÁ„o permite aos usu·rios realizar o lanÁamento de parcelas de maneira autom·tica e depois exportar o shapefile das parcelas."),
-                               HTML("<b style='color:red;'>O aplicativo foi meticulosamente desenvolvido para atuar como um instrumento de otimizaÁ„o do processo de lanÁamento, atuando como um facilitador. No entanto, uma coisa importante a ressaltar È que sua utilizaÁ„o n„o elimina a necessidade de an·lises e verificaÁıes criteriosas!</b>"))),
-             tabPanel("Dados", fluid = T, icon = icon("file-upload"), tags$style(button_color_css),
+
+             tabPanel("Sobre", icon = icon("info"),
+                      fluidRow(
+                        column(12,
+                               div(class = "sobre-texto",
+                                   h2("Sobre"),
+                                   p("Ferramenta desenvolvida em Shiny (R) para o lan√ßamento de parcelas com grid da organiza√ß√£o, que integra informa√ß√µes de recomenda√ß√£o, shapefile dos talh√µes e parcelas hist√≥ricas. Essa aplica√ß√£o permite aos usu√°rios realizar o lan√ßamento de parcelas de maneira autom√°tica e depois exportar o shapefile das parcelas."),
+                                   HTML("<b style='color:red;'>O aplicativo foi meticulosamente desenvolvido para atuar como um instrumento de otimiza√ß√£o do processo de lan√ßamento, atuando como um facilitador. No entanto, uma coisa importante a ressaltar √© que sua utiliza√ß√£o n√£o elimina a necessidade de an√°lises e verifica√ß√µes criteriosas!</b>")
+                               )
+                        )
+                      )
+             ),
+
+             tabPanel("Dados", icon = icon("file-upload"),
                       sidebarLayout(
                         sidebarPanel(
-                          fileInput("shape", "Upload do Shapefile dos talhıes", accept = c(".zip")),
+                          fileInput("shape", "Upload do Shapefile dos talh√µes", accept = c(".zip")),
+                          fileInput("grid_existente", "Carregar Grid Existente (.shp):", multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
 
-                          fileInput("grid_existente", "Carregar Grid Existente (.shp):",multiple = TRUE,accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
-                          
-                          radioButtons("shape_input_pergunta_arudek", label = h3("Qual seria o formato do shape de entrada?"),
+                          radioButtons("shape_input_pergunta_arudek", "Qual seria o formato do shape de entrada?",
                                        choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
-                          
+
                           conditionalPanel("input.shape_input_pergunta_arudek == 0",
-                                           tags$h3("Insira presentes no seu arquivo:"),
-                                           tags$p("O nome deve ser exatamente igual a tabela de atributos."),
-                                           textInput(inputId = "mudar_nome_arudek_projeto",
-                                                     label = "Projeto:",
-                                                     value = "ID_PROJETO"),
-                                           textInput(inputId = "mudar_nome_arudek_talhao",
-                                                     label = "Talh„o:",
-                                                     value = "CD_TALHAO"),
-                                           textInput(inputId = "mudar_nome_arudek_ciclo",
-                                                     label = "Ciclo:",
-                                                     value = "NUM_CICLO"),
-                                           textInput(inputId = "mudar_nome_arudek_rotacao",
-                                                     label = "RotaÁ„o:",
-                                                     value = "NUM_ROTAC")),
-                          
-                          radioButtons("recomendacao_pergunta_upload", label = h3("Deseja realizar o upload do arquivo de recomendaÁ„o?"),
-                                       choices = list("Sim" = 1, "N√O" = 0), selected = 1),
-                          
-                          conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           fileInput("recomend", "Upload do arquivo de recomendaÁ„o", accept = c(".csv"))),
-                          
-                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                           tags$h3("Informe a intensidade desejada para as parcelas"),
-                                           tags$p("Nota: Informar a quantos hectares ser„o necess·rios para cada parcela alocada."),
-                                           numericInput("recomend_intensidade", label = h3("1:"), value = 3)
+                                           h3("Insira presentes no seu arquivo:"),
+                                           p("O nome deve ser exatamente igual a tabela de atributos."),
+                                           textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
+                                           textInput("mudar_nome_arudek_talhao", "Talh√£o:", "CD_TALHAO"),
+                                           textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
+                                           textInput("mudar_nome_arudek_rotacao", "Rota√ß√£o:", "NUM_ROTAC")
                           ),
-                          
-                          radioButtons("parcelas_existentes_lancar", label = h3("Deseja informar as parcelas j· existentes?"),
-                                       choices = list("Sim" = 1, "N√O" = 0), selected = 0),
-                          
+
+                          radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomenda√ß√£o?",
+                                       choices = list("Sim" = 1, "N√ÉO" = 0), selected = 1),
+
+                          conditionalPanel("input.recomendacao_pergunta_upload == 1",
+                                           fileInput("recomend", "Upload do arquivo de recomenda√ß√£o", accept = c(".csv"))),
+
+                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
+                                           h3("Informe a intensidade desejada para as parcelas"),
+                                           p("Nota: Informar a quantos hectares ser√£o necess√°rios para cada parcela alocada."),
+                                           numericInput("recomend_intensidade", "1:", value = 3)
+                          ),
+
+                          radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas j√° existentes?",
+                                       choices = list("Sim" = 1, "N√ÉO" = 0), selected = 0),
+
                           conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           fileInput("parc_exist", "Upload do Shapefile das parcelas j· existentes", accept = c(".zip"))),
-                          
+                                           fileInput("parc_exist", "Upload do Shapefile das parcelas j√° existentes", accept = c(".zip"))),
+
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
-                          
-                          selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC"), selected = NULL),
-                          tags$p("Notas:"), 
-                          tags$p("S* = SobrevivÍncia;"), 
-                          tags$p("IFQ* = Invent·rio Florestal Qualitativo;"),                                 
-                          tags$p("IFC = Invent·rio Florestal ContÌnuo;"), 
-                          tags$p("IPC = Invent·rio Florestal PrÈ-Corte."),
-                          conditionalPanel("input.tipo_parcela == 'IPC'", 
-                                           radioButtons("lancar_sobrevivencia", label = h3("Deseja lanÁar as parcelas de sobrevivÍncia?"),
-                                                        choices = list("Sim" = 1, "N√O" = 0), selected = 0)),
-                          sliderInput("distancia_minima", label = h3("Dist‚ncia MinÌma: "), min = 5, max = 25, value = 20, step = 0.5),
+                          selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
+
+                          p("Notas:"),
+                          p("S* = Sobreviv√™ncia;"),
+                          p("IFQ* = Invent√°rio Florestal Qualitativo;"),
+                          p("IFC = Invent√°rio Florestal Cont√≠nuo;"),
+                          p("IPC = Invent√°rio Florestal Pr√©-Corte."),
+
+                          conditionalPanel("input.tipo_parcela == 'IPC'",
+                                           radioButtons("lancar_sobrevivencia", "Deseja lan√ßar as parcelas de sobreviv√™ncia?",
+                                                        choices = list("Sim" = 1, "N√ÉO" = 0), selected = 0)
+                          ),
+
+                          sliderInput("distancia_minima", "Dist√¢ncia M√≠nima:", min = 5, max = 25, value = 20, step = 0.5),
                           actionButton("confirmar", "Confirmar")
                         ),
                         mainPanel(
-                          tags$div(class = "sobre-texto",
-                                   tags$h2("Sobre os arquivos"),
-                                   tags$p("Shape dos talhıes: zipfile contendo todos os arquivos exportados do shapefile (ARUDEK)."),
-                                   tags$p("Ser„o obrigatÛrias as seguintes colunas na tabela de atributos: AREA_HA, ID_PROJETO, ID_TALHAO, CICLO, ROTACAO."),
-                                   tags$p("RecomendaÁ„o: planilha csv separado por vÌrgulas contendo: Projeto, Talhao e N. Em que N È a quantidade de parcelas."),
-                                   tags$p("Shape das parcelas histÛricas: zipfile contendo todos os arquivos exportados do shapefile (todas as parcelas da base de invet·rio para cada projeto).")),
+                          div(class = "sobre-texto",
+                              h2("Sobre os arquivos"),
+                              p("Shape dos talh√µes: zipfile contendo todos os arquivos exportados do shapefile (ARUDEK)."),
+                              p("Ser√£o obrigat√≥rias as seguintes colunas na tabela de atributos: AREA_HA, ID_PROJETO, ID_TALHAO, CICLO, ROTACAO."),
+                              p("Recomenda√ß√£o: planilha csv separado por v√≠rgulas contendo: Projeto, Talhao e N. Em que N √© a quantidade de parcelas."),
+                              p("Shape das parcelas hist√≥ricas: zipfile contendo todos os arquivos exportados do shapefile (todas as parcelas da base de invent√°rio para cada projeto).")
+                          ),
                           verbatimTextOutput("shape_text"),
                           verbatimTextOutput("recomend_text"),
                           verbatimTextOutput("parc_exist_text"),
-                          verbatimTextOutput("confirmation"), 
+                          verbatimTextOutput("confirmation"),
+
                           conditionalPanel(
                             "input.recomendacao_pergunta_upload == 0",
-                            textInput(inputId = "download_recomend_name",
-                                      label = "Insira o nome do arquivo de recomendaÁ„o para download:",
-                                      value = "RecomendaÁ„o-"),
-                            downloadButton("download_recomend", "Download da RecomendaÁ„o criada*"),
-                            tags$p("*DisponÌvel apÛs o upload das demais informaÁıes")
+                            textInput("download_recomend_name", "Insira o nome do arquivo de recomenda√ß√£o para download:", "Recomenda√ß√£o-"),
+                            downloadButton("download_recomend", "Download da Recomenda√ß√£o criada*"),
+                            p("*Dispon√≠vel ap√≥s o upload das demais informa√ß√µes")
                           )
                         )
-                      )),
-             tabPanel("Resultados", icon = icon("chart-bar"), tags$style(button_color_css),
+                      )
+             ),
+
+             tabPanel("Resultados", icon = icon("chart-bar"),
                       tabsetPanel(
                         tabPanel("Status", icon = icon("clock"),
                                  sidebarLayout(
                                    sidebarPanel(
-                                     tags$div(class = "sobre-texto",
-                                              tags$h2("Gerar parcelas"),
-                                              tags$p("Pressione o bot„o para gerar as parcelas."),
-                                              tags$p("Dependendo da quantidade de talhıes e parcelas recomendadas, o processo pode levar alguns minutos.")),
-                                     actionButton("gerar_parcelas", "Gerar Parcelas")),
+                                     div(class = "sobre-texto",
+                                         h2("Gerar parcelas"),
+                                         p("Pressione o bot√£o para gerar as parcelas."),
+                                         p("Dependendo da quantidade de talh√µes e parcelas recomendadas, o processo pode levar alguns minutos.")
+                                     ),
+                                     actionButton("gerar_parcelas", "Gerar Parcelas")
+                                   ),
                                    mainPanel(
-                                     tags$div(
-                                       id = "progress-container",
-                                       style = "width: 100%; background-color: #f3f3f3; padding: 3px; position: relative;",
-                                       tags$div(
-                                         id = "progress-bar",
-                                         style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;"
-                                       )),
-                                     tags$div(id = "completed-message", 
-                                              style = "display: none; font-weight: bold; color: green;",
-                                              "ConcluÌdo")
+                                     div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px; position: relative;",
+                                         div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
+                                     ),
+                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Conclu√≠do")
                                    )
-                                 )),
+                                 )
+                        ),
                         tabPanel("Parcelas Plotadas", icon = icon("map"),
                                  sidebarLayout(
-                                   sidebarPanel(uiOutput("index_filter"),
-                                                actionButton("anterior", "Anterior"),
-                                                actionButton("proximo", "PrÛximo"),
-                                                tags$p("Para recalcular a distribuiÁ„o do talh„o:"),
-                                                actionButton("gerar_novamente", "Gerar novamente as parcelas")),
+                                   sidebarPanel(
+                                     uiOutput("index_filter"),
+                                     actionButton("anterior", "Anterior"),
+                                     actionButton("proximo", "Pr√≥ximo"),
+                                     p("Para recalcular a distribui√ß√£o do talh√£o:"),
+                                     actionButton("gerar_novamente", "Gerar novamente as parcelas")
+                                   ),
                                    mainPanel(
                                      plotOutput("plot"),
-                                     HTML("<b style='color:red;'>O n˙mero de parcelas alocadas pode diferir do n˙mero recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!</b>")
+                                     HTML("<b style='color:red;'>O n√∫mero de parcelas alocadas pode diferir do n√∫mero recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!</b>")
                                    )
-                                 )),
+                                 )
+                        ),
                         tabPanel("Download", icon = icon("download"),
                                  sidebarLayout(
-                                   sidebarPanel(tags$div(class = "sobre-texto",
-                                                         tags$h2("Download"),
-                                                         tags$p("Arquivo gerado com base nas especificaÁıes.")),
-                                                textInput(inputId = "download_name",
-                                                          label = "Insira o nome do arquivo para download:",
-                                                          value = "Parcelas_2023-04-20"),
-                                                tags$div(class = "sobre-texto",
-                                                         tags$p("Nota: Ser· necess·rio alterar o nome para cada arquivo a ser salvo."))),
-                                                mainPanel(downloadButton("download_result", "Download Parcelas"))
-                                 ))
-                      ))
+                                   sidebarPanel(
+                                     div(class = "sobre-texto",
+                                         h2("Download"),
+                                         p("Arquivo gerado com base nas especifica√ß√µes.")),
+                                     textInput("download_name", "Insira o nome do arquivo para download:", "Parcelas_2023-04-20"),
+                                     div(class = "sobre-texto",
+                                         p("Nota: Ser√° necess√°rio alterar o nome para cada arquivo a ser salvo."))
+                                   ),
+                                   mainPanel(downloadButton("download_result", "Download Parcelas"))
+                                 )
+                        )
+                      )
+             )
   ),
-  tags$img(id = "logo", src = "logo.png"),
+
   tags$script(HTML("
     Shiny.addCustomMessageHandler('update_progress', function(percent) {
       $('#progress-bar').css('width', percent + '%');
       $('#progress-bar').text(percent + '%');
     });
-    
+
     Shiny.addCustomMessageHandler('show_completed', function(message) {
       $('#completed-message').show();
     });
-    
+
     Shiny.addCustomMessageHandler('hide_completed', function(message) {
       $('#completed-message').hide();
     });
