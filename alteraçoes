@@ -1,61 +1,58 @@
-ui <- tagList(
-  tags$head(
-    tags$style(HTML("
-      /* Remove margens padrão */
-      body {
-        margin: 0;
-        padding: 0;
-      }
-      /* Garante que a navbar ocupe 100% da largura */
-      .navbar {
-        width: 100%;
-        margin: 0;
-        border-radius: 0;
-      }
-      /* Ajusta a logo para ficar fixa no topo direito, sobrepondo a navbar */
-      #logo {
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        width: 100px;
-        height: auto;
-        z-index: 9999;
-      }
-      /* Estilização dos textos dentro dos painéis */
-      .sobre-texto {
-        font-family: 'Arial', sans-serif;
-        font-size: 16px;
-        line-height: 1.5;
-        text-align: justify;
-      }
-      .sobre-texto h2 {
-        font-size: 24px;
-        margin-bottom: 16px;
-      }
-      .sobre-texto p {
-        margin-bottom: 16px;
-      }
-    "))
-  ),
-  
-  # Logo fixo no canto superior direito
-  tags$img(src = "logo.png", id = "logo"),
-  
-  # Navbar que ocupará toda a largura
-  navbarPage("AutoParc - Alocador de Parcelas", theme = shinytheme("sandstone"),
-             windowTitle = "Window Title",
-             # Seus painéis seguem aqui...
-             tabPanel("Sobre", icon = icon("info"),
-                      fluidRow(
-                        column(12,
-                               div(class = "sobre-texto",
-                                   h2("Sobre"),
-                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas. Essa aplicação permite aos usuários realizar o lançamento de parcelas de maneira automática e depois exportar o shapefile das parcelas."),
-                                   HTML("<b style='color:red;'>O aplicativo foi meticulosamente desenvolvido para atuar como um instrumento de otimização do processo de lançamento, atuando como um facilitador. No entanto, uma coisa importante a ressaltar é que sua utilização não elimina a necessidade de análises e verificações criteriosas!</b>")
-                               )
-                        )
-                      )
-             ),
-             # ... outros tabPanels ...
+tabPanel("RESULTADOS", icon = icon("chart-column"),
+  fluidPage(
+    br(),
+    
+    # Linha com os botões, separados por espaçamento
+    fluidRow(
+      column(2,
+             actionButton("anterior", "ANTERIOR", class = "btn btn-dark")
+      ),
+      column(2,
+             actionButton("proximo", "PRÓXIMO", class = "btn btn-dark")
+      ),
+      column(4,
+             actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger")
+      )
+    ),
+    
+    br(), br(),
+    
+    # Nota informativa
+    fluidRow(
+      column(12,
+             div(style = "color:red; font-weight:bold; font-size:16px; text-align:justify;",
+                 "O número de parcelas alocadas pode diferir do número recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!"
+             )
+      )
+    )
   )
 )
+
+
+
+
+
+
+
+tabPanel("DOWNLOAD",
+  fluidPage(
+    br(),
+    
+    # Painel agrupando entrada + botão + nota
+    wellPanel(
+      h4("Download"),
+      p("Arquivo gerado com base nas especificações."),
+      
+      textInput("nome_arquivo", "Insira o nome do arquivo para download:", 
+                value = paste0("Parcelas_", Sys.Date())),
+      
+      downloadButton("download_parcelas", "DOWNLOAD PARCELAS", class = "btn btn-dark"),
+      
+      br(), br(),
+      
+      div(style = "color:red; font-weight:bold;",
+          "Nota: Será necessário alterar o nome para cada arquivo a ser salvo.")
+    )
+  )
+)
+
