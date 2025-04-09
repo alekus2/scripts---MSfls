@@ -1,4 +1,4 @@
-tabPanel("RESULTADOS", icon = icon("chart-column"),
+tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
   fluidPage(
     br(),
     
@@ -27,6 +27,7 @@ tabPanel("RESULTADOS", icon = icon("chart-column"),
     )
   )
 )
+
 
 
 
