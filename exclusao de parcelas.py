@@ -3,11 +3,11 @@ import os
 
 class Toolbox(object):
     def __init__(self):
-        self.label = "Alocador de parcelas"
-        self.alias = "alocator_toolbox"
-        self.tools = [AlocadorDeParcelas]
+        self.label = "Excluidor de parcelas"
+        self.alias = "exclution_toolbox"
+        self.tools = [ExclusaoDeParcelas]
 
-class AlocadorDeParcelas(object):
+class ExclusaoDeParcelas(object):
     def __init__(self):
         self.label = "Exclusao de parcelas."
         self.description = "Filtra e exclui com base em uns e zeros dentro do talhao."
@@ -42,7 +42,7 @@ class AlocadorDeParcelas(object):
             return
 
         try:
-            
+
         def calcular_maximo(talhao):
             max_parcelas = {}
             valores = [int(row[1]) for row in arcpy.da.SearchCursor("Nome da sua tabela", ["Index", "nm_parcela"]) if row[0] == talhao]
