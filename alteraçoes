@@ -1,30 +1,27 @@
-library(shiny)
-library(shinythemes)
-
 ui <- tagList(
   tags$head(
-    tags$link(rel = "stylesheet", type = "text/css", href = "styles.css"),
     tags$style(HTML("
+      /* Remove margens padrão */
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      /* Garante que a navbar ocupe 100% da largura */
+      .navbar {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+      }
+      /* Ajusta a logo para ficar fixa no topo direito, sobrepondo a navbar */
       #logo {
-        position: absolute;
+        position: fixed;
         top: 10px;
-        right: 10px;
+        right: 20px;
         width: 100px;
         height: auto;
-        z-index: 1000;
+        z-index: 9999;
       }
-      .navbar {
-        background-color: #0054A4 !important;
-        border: none !important;
-        margin-bottom: 0;
-      }
-      .navbar .navbar-nav > li > a, .navbar .navbar-brand {
-        color: white !important;
-      }
-      .container-fluid {
-        padding-left: 30px !important;
-        padding-right: 30px !important;
-      }
+      /* Estilização dos textos dentro dos painéis */
       .sobre-texto {
         font-family: 'Arial', sans-serif;
         font-size: 16px;
@@ -40,62 +37,25 @@ ui <- tagList(
       }
     "))
   ),
-
+  
+  # Logo fixo no canto superior direito
   tags$img(src = "logo.png", id = "logo"),
-
-  navbarPage(title = "AutoParc - Alocador de Parcelas", id = "main_nav", fluid = TRUE,
-
-    tabPanel("Sobre", icon = icon("info"),
-      tags$div(class = "sobre-texto",
-        tags$h2("Sobre"),
-        tags$p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas. Essa aplicação permite aos usuários realizar o lançamento de parcelas de maneira automática e depois exportar o shapefile das parcelas."),
-        HTML("<b style='color:red;'>O aplicativo foi meticulosamente desenvolvido para atuar como um instrumento de otimização do processo de lançamento, atuando como um facilitador. No entanto, uma coisa importante a ressaltar é que sua utilização não elimina a necessidade de análises e verificações criteriosas!</b>")
-      )
-    ),
-
-    tabPanel("Dados", icon = icon("table"),
-      sidebarLayout(
-        sidebarPanel(
-          fileInput("grid_file", "Selecione o shapefile do grid", multiple = TRUE),
-          fileInput("talhoes_file", "Selecione o shapefile dos talhões", multiple = TRUE),
-          fileInput("parcela_file", "Selecione o shapefile das parcelas históricas", multiple = TRUE),
-          fileInput("excel_file", "Selecione o arquivo Excel com a recomendação", accept = c(".xlsx")),
-          actionButton("process_button", "Processar", class = "btn-primary")
-        ),
-        mainPanel(
-          uiOutput("progress_ui"),
-          verbatimTextOutput("log_output"),
-          uiOutput("completed_ui")
-        )
-      )
-    ),
-
-    tabPanel("Resultados", icon = icon("chart-bar"),
-      sidebarLayout(
-        sidebarPanel(
-          selectInput("plot_select", "Selecione o gráfico:", choices = c("Recomendada x Alocada", "Taxa de Alocação")),
-          downloadButton("download_shapefile", "Download do Shapefile")
-        ),
-        mainPanel(
-          plotOutput("result_plot"),
-          tableOutput("result_table")
-        )
-      )
-    )
-  ),
-
-  tags$script(HTML("
-    Shiny.addCustomMessageHandler('update_progress', function(percent) {
-      $('#progress-bar').css('width', percent + '%');
-      $('#progress-bar').text(percent + '%');
-    });
-    
-    Shiny.addCustomMessageHandler('show_completed', function(message) {
-      $('#completed-message').show();
-    });
-    
-    Shiny.addCustomMessageHandler('hide_completed', function(message) {
-      $('#completed-message').hide();
-    });
-  "))
+  
+  # Navbar que ocupará toda a largura
+  navbarPage("AutoParc - Alocador de Parcelas", theme = shinytheme("sandstone"),
+             windowTitle = "Window Title",
+             # Seus painéis seguem aqui...
+             tabPanel("Sobre", icon = icon("info"),
+                      fluidRow(
+                        column(12,
+                               div(class = "sobre-texto",
+                                   h2("Sobre"),
+                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas. Essa aplicação permite aos usuários realizar o lançamento de parcelas de maneira automática e depois exportar o shapefile das parcelas."),
+                                   HTML("<b style='color:red;'>O aplicativo foi meticulosamente desenvolvido para atuar como um instrumento de otimização do processo de lançamento, atuando como um facilitador. No entanto, uma coisa importante a ressaltar é que sua utilização não elimina a necessidade de análises e verificações criteriosas!</b>")
+                               )
+                        )
+                      )
+             ),
+             # ... outros tabPanels ...
+  )
 )
