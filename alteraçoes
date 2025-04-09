@@ -1,217 +1,324 @@
 library(shiny)
-library(shinythemes)
 
-ui <- tagList(
-  tags$head(
-    tags$style(HTML("
-      body {
-        margin: 0;
-        padding: 0;
-      }
-      .navbar {
-        width: 100%;
-        margin: 0;
-        border-radius: 0;
-      }
-      #logo {
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        width: 100px;
-        height: auto;
-        z-index: 9999;
-      }
-      .sobre-texto {
-        font-family: 'Arial', sans-serif;
-        font-size: 16px;
-        line-height: 1.5;
-        text-align: justify;
-      }
-      .sobre-texto h2 {
-        font-size: 24px;
-        margin-bottom: 16px;
-      }
-      .sobre-texto p {
-        margin-bottom: 16px;
-      }
-    "))
-  ),
+server <- function(input, output, session) {
   
-  tags$img(src = "logo.png", id = "logo"),
-  navbarPage("AutoParc - Alocador de Parcelas", theme = shinytheme("sandstone"),
-             windowTitle = "Window Title",
-             
-             tabPanel("Sobre", icon = icon("info"),
-                      fluidRow(
-                        column(12,
-                               div(class = "sobre-texto",
-                                   h2("Sobre"),
-                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas. Essa aplicação permite aos usuários realizar o lançamento de parcelas de maneira automática e depois exportar o shapefile das parcelas."),
-                                   HTML("<b style='color:red;'>O aplicativo foi meticulosamente desenvolvido para atuar como um instrumento de otimização do processo de lançamento, atuando como um facilitador. No entanto, uma coisa importante a ressaltar é que sua utilização não elimina a necessidade de análises e verificações criteriosas!</b>")
-                               )
-                        )
-                      )
-             ),
-             
-             tabPanel("Dados", icon = icon("file-upload"),
-                      sidebarLayout(
-                        sidebarPanel(
-                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
-                          fileInput("grid_existente", "Carregar Grid Existente (.shp):", multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
-                          
-                          radioButtons("shape_input_pergunta_arudek", "Qual seria o formato do shape de entrada?",
-                                       choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
-                          
-                          conditionalPanel("input.shape_input_pergunta_arudek == 0",
-                                           h3("Insira presentes no seu arquivo:"),
-                                           p("O nome deve ser exatamente igual a tabela de atributos."),
-                                           textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
-                                           textInput("mudar_nome_arudek_talhao", "Talhão:", "CD_TALHAO"),
-                                           textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
-                                           textInput("mudar_nome_arudek_rotacao", "Rotação:", "NUM_ROTAC")
-                          ),
-                          
-                          radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação?",
-                                       choices = list("Sim" = 1, "NÃO" = 0), selected = 1),
-                          
-                          conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))),
-                          
-                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                           h3("Informe a intensidade desejada para as parcelas"),
-                                           p("Nota: Informar a quantos hectares serão necessários para cada parcela alocada."),
-                                           numericInput("recomend_intensidade", "1:", value = 3)
-                          ),
-                          
-                          radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
-                                       choices = list("Sim" = 1, "NÃO" = 0), selected = 0),
-                          
-                          conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))),
-                          
-                          selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
-                          selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
-                          
-                          p("Notas:"),
-                          p("S* = Sobrevivência;"),
-                          p("IFQ* = Inventário Florestal Qualitativo;"),
-                          p("IFC = Inventário Florestal Contínuo;"),
-                          p("IPC = Inventário Florestal Pré-Corte."),
-                          
-                          conditionalPanel("input.tipo_parcela == 'IPC'",
-                                           radioButtons("lancar_sobrevivencia", "Deseja lançar as parcelas de sobrevivência?",
-                                                        choices = list("Sim" = 1, "NÃO" = 0), selected = 0)
-                          ),
-                          
-                          sliderInput("distancia_minima", "Distância Mínima:", min = 5, max = 25, value = 20, step = 0.5),
-                          actionButton("confirmar", "Confirmar")
-                        ),
-                        mainPanel(
-                          div(class = "sobre-texto",
-                              h2("Sobre os arquivos"),
-                              p("Shape dos talhões: zipfile contendo todos os arquivos exportados do shapefile (ARUDEK)."),
-                              p("Serão obrigatórias as seguintes colunas na tabela de atributos: AREA_HA, ID_PROJETO, ID_TALHAO, CICLO, ROTACAO."),
-                              p("Recomendação: planilha csv separado por vírgulas contendo: Projeto, Talhao e N. Em que N é a quantidade de parcelas."),
-                              p("Shape das parcelas históricas: zipfile contendo todos os arquivos exportados do shapefile (todas as parcelas da base de inventário para cada projeto).")
-                          ),
-                          verbatimTextOutput("shape_text"),
-                          verbatimTextOutput("recomend_text"),
-                          verbatimTextOutput("parc_exist_text"),
-                          verbatimTextOutput("confirmation"),
-                          
-                          conditionalPanel(
-                            "input.recomendacao_pergunta_upload == 0",
-                            textInput("download_recomend_name", "Insira o nome do arquivo de recomendação para download:", "Recomendação-"),
-                            downloadButton("download_recomend", "Download da Recomendação criada*"),
-                            p("*Disponível após o upload das demais informações")
-                          )
-                        )
-                      )
-             ),
-             
-             tabPanel("Parcelas Plotadas", icon = icon("chart-bar"),
-                      tabsetPanel(
-                        tabPanel("Status", icon = icon("clock"),
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     div(class = "sobre-texto",
-                                         h2("Gerar parcelas"),
-                                         p("Pressione o botão para gerar as parcelas."),
-                                         p("Dependendo da quantidade de talhões e parcelas recomendadas, o processo pode levar alguns minutos.")
-                                     ),
-                                     actionButton("gerar_parcelas", "Gerar Parcelas")
-                                   ),
-                                   mainPanel(
-                                     div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px; position: relative;",
-                                         div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
-                                     ),
-                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
-                                   )
-                                 )
-                        ),
-                        
-                        tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
-                                 fluidPage(
-                                   br(),
-                                   fluidRow(
-                                     column(2, offset = 1,
-                                            actionButton("anterior", "ANTERIOR", class = "btn btn-dark")
-                                     ),
-                                     column(2,
-                                            actionButton("proximo", "PRÓXIMO", class = "btn btn-dark")
-                                     ),
-                                     column(5,
-                                            actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger")
-                                     )
-                                   ),
-                                   br(), br(),
-                                   fluidRow(
-                                     column(10, offset = 1,
-                                            div(style = "color:red; font-weight:bold; font-size:16px; text-align:justify;",
-                                                "O número de parcelas alocadas pode diferir do número recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!"
-                                            )
-                                     )
-                                   )
-                                 )
-                        ),
-                        
-                        tabPanel("DOWNLOAD",
-                                 fluidPage(
-                                   br(),
-                                   wellPanel(
-                                     h4("Download"),
-                                     p("Arquivo gerado com base nas especificações."),
-                                     
-                                     textInput("nome_arquivo", "Insira o nome do arquivo para download:", 
-                                               value = paste0("Parcelas_", Sys.Date())),
-                                     
-                                     br(),
-                                     
-                                     downloadButton("download_parcelas", "DOWNLOAD PARCELAS", class = "btn btn-dark"),
-                                     
-                                     br(), br(),
-                                     
-                                     div(style = "color:red; font-weight:bold;",
-                                         "Nota: Será necessário alterar o nome para cada arquivo a ser salvo.")
-                                   )
-                                 )
-                        )
-                      )
-             )
-  ),
+  observeEvent(input$confirmar, {
+    output$shape_text <- renderText({
+      req(input$shape)
+      paste("Upload realizado referente aos talhões:", input$shape$name)
+    })
+    
+    output$recomend_text <- renderText({
+      req(input$recomend)
+      paste("Upload realizado referente a recomendação de parcelas:", input$recomend$name)
+    })
+    
+    output$parc_exist_text <- renderText({
+      if (input$parcelas_existentes_lancar == 1) {
+        req(input$parc_exist)
+        paste("Upload realizado referente as parcelas já existentes:", input$parc_exist$name)
+      } else {
+        paste0("Upload de parcelas existentes não realizado.")
+      }
+    })
+    
+    output$confirmation <- renderText({
+      req(input$forma_parcela, input$tipo_parcela, input$distancia_minima)
+      paste("Forma Parcela:", input$forma_parcela, "Tipo Parcela:", input$tipo_parcela, "Distância Miníma: ", input$distancia_minima)
+    })
+  })
   
-  tags$script(HTML("
-    Shiny.addCustomMessageHandler('update_progress', function(percent) {
-      $('#progress-bar').css('width', percent + '%');
-      $('#progress-bar').text(percent + '%');
-    });
+  grid_existente <- reactive({
+  req(input$grid_existente)
+  
+  shp_path <- input$grid_existente$datapath[grepl(".shp$", input$grid_existente$name)]
+  dir_path <- dirname(shp_path)
+  shp_name <- input$grid_existente$name[grepl(".shp$", input$grid_existente$name)]
+  shp_full <- file.path(dir_path, shp_name)
+  
+  st_read(shp_full, options = "ENCODING=UTF-8")
+  })
+  
+  forma_parcela <- reactive({
+    input$forma_parcela
+  })
+  
+  tipo_parcela <- reactive({
+    input$tipo_parcela
+  })
+  
+  distancia_minima <- reactive({
+    input$distancia_minima
+  })
+  
+  shape_path <- reactive({
+    req(input$shape)
+    shape_zip <- unzip(input$shape$datapath, exdir = tempdir())
+    grep(shape_zip, pattern = ".shp$", value = TRUE)
+  })
+  
+  shape <- reactive({
+    req(shape_path())
+    
+    shp <- st_read(shape_path())
+    
+    if(input$shape_input_pergunta_arudek == 0) {
+      shp <- shp %>%
+        rename(ID_PROJETO := !!input$mudar_nome_arudek_projeto,
+               ID_TALHAO := !!input$mudar_nome_arudek_talhao,
+               CICLO := !!input$mudar_nome_arudek_ciclo,
+               ROTACAO := !!input$mudar_nome_arudek_rotacao)
+    }
+    
+    shp <- shp %>%
+      mutate(ID_PROJETO = str_pad(ID_PROJETO, 4, pad = 0),
+             ID_TALHAO = str_pad(ID_TALHAO, 3, pad = 0))
+    
+    return(shp)
+  })
+  
+  
+  parc_exist_path <- reactive({
+    
+    if(input$parcelas_existentes_lancar == 1) {
+      req(input$parc_exist)
+      parc_exist_zip <- unzip(input$parc_exist$datapath, exdir = tempdir())
+      grep(parc_exist_zip, pattern = ".shp$", value = TRUE)
+      
+    } else {
+      paste0("data/parc.shp")
+    }
+  })
+  
+  recomend <- reactive({
+    
+    if(input$recomendacao_pergunta_upload == 1) {
+      req(input$recomend)
+      recomends <- read.csv2(input$recomend$datapath) %>% 
+        mutate(Projeto = str_pad(Projeto, 4, pad = 0),
+               Talhao = str_pad(Talhao, 3, pad = 0),
+               Index = paste(Projeto, Talhao, sep = "")) %>%
+        rename(Num.parc = N, ID_PROJETO = Projeto, ID_TALHAO = Talhao)
+      return(recomends) 
+    } else {
+      
+      req(shape(), input$recomend_intensidade)
+      shape <- shape() %>% st_make_valid()
+      
+      recomends <- shape %>% 
+        group_by(ID_PROJETO, ID_TALHAO) %>%
+        summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
+        mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
+               Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
+        select(ID_PROJETO, ID_TALHAO, Num.parc, Index) %>%
+        as.data.frame() %>%
+        select(-geometry)
+      
+      return(recomends)
+    }
+  })
+  
+  output$download_recomend <- downloadHandler(
+    filename = function() {
+      paste(input$download_recomend_name, ".csv", sep = "")
+    },
+    content = function(file) {
+      write.csv2(recomend(), file, row.names = FALSE)
+    },
+    contentType = "text/csv"
+  )
+  
+  
+  progress_percentage <- reactiveVal(0)
+  values <- reactiveValues(result_points = NULL, process_complete = FALSE)
+  
+  observeEvent(input$gerar_parcelas, {
+    session$sendCustomMessage("hide_completed", message = "")
+    
+    
+   
+    result <- process_data(shape = shape(),
+                          recomend = recomend(),
+                          parc_exist_path = caminho_parc_exist(),
+                          forma_parcela = input$formato,
+                          tipo_parcela = input$tipo,
+                          distancia.minima = input$distancia,
+                          update_progress = function(percent) {session$sendCustomMessage("update_progress", percent)},
+                          grid_existente = grid_existente())
+    
+    if(input$lancar_sobrevivencia == 1){
+      unique_indexes <- unique(result$Index)
+      
+      for (idx in unique_indexes) {
+        idx_rows <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
+        s30_count <- round(length(idx_rows) * 0.3)
+        s30_idx <- sample(idx_rows, s30_count)
+        
+        result$TIPO_ATUAL[s30_idx] <- "S30"
+        result[result$TIPO_ATUAL == "IPC" & result$Index == idx,]$STATUS <- "DESATIVADA"
+      }
+      
+      for(i in unique(result$Index)) {
+        dt_aux <- result[result$Index == i, ]
+        
+        s30_counts <- sum(dt_aux$TIPO_ATUAL == "S30")
+        
+        if (nrow(dt_aux) >= 2 && s30_counts < 2) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 2 - s30_counts) {
+            s30_idx <- sample(idx_rows, 2 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
+          }
+        } else if (nrow(dt_aux) < 2 && s30_counts < 1) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 1 - s30_counts) {
+            s30_idx <- sample(idx_rows, 1 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
+          }
+        }
+        result[result$TIPO_ATUAL == "IPC" & result$Index == i,]$STATUS <- "DESATIVADA"
+      }
+    }
+    
+    result[result$TIPO_ATUAL == "S30",]$STATUS <- "ATIVA"
+    values$result_points <- result
+    session$sendCustomMessage("show_completed", message = "")
+  })
+  
+  output$index_filter <- renderUI({
+    req(recomend())
+    aux <- recomend()
+    
+    selectInput("selected_index", "Select Index:", choices = unique(aux$Index))
+  })
+  
+  observeEvent(input$gerar_novamente, {
+    selected_index <- input$selected_index
+    values$result_points <- values$result_points %>% 
+      mutate(Index = paste0(PROJETO, TALHAO)) %>%
+      filter(Index != selected_index)
+    
+    
+    session$sendCustomMessage("hide_completed", message = "")
+    shape_selected <- shape() %>%
+      mutate( Index = paste0(ID_PROJETO, ID_TALHAO)) %>% 
+      filter(Index == selected_index)
+    
+    recomend_selected <- recomend() %>% 
+      mutate(Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
+      filter(Index == selected_index)
+    
+    result <- process_data(shape_selected, recomend_selected, parc_exist_path(), forma_parcela(), tipo_parcela(), distancia_minima(), function(percent) {
+      session$sendCustomMessage("update_progress", percent)
+    })
+    
+    if(input$lancar_sobrevivencia == 1){
+      unique_indexes <- unique(result$Index)
+      
+      for (idx in unique_indexes) {
+        idx_rows <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
+        s30_count <- round(length(idx_rows) * 0.3)
+        s30_idx <- sample(idx_rows, s30_count)
+        
+        result$TIPO_ATUAL[s30_idx] <- "S30"
+        result[result$TIPO_ATUAL == "IPC" & result$Index == idx,]$STATUS <- "DESATIVADA"
+      }
+      
+      for(i in unique(result$Index)) {
+        dt_aux <- result[result$Index == i, ]
+        
+        s30_counts <- sum(dt_aux$TIPO_ATUAL == "S30")
+        
+        if (nrow(dt_aux) >= 2 && s30_counts < 2) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 2 - s30_counts) {
+            s30_idx <- sample(idx_rows, 2 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
+          }
+        } else if (nrow(dt_aux) < 2 && s30_counts < 1) {
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          if (length(idx_rows) >= 1 - s30_counts) {
+            s30_idx <- sample(idx_rows, 1 - s30_counts)
+            result$TIPO_ATUAL[s30_idx] <- "S30"
+          }
+        }
+        result[result$TIPO_ATUAL == "IPC" & result$Index == i,]$STATUS <- "DESATIVADA"
+      }
+    }
+    
+    result[result$TIPO_ATUAL == "S30",]$STATUS <- "ATIVA"
+    values$result_points <- rbind(values$result_points, result) 
+    session$sendCustomMessage("show_completed", message = "")
+  })
+  
+  indexes <- reactive({
+    unique(recomend()$Index)
+  })
+  
+  current_index <- reactiveVal(1)
+  
+  observeEvent(input$proximo, {
+    indexes_list <- indexes()
+    next_index <- current_index() + 1
+    if (next_index > length(indexes_list)) {
+      next_index <- 1
+    }
+    current_index(next_index)
+    updateSelectInput(session, "selected_index", selected = indexes_list[next_index])
+  })
+  
+  observeEvent(input$anterior, {
+    indexes_list <- indexes()
+    prev_index <- current_index() - 1
+    if (prev_index < 1) {
+      prev_index <- length(indexes_list)
+    }
+    current_index(prev_index)
+    updateSelectInput(session, "selected_index", selected = indexes_list[prev_index])
+  })
+  
+  
 
-    Shiny.addCustomMessageHandler('show_completed', function(message) {
-      $('#completed-message').show();
-    });
-
-    Shiny.addCustomMessageHandler('hide_completed', function(message) {
-      $('#completed-message').hide();
-    });
-  "))
-)
+  output$plot <- renderPlot({
+    req(values$result_points, input$selected_index, shape())
+    selected_index <- input$selected_index
+    result_aux <- values$result_points
+    shape_aux <- shape()
+    shape_aux <- st_transform(shape_aux, 31982)
+    
+    shape_aux$Index <- paste0(shape_aux$ID_PROJETO, shape_aux$ID_TALHAO)
+    shape_filtrado <- shape_aux %>% filter(Index == selected_index)
+    points_df <- result_aux %>% filter(Index == selected_index)
+    
+    num_parc_title <- shape_filtrado %>% 
+      group_by(ID_PROJETO, ID_TALHAO) %>%
+      summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
+      mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
+             Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
+      pull(Num.parc)
+    
+    area_titulo <- round(sum(st_area(shape_filtrado)) / 10000, 2)
+    
+    ggplot() + 
+      geom_sf(aes(), data = shape_filtrado) + 
+      geom_sf(aes(), data = points_df) + 
+      custom_theme +
+      ggtitle(paste0("NÃºmero de parcelas recomendado: ", num_parc_title, " (Ãrea: ", area_titulo, " ha)"))
+  })
+  
+  output$download_result <- downloadHandler(
+    filename = function() {
+      paste0(input$download_name, ".zip")
+    },
+    content = function(file) {
+      req(values$result_points)
+      temp_dir <- tempdir()
+      shapefile_name <- paste(input$download_name, ".shp", sep = "")
+      shapefile_path <- file.path(temp_dir, shapefile_name)
+      st_write(values$result_points, shapefile_path, "ESRI Shapefile")
+      shapefile_files <- list.files(temp_dir, pattern = paste0(input$download_name, "\\..*"), full.names = TRUE)
+      zip(file, shapefile_files)
+    }
+  )
+  
+}
