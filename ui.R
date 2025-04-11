@@ -1,19 +1,26 @@
+
 library(shiny)
 library(shinythemes)
 
-ui <- fluidPage(
+ui <- tagList(
   tags$head(
     tags$style(HTML("
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      .navbar {
+        width: 100%;
+        margin: 0;
+        border-radius: 0;
+      }
       #logo {
-        position: absolute;
+        position: fixed;
         top: 10px;
-        right: 10px;
+        right: 20px;
         width: 100px;
         height: auto;
-        z-index: 1000;
-      }
-      .navbar-default {
-        background-color: #0054A4;
+        z-index: 9999;
       }
       .sobre-texto {
         font-family: 'Arial', sans-serif;
@@ -30,11 +37,11 @@ ui <- fluidPage(
       }
     "))
   ),
+  
   tags$img(src = "logo.png", id = "logo"),
-
-  navbarPage("AutoParc - Alocador de Parcelas", theme = shinytheme("sandstone"),
+  navbarPage("AUTOALOCAR    -    Alocador de Parcelas", theme = shinytheme("sandstone"),
              windowTitle = "Window Title",
-
+             
              tabPanel("Sobre", icon = icon("info"),
                       fluidRow(
                         column(12,
@@ -46,16 +53,16 @@ ui <- fluidPage(
                         )
                       )
              ),
-
+             
              tabPanel("Dados", icon = icon("file-upload"),
                       sidebarLayout(
                         sidebarPanel(
                           fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
                           fileInput("grid_existente", "Carregar Grid Existente (.shp):", multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
-
+                          
                           radioButtons("shape_input_pergunta_arudek", "Qual seria o formato do shape de entrada?",
                                        choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
-
+                          
                           conditionalPanel("input.shape_input_pergunta_arudek == 0",
                                            h3("Insira presentes no seu arquivo:"),
                                            p("O nome deve ser exatamente igual a tabela de atributos."),
@@ -64,39 +71,39 @@ ui <- fluidPage(
                                            textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
                                            textInput("mudar_nome_arudek_rotacao", "Rotação:", "NUM_ROTAC")
                           ),
-
+                          
                           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação?",
                                        choices = list("Sim" = 1, "NÃO" = 0), selected = 1),
-
+                          
                           conditionalPanel("input.recomendacao_pergunta_upload == 1",
                                            fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))),
-
+                          
                           conditionalPanel("input.recomendacao_pergunta_upload == 0",
                                            h3("Informe a intensidade desejada para as parcelas"),
                                            p("Nota: Informar a quantos hectares serão necessários para cada parcela alocada."),
                                            numericInput("recomend_intensidade", "1:", value = 3)
                           ),
-
+                          
                           radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
                                        choices = list("Sim" = 1, "NÃO" = 0), selected = 0),
-
+                          
                           conditionalPanel("input.parcelas_existentes_lancar == 1",
                                            fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))),
-
+                          
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
                           selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
-
+                          
                           p("Notas:"),
                           p("S* = Sobrevivência;"),
                           p("IFQ* = Inventário Florestal Qualitativo;"),
                           p("IFC = Inventário Florestal Contínuo;"),
                           p("IPC = Inventário Florestal Pré-Corte."),
-
+                          
                           conditionalPanel("input.tipo_parcela == 'IPC'",
                                            radioButtons("lancar_sobrevivencia", "Deseja lançar as parcelas de sobrevivência?",
                                                         choices = list("Sim" = 1, "NÃO" = 0), selected = 0)
                           ),
-
+                          
                           sliderInput("distancia_minima", "Distância Mínima:", min = 5, max = 25, value = 20, step = 0.5),
                           actionButton("confirmar", "Confirmar")
                         ),
@@ -112,7 +119,7 @@ ui <- fluidPage(
                           verbatimTextOutput("recomend_text"),
                           verbatimTextOutput("parc_exist_text"),
                           verbatimTextOutput("confirmation"),
-
+                          
                           conditionalPanel(
                             "input.recomendacao_pergunta_upload == 0",
                             textInput("download_recomend_name", "Insira o nome do arquivo de recomendação para download:", "Recomendação-"),
@@ -122,8 +129,8 @@ ui <- fluidPage(
                         )
                       )
              ),
-
-             tabPanel("Resultados", icon = icon("chart-bar"),
+             
+             tabPanel("Parcelas Plotadas", icon = icon("chart-bar"),
                       tabsetPanel(
                         tabPanel("Status", icon = icon("clock"),
                                  sidebarLayout(
@@ -143,38 +150,57 @@ ui <- fluidPage(
                                    )
                                  )
                         ),
-                        tabPanel("Parcelas Plotadas", icon = icon("map"),
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     uiOutput("index_filter"),
-                                     actionButton("anterior", "Anterior"),
-                                     actionButton("proximo", "Próximo"),
-                                     p("Para recalcular a distribuição do talhão:"),
-                                     actionButton("gerar_novamente", "Gerar novamente as parcelas")
+                        
+                        tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
+                                 fluidPage(
+                                   br(),
+                                   fluidRow(
+                                     column(2, offset = 1,
+                                            actionButton("anterior", "ANTERIOR", class = "btn btn-dark")
+                                     ),
+                                     column(2,
+                                            actionButton("proximo", "PRÓXIMO", class = "btn btn-dark")
+                                     ),
+                                     column(5,
+                                            actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger")
+                                     )
                                    ),
-                                   mainPanel(
-                                     plotOutput("plot"),
-                                     HTML("<b style='color:red;'>O número de parcelas alocadas pode diferir do número recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!</b>")
+                                   br(), br(),
+                                   fluidRow(
+                                     column(10, offset = 1,
+                                            div(style = "color:red; font-weight:bold; font-size:16px; text-align:justify;",
+                                                "O número de parcelas alocadas pode diferir do número recomendado, em virtude das premissas adotadas. Nesses casos avaliar a plotagem e checagem manuais dentro do ArcGis Pro!"
+                                            )
+                                     )
                                    )
                                  )
                         ),
-                        tabPanel("Download", icon = icon("download"),
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     div(class = "sobre-texto",
-                                         h2("Download"),
-                                         p("Arquivo gerado com base nas especificações.")),
-                                     textInput("download_name", "Insira o nome do arquivo para download:", "Parcelas_2023-04-20"),
-                                     div(class = "sobre-texto",
-                                         p("Nota: Será necessário alterar o nome para cada arquivo a ser salvo."))
-                                   ),
-                                   mainPanel(downloadButton("download_result", "Download Parcelas"))
+                        
+                        tabPanel("DOWNLOAD",
+                                 fluidPage(
+                                   br(),
+                                   wellPanel(
+                                     h4("Download"),
+                                     p("Arquivo gerado com base nas especificações."),
+                                     
+                                     textInput("nome_arquivo", "Insira o nome do arquivo para download:", 
+                                               value = paste0("Parcelas_", Sys.Date())),
+                                     
+                                     br(),
+                                     
+                                     downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-dark"),
+                                     
+                                     br(), br(),
+                                     
+                                     div(style = "color:red; font-weight:bold;",
+                                         "Nota: Será necessário alterar o nome para cada arquivo a ser salvo.")
+                                   )
                                  )
                         )
                       )
              )
   ),
-
+  
   tags$script(HTML("
     Shiny.addCustomMessageHandler('update_progress', function(percent) {
       $('#progress-bar').css('width', percent + '%');
