@@ -22,6 +22,9 @@ ui <- tagList(
       .navbar-default .navbar-nav > li > a {
         color: ", bracell_white, " !important;
       }
+      .navbar-nav > li.active > a {
+        color: blue !important; /* Cor azul para a aba ativa */
+      }
       .tab-content {
         padding: 20px;
         background-color: #f4f4f4;
@@ -187,5 +190,13 @@ ui <- tagList(
     Shiny.addCustomMessageHandler('hide_completed', function(message) {
       $('#completed-message').hide();
     });
+
+    // Script para mudar a cor da aba selecionada
+    $(document).on('click', '.navbar-nav > li', function() {
+      $('.navbar-nav > li').removeClass('active');
+      $(this).addClass('active');
+    });
   "))
 )
+
+shinyApp(ui = ui, server = function(input, output) {})
