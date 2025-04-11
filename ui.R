@@ -1,4 +1,3 @@
-
 library(shiny)
 library(shinythemes)
 
@@ -61,6 +60,20 @@ ui <- tagList(
         max-height: 40px;
         margin-right: 10px;
       }
+      .file-input-button {
+        position: relative;
+        overflow: hidden;
+        margin: 0;
+      }
+      .file-input-button input[type='file'] {
+        position: absolute;
+        top: 0;
+        right: 0;
+        opacity: 0; /* Torna o input invisível */
+        height: 100%;
+        width: 100%;
+        cursor: pointer; /* Muda o cursor para indicar que é clicável */
+      }
     ")))
   ),
   
@@ -81,8 +94,14 @@ ui <- tagList(
              tabPanel("Dados", icon = icon("file-upload"),
                       sidebarLayout(
                         sidebarPanel(
-                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip"),class = "btn btn-danger"),
-                          fileInput("grid_existente", "Carregar Grid Existente (.shp):", multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj'),class = "btn btn-danger"),
+                          div(class = "file-input-button",
+                              actionButton("upload_shape", "Upload do Shapefile dos talhões", class = "btn btn-danger"),
+                              fileInput("shape", NULL, accept = c(".zip"), style = "display: none;")
+                          ),
+                          div(class = "file-input-button",
+                              actionButton("upload_grid", "Carregar Grid Existente (.shp):", class = "btn btn-danger"),
+                              fileInput("grid_existente", NULL, multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj'), style = "display: none;")
+                          ),
                           radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
                                        choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
                           conditionalPanel("input.shape_input_pergunta_arudek == 0",
@@ -94,7 +113,10 @@ ui <- tagList(
                           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 1),
                           conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"),class = "btn btn-danger")
+                                           div(class = "file-input-button",
+                                               actionButton("upload_recomend", "Upload do arquivo de recomendação", class = "btn btn-danger"),
+                                               fileInput("recomend", NULL, accept = c(".csv"), style = "display: none;")
+                                           )
                           ),
                           conditionalPanel("input.recomendacao_pergunta_upload == 0",
                                            numericInput("recomend_intensidade", "Intensidade por parcela (ha):", value = 3)
@@ -102,7 +124,10 @@ ui <- tagList(
                           radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 0),
                           conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"),class = "btn btn-danger")
+                                           div(class = "file-input-button",
+                                               actionButton("upload_parc_exist", "Upload do Shapefile das parcelas já existentes", class = "btn btn-danger"),
+                                               fileInput("parc_exist", NULL, accept = c(".zip"), style = "display: none;")
+                                           )
                           ),
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
                           selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
@@ -201,16 +226,21 @@ ui <- tagList(
       $('.navbar-nav > li').removeClass('active');
       $(this).addClass('active');
     });
+
+    // Script para ativar o fileInput ao clicar no botão estilizado
+    $(document).on('click', '#upload_shape', function() {
+      $('#shape').click();
+    });
+    $(document).on('click', '#upload_grid', function() {
+      $('#grid_existente').click();
+    });
+    $(document).on('click', '#upload_recomend', function() {
+      $('#recomend').click();
+    });
+    $(document).on('click', '#upload_parc_exist', function() {
+      $('#parc_exist').click();
+    });
   "))
 )
 
 shinyApp(ui = ui, server = function(input, output) {})
-
-> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/AutoParc.R')
-WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
-
-https://cran.rstudio.com/bin/windows/Rtools/
-Warning in install.packages :
-  o pacote ‘shiny’ está em uso e não será instalado
-Error in fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip"),  : 
-  argumento não utilizado (class = "btn btn-danger")
