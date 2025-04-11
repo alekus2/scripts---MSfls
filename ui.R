@@ -23,7 +23,7 @@ ui <- tagList(
         color: ", bracell_white, " !important;
       }
       .navbar-nav > li.active > a {
-        color: blue !important; /* Cor azul para a aba ativa */
+        color: blue !important;
       }
       .tab-content {
         padding: 20px;
@@ -69,10 +69,10 @@ ui <- tagList(
         position: absolute;
         top: 0;
         right: 0;
-        opacity: 0; /* Torna o input invisível */
+        opacity: 0;
         height: 100%;
         width: 100%;
-        cursor: pointer; /* Muda o cursor para indicar que é clicável */
+        cursor: pointer;
       }
     ")))
   ),
@@ -96,11 +96,11 @@ ui <- tagList(
                         sidebarPanel(
                           div(class = "file-input-button",
                               actionButton("upload_shape", "Upload do Shapefile dos talhões", class = "btn btn-danger"),
-                              fileInput("shape", NULL, accept = c(".zip"), style = "display: none;")
+                              fileInput("shape", NULL, accept = c(".zip"))
                           ),
                           div(class = "file-input-button",
                               actionButton("upload_grid", "Carregar Grid Existente (.shp):", class = "btn btn-danger"),
-                              fileInput("grid_existente", NULL, multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj'), style = "display: none;")
+                              fileInput("grid_existente", NULL, multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj'))
                           ),
                           radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
                                        choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
@@ -115,7 +115,7 @@ ui <- tagList(
                           conditionalPanel("input.recomendacao_pergunta_upload == 1",
                                            div(class = "file-input-button",
                                                actionButton("upload_recomend", "Upload do arquivo de recomendação", class = "btn btn-danger"),
-                                               fileInput("recomend", NULL, accept = c(".csv"), style = "display: none;")
+                                               fileInput("recomend", NULL, accept = c(".csv"))
                                            )
                           ),
                           conditionalPanel("input.recomendacao_pergunta_upload == 0",
@@ -126,7 +126,7 @@ ui <- tagList(
                           conditionalPanel("input.parcelas_existentes_lancar == 1",
                                            div(class = "file-input-button",
                                                actionButton("upload_parc_exist", "Upload do Shapefile das parcelas já existentes", class = "btn btn-danger"),
-                                               fileInput("parc_exist", NULL, accept = c(".zip"), style = "display: none;")
+                                               fileInput("parc_exist", NULL, accept = c(".zip"))
                                            )
                           ),
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
@@ -220,14 +220,10 @@ ui <- tagList(
     Shiny.addCustomMessageHandler('hide_completed', function(message) {
       $('#completed-message').hide();
     });
-
-    // Script para mudar a cor da aba selecionada
     $(document).on('click', '.navbar-nav > li', function() {
       $('.navbar-nav > li').removeClass('active');
       $(this).addClass('active');
     });
-
-    // Script para ativar o fileInput ao clicar no botão estilizado
     $(document).on('click', '#upload_shape', function() {
       $('#shape').click();
     });
@@ -244,75 +240,3 @@ ui <- tagList(
 )
 
 shinyApp(ui = ui, server = function(input, output) {})
-
-> library(shiny); runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/AutoParc.R')
-Mensagen de aviso:
-pacote ‘shiny’ foi compilado no R versão 4.4.3 
-Error in install.packages : Updating loaded packages
-Carregando pacotes exigidos: shinythemes
-Aviso: pacote ‘shinythemes’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: sf
-Aviso: pacote ‘sf’ foi compilado no R versão 4.4.3
-Linking to GEOS 3.13.0, GDAL 3.10.1, PROJ 9.5.1; sf_use_s2() is TRUE
-Carregando pacotes exigidos: ggplot2
-Aviso: pacote ‘ggplot2’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: dplyr
-Aviso: pacote ‘dplyr’ foi compilado no R versão 4.4.3
-
-Anexando pacote: ‘dplyr’
-
-Os seguintes objetos são mascarados por ‘package:stats’:
-
-    filter, lag
-
-Os seguintes objetos são mascarados por ‘package:base’:
-
-    intersect, setdiff, setequal, union
-
-Carregando pacotes exigidos: tidyr
-Aviso: pacote ‘tidyr’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: hrbrthemes
-Aviso: pacote ‘hrbrthemes’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: DT
-Aviso: pacote ‘DT’ foi compilado no R versão 4.4.3
-
-Anexando pacote: ‘DT’
-
-Os seguintes objetos são mascarados por ‘package:shiny’:
-
-    dataTableOutput, renderDataTable
-
-Carregando pacotes exigidos: ggrepel
-Aviso: pacote ‘ggrepel’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: shinycssloaders
-Aviso: pacote ‘shinycssloaders’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: shinyjs
-Aviso: pacote ‘shinyjs’ foi compilado no R versão 4.4.3
-Stackoverflow is a great place to get help:
-	https://stackoverflow.com/tags/shinyjs
-
-Anexando pacote: ‘shinyjs’
-
-O seguinte objeto é mascarado por ‘package:shiny’:
-
-    runExample
-
-Os seguintes objetos são mascarados por ‘package:methods’:
-
-    removeClass, show
-
-Carregando pacotes exigidos: gridExtra
-Aviso: pacote ‘gridExtra’ foi compilado no R versão 4.4.3
-
-Anexando pacote: ‘gridExtra’
-
-O seguinte objeto é mascarado por ‘package:dplyr’:
-
-    combine
-
-Carregando pacotes exigidos: progress
-Aviso: pacote ‘progress’ foi compilado no R versão 4.4.3
-Carregando pacotes exigidos: stringr
-Aviso: pacote ‘stringr’ foi compilado no R versão 4.4.3
-Error in fileInput("shape", NULL, accept = c(".zip"), style = "display: none;") : 
-  argumento não utilizado (style = "display: none;")
