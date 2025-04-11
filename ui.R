@@ -244,3 +244,75 @@ ui <- tagList(
 )
 
 shinyApp(ui = ui, server = function(input, output) {})
+
+> library(shiny); runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/AutoParc.R')
+Mensagen de aviso:
+pacote ‘shiny’ foi compilado no R versão 4.4.3 
+Error in install.packages : Updating loaded packages
+Carregando pacotes exigidos: shinythemes
+Aviso: pacote ‘shinythemes’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: sf
+Aviso: pacote ‘sf’ foi compilado no R versão 4.4.3
+Linking to GEOS 3.13.0, GDAL 3.10.1, PROJ 9.5.1; sf_use_s2() is TRUE
+Carregando pacotes exigidos: ggplot2
+Aviso: pacote ‘ggplot2’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: dplyr
+Aviso: pacote ‘dplyr’ foi compilado no R versão 4.4.3
+
+Anexando pacote: ‘dplyr’
+
+Os seguintes objetos são mascarados por ‘package:stats’:
+
+    filter, lag
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+Carregando pacotes exigidos: tidyr
+Aviso: pacote ‘tidyr’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: hrbrthemes
+Aviso: pacote ‘hrbrthemes’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: DT
+Aviso: pacote ‘DT’ foi compilado no R versão 4.4.3
+
+Anexando pacote: ‘DT’
+
+Os seguintes objetos são mascarados por ‘package:shiny’:
+
+    dataTableOutput, renderDataTable
+
+Carregando pacotes exigidos: ggrepel
+Aviso: pacote ‘ggrepel’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: shinycssloaders
+Aviso: pacote ‘shinycssloaders’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: shinyjs
+Aviso: pacote ‘shinyjs’ foi compilado no R versão 4.4.3
+Stackoverflow is a great place to get help:
+	https://stackoverflow.com/tags/shinyjs
+
+Anexando pacote: ‘shinyjs’
+
+O seguinte objeto é mascarado por ‘package:shiny’:
+
+    runExample
+
+Os seguintes objetos são mascarados por ‘package:methods’:
+
+    removeClass, show
+
+Carregando pacotes exigidos: gridExtra
+Aviso: pacote ‘gridExtra’ foi compilado no R versão 4.4.3
+
+Anexando pacote: ‘gridExtra’
+
+O seguinte objeto é mascarado por ‘package:dplyr’:
+
+    combine
+
+Carregando pacotes exigidos: progress
+Aviso: pacote ‘progress’ foi compilado no R versão 4.4.3
+Carregando pacotes exigidos: stringr
+Aviso: pacote ‘stringr’ foi compilado no R versão 4.4.3
+Error in fileInput("shape", NULL, accept = c(".zip"), style = "display: none;") : 
+  argumento não utilizado (style = "display: none;")
