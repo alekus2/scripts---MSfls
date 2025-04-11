@@ -1,54 +1,7 @@
-library(shiny)
-
-server <- function(input, output, session) {
-  
-  observeEvent(input$confirmar, {
-    output$upload_outputs <- renderUI({
-      tagList(
-        div(class = "upload-text", paste("Upload realizado referente aos talhões:", input$shape$name)),
-        div(class = "upload-text", paste("Upload realizado referente a recomendação de parcelas:", input$recomend$name)),
-        if (input$parcelas_existentes_lancar == 1) {
-          div(class = "upload-text", paste("Upload realizado referente as parcelas já existentes:", input$parc_exist$name))
-        } else {
-          div(class = "upload-text", "Upload de parcelas existentes não realizado.")
-        },
-        div(class = "upload-text", paste("Forma Parcela:", input$forma_parcela, 
-                                         "Tipo Parcela:", input$tipo_parcela, 
-                                         "Distância Mínima:", input$distancia_minima))
-      )
-    })
-  })
-
-  # (restante do código permanece igual até chegar à renderPlot)
-
-  output$plot <- renderPlot({
-    req(values$result_points, input$selected_index, shape())
-    selected_index <- input$selected_index
-    result_aux <- values$result_points
-    shape_aux <- shape()
-    shape_aux <- st_transform(shape_aux, 31982)
-
-    shape_aux$Index <- paste0(shape_aux$ID_PROJETO, shape_aux$ID_TALHAO)
-    shape_filtrado <- shape_aux %>% filter(Index == selected_index)
-    points_df <- result_aux %>% filter(Index == selected_index)
-
-    num_parc_title <- shape_filtrado %>% 
-      group_by(ID_PROJETO, ID_TALHAO) %>%
-      summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
-      mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
-             Index = paste0(ID_PROJETO, ID_TALHAO)) %>%
-      pull(Num.parc)
-
-    area_titulo <- round(sum(st_area(shape_filtrado)) / 10000, 2)
-
-    ggplot() + 
-      geom_sf(data = shape_filtrado, fill = NA, color = "black") + 
-      geom_sf(data = points_df, aes(color = TIPO_ATUAL)) + 
-      scale_color_manual(values = c("IPC" = "red", "S30" = "blue")) +
-      theme_minimal() +
-      ggtitle(paste0("Número de parcelas recomendado: ", num_parc_title, " (Área: ", area_titulo, " ha)"))
-  })
-  
-  # (continua igual o restante do código até o final)
-
-}
+navbarPage(
+  title = div(
+    tags$img(src = "logo.png", height = "40px", style = "margin-right: 10px;"),
+    "AUTOALOCAR - Alocador de Parcelas"
+  ),
+  ...
+)
