@@ -1,18 +1,57 @@
-navbarPage(
-  title = div(
-    tags$img(src = "logo.png", height = "40px", style = "margin-right: 10px;"),
-    "AUTOALOCAR - Alocador de Parcelas"
-  ),
-  ...
-)
 tags$head(
-  tags$style(HTML("
+  tags$style(HTML(paste0("
+    body {
+      background-color: ", bracell_white, ";
+      font-family: 'Segoe UI', sans-serif;
+    }
+    .navbar {
+      background-color: ", bracell_primary, " !important;
+      margin-bottom: 0px;
+      border: none;
+      border-radius: 0;
+    }
+    .navbar-default .navbar-brand,
+    .navbar-default .navbar-nav > li > a {
+      color: ", bracell_white, " !important;
+    }
+    .tab-content {
+      padding: 20px;
+      background-color: #f4f4f4;
+      border-top: 2px solid ", bracell_secondary, ";
+    }
+    .btn {
+      background-color: ", bracell_secondary, ";
+      color: white;
+      border: none;
+      font-weight: bold;
+    }
+    .btn:hover {
+      background-color: ", bracell_primary, ";
+    }
+    .sobre-texto {
+      font-size: 16px;
+      color: #000;
+      text-align: justify;
+    }
+    .sobre-texto h2 {
+      font-size: 24px;
+      color: ", bracell_primary, ";
+    }
     .navbar-brand {
-      display: flex;
-      align-items: center;
+      display: flex !important;
+      align-items: center !important;
     }
     .navbar-brand img {
       max-height: 40px;
+      margin-right: 10px;
     }
-  "))
-)
+    .nav-tabs > li > a {
+      color: ", bracell_primary, "; /* Cor padrão das abas */
+    }
+    .nav-tabs > li.active > a {
+      color: #003366; /* Cor das abas ativas (azul escuro) */
+    }
+    .nav-tabs > li > a:hover {
+      color: #0077C8; /* Cor das abas ao passar o mouse */
+    }
+  ")))
