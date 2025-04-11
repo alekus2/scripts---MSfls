@@ -5,3 +5,14 @@ navbarPage(
   ),
   ...
 )
+tags$head(
+  tags$style(HTML("
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+    }
+    .navbar-brand img {
+      max-height: 40px;
+    }
+  "))
+)
