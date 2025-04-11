@@ -1,5 +1,3 @@
-
-
 library(shiny)
 library(shinythemes)
 
@@ -29,14 +27,6 @@ ui <- tagList(
         background-color: #f4f4f4;
         border-top: 2px solid ", bracell_secondary, ";
       }
-      #logo {
-        position: fixed;
-        top: 10px;
-        right: 20px;
-        width: 100px;
-        height: auto;
-        z-index: 9999;
-      }
       .btn {
         background-color: ", bracell_secondary, ";
         color: white;
@@ -55,29 +45,26 @@ ui <- tagList(
         font-size: 24px;
         color: ", bracell_primary, ";
       }
+      .navbar-brand {
+        display: flex !important;
+        align-items: center !important;
+      }
+      .navbar-brand img {
+        max-height: 40px;
+        margin-right: 10px;
+      }
     ")))
   ),
   
-  tags$head(
-    tags$style(HTML("
-    .navbar-brand {
-      display: flex;
-      align-items: center;
-    }
-    .navbar-brand img {
-      max-height: 40px;
-    }
-  "))
-  ),
-  
-  navbarPage(title = div(tags$img(src = "logo.png", height = "40px", style = "margin-right: 10px;"),"AUTOALOCAR - Alocador de Parcelas"),
+  navbarPage(title = div(tags$img(src = "logo.png", height = "40px"), "AUTOALOCAR - Alocador de Parcelas"),
+             
              tabPanel("Sobre", icon = icon("info"),
                       fluidRow(
                         column(12,
                                div(class = "sobre-texto",
                                    h2("Sobre"),
-                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendção, shapefile dos talhões e parcelas históricas."),
-                                   HTML("<b style='color:red;'>O aplicativo foi desenvolvido para facilitar o processo de lançamento de parcelas para Arc Gis PRO. No entanto, sua utilização NÃO elimina a necessidade de análises criteriosas!!</b>")
+                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas."),
+                                   HTML("<b style='color:red;'>O aplicativo foi desenvolvido para facilitar o processo de lançamento de parcelas para ArcGIS PRO. No entanto, sua utilização NÃO elimina a necessidade de análises criteriosas!</b>")
                                )
                         )
                       )
@@ -99,7 +86,7 @@ ui <- tagList(
                           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 1),
                           conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           fileInput("recomend", "Upload do arquivo de recomendaÃ§Ã£o", accept = c(".csv"))
+                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))
                           ),
                           conditionalPanel("input.recomendacao_pergunta_upload == 0",
                                            numericInput("recomend_intensidade", "Intensidade por parcela (ha):", value = 3)
@@ -112,16 +99,16 @@ ui <- tagList(
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
                           selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
                           conditionalPanel("input.tipo_parcela == 'IPC'",
-                                           radioButtons("lancar_sobrevivencia", "LanÃ§ar parcelas de sobrevivÃªncia?", choices = list("Sim" = 1, "NÃO" = 0), selected = 0)
+                                           radioButtons("lancar_sobrevivencia", "Lançar parcelas de sobrevivência?", choices = list("Sim" = 1, "Não" = 0), selected = 0)
                           ),
-                          sliderInput("distancia_minima", "Distância Miníma:", min = 5, max = 25, value = 20, step = 0.5),
+                          sliderInput("distancia_minima", "Distância Mínima:", min = 5, max = 25, value = 20, step = 0.5),
                           actionButton("confirmar", "Confirmar")
                         ),
                         mainPanel(
                           div(class = "sobre-texto",
                               h2("Sobre os arquivos"),
-                              p("Shape dos talhÃµes: .zip com todos os arquivos do shapefile."),
-                              p("Recomendção: planilha .csv com colunas Projeto, Talhao e N."),
+                              p("Shape dos talhões: .zip com todos os arquivos do shapefile."),
+                              p("Recomendação: planilha .csv com colunas Projeto, Talhão e N."),
                               p("Parcelas históricas: .zip com os shapefiles das parcelas existentes.")
                           ),
                           verbatimTextOutput("shape_text"),
@@ -150,7 +137,7 @@ ui <- tagList(
                                      div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
                                          div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
                                      ),
-                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "ConcluÃ­do")
+                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
                                    )
                                  )
                         ),
@@ -202,18 +189,3 @@ ui <- tagList(
     });
   "))
 )
-
-
-> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/src')
-
-Listening on http://127.0.0.1:6059
-Aviso em checkEncoding(file) :
-  The input file F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automação em R\AutoAlocar\src/ui.R does not seem to be encoded in UTF8
-Aviso em readLines(file, warn = FALSE) :
-  entrada inválida na conexão de entrada 'F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocar\src/ui.R'
-Error in parse(file, keep.source = FALSE, srcfile = src, encoding = enc) : 
-  F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\Automação :79:38: INCOMPLETE_STRING inesperado
-78:                                    h2("Sobre"),
-79:                                    p("Ferramenta desenvolvida em Shiny (R) para o lan
-                                         ^
-Aviso: Error in sourceUTF8: Error sourcing C:\Users\ALEX_S~1\AppData\Local\Temp\RtmpKmjEAT\file7340ad32911
