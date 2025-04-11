@@ -37,7 +37,11 @@ ui <- tagList(
         font-weight: bold;
       }
       .btn:hover {
-        background-color: ", bracell_primary, ";
+        background-color: ", bracell_primary, "; /* Cor ao passar o mouse */
+      }
+      .btn:focus {
+        background-color: ", bracell_primary, "; /* Cor ao focar no botão */
+        outline: none; /* Remove o contorno padrão */
       }
       .sobre-texto {
         font-size: 16px;
