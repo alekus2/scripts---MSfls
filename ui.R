@@ -1,3 +1,4 @@
+
 library(shiny)
 library(shinythemes)
 
@@ -37,11 +38,11 @@ ui <- tagList(
         font-weight: bold;
       }
       .btn:hover {
-        background-color: ", bracell_primary, "; /* Cor ao passar o mouse */
+        background-color: ", bracell_primary, "; 
       }
       .btn:focus {
-        background-color: ", bracell_primary, "; /* Cor ao focar no botão */
-        outline: none; /* Remove o contorno padrão */
+        background-color: ", bracell_primary, "; 
+        outline: none; 
       }
       .sobre-texto {
         font-size: 16px;
@@ -80,8 +81,8 @@ ui <- tagList(
              tabPanel("Dados", icon = icon("file-upload"),
                       sidebarLayout(
                         sidebarPanel(
-                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
-                          fileInput("grid_existente", "Carregar Grid Existente (.shp):", multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj')),
+                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip"),class = "btn btn-danger"),
+                          fileInput("grid_existente", "Carregar Grid Existente (.shp):", multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj'),class = "btn btn-danger"),
                           radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
                                        choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
                           conditionalPanel("input.shape_input_pergunta_arudek == 0",
@@ -93,7 +94,7 @@ ui <- tagList(
                           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 1),
                           conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))
+                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"),class = "btn btn-danger")
                           ),
                           conditionalPanel("input.recomendacao_pergunta_upload == 0",
                                            numericInput("recomend_intensidade", "Intensidade por parcela (ha):", value = 3)
@@ -101,7 +102,7 @@ ui <- tagList(
                           radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 0),
                           conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))
+                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"),class = "btn btn-danger")
                           ),
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
                           selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
@@ -109,7 +110,7 @@ ui <- tagList(
                                            radioButtons("lancar_sobrevivencia", "Lançar parcelas de sobrevivência?", choices = list("Sim" = 1, "Não" = 0), selected = 0)
                           ),
                           sliderInput("distancia_minima", "Distância Mínima:", min = 5, max = 25, value = 20, step = 0.5),
-                          actionButton("confirmar", "Confirmar")
+                          actionButton("confirmar", "Confirmar", class = "btn btn-danger")
                         ),
                         mainPanel(
                           div(class = "sobre-texto",
@@ -138,7 +139,7 @@ ui <- tagList(
                                    sidebarPanel(
                                      h2("Gerar parcelas", style = paste0("color:", bracell_primary, ";")),
                                      p("Clique no botão abaixo para gerar as parcelas."),
-                                     actionButton("gerar_parcelas", "Gerar Parcelas")
+                                     actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
                                    ),
                                    mainPanel(
                                      div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
@@ -152,8 +153,8 @@ ui <- tagList(
                                  fluidPage(
                                    br(),
                                    fluidRow(
-                                     column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn")),
-                                     column(2, actionButton("proximo", "PRÓXIMO", class = "btn")),
+                                     column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
+                                     column(2, actionButton("proximo", "PRÓXIMO", class = "btn btn-danger")),
                                      column(5, actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
                                    ),
                                    br(), br(),
@@ -172,7 +173,7 @@ ui <- tagList(
                                      h4("Download"),
                                      p("Arquivo gerado com base nas especificações."),
                                      textInput("nome_arquivo", "Nome do arquivo:", value = paste0("Parcelas_", Sys.Date())),
-                                     downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-dark"),
+                                     downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-danger"),
                                      br(), br(),
                                      div(style = "color:red; font-weight:bold;",
                                          "Nota: Altere o nome para cada arquivo salvo.")
@@ -204,3 +205,12 @@ ui <- tagList(
 )
 
 shinyApp(ui = ui, server = function(input, output) {})
+
+> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/AutoParc.R')
+WARNING: Rtools is required to build R packages but is not currently installed. Please download and install the appropriate version of Rtools before proceeding:
+
+https://cran.rstudio.com/bin/windows/Rtools/
+Warning in install.packages :
+  o pacote ‘shiny’ está em uso e não será instalado
+Error in fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip"),  : 
+  argumento não utilizado (class = "btn btn-danger")
