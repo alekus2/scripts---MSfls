@@ -1,3 +1,18 @@
+split_subgeometries <- function(shape) {
+  n <- nrow(shape)
+  subgeoms <- vector("list", n)
+  
+  for (i in 1:n) {
+    # Usa st_boundary para extrair a borda do polígono
+    subgeoms[[i]] <- st_boundary(shape[i, ])
+  }
+  
+  # Combina as geometrias em um único objeto sf
+  return(do.call("rbind", subgeoms))
+}
+
+
+
 process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_parcela,  
                          distancia.minima, espacamento_grid = 300, intensidade_amostral = 50000, update_progress) {
   
@@ -40,7 +55,7 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_p
   for (poly_idx in unique(shapeb$Index)) {
     
     poly <- shapeb[shapeb$Index == poly_idx,]
-    subgeoms <- split_subgeometries(poly)
+    subgeoms <- split_subgeometries(poly)  # Essa linha utiliza a nova função
     
     for (i in 1:nrow(subgeoms)) {
       sg <- subgeoms[i,]
@@ -97,49 +112,7 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_p
   
   result_points <- do.call("rbind", result_points)
   
-  parcelasinv <- parc_exist %>%
-    group_by(PROJETO) %>%
-    summarise(numeracao = max(PARCELAS[PARCELAS < 500], na.rm = TRUE),
-              numeracao2 = max(PARCELAS, na.rm = TRUE)) %>% 
-    as.data.frame()
-  
-  if (tipo_parcela %in% c("IFQ6", "IFQ12", "S30", "S90", "PP")) {
-    parcelasinv <- parcelasinv %>%
-      mutate(numeracao.inicial = if_else(numeracao == 499, numeracao2 + 1, numeracao + 1)) %>%
-      select(PROJETO, numeracao.inicial)
-  } else {
-    parcelasinv <- parcelasinv %>%
-      mutate(numeracao.inicial = replace(numeracao, numeracao < 500, 501)) %>%
-      select(PROJETO, numeracao.inicial)
-  }
-  
-  result_points <- result_points %>%
-    left_join(parcelasinv, by = "PROJETO") %>%
-    mutate(numeracao.inicial = replace_na(numeracao.inicial, 1)) %>%
-    group_by(PROJETO) %>%
-    mutate(PARCELAS = row_number() - 1 + first(numeracao.inicial)) %>%
-    ungroup() %>%
-    select(-Area, -numeracao.inicial)
+  # O resto do seu código continua aqui...
   
   return(result_points)
 }
-
-
-
-
-Listening on http://127.0.0.1:3159
-Reading layer `shape_betel' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmpc3Gljb\shape_betel.shp' using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 60 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -52.91471 ymin: -20.13345 xmax: -52.90406 ymax: -20.12555
-Geodetic CRS:  SIRGAS 2000
-Aviso: Error in which_sfc_col: st_cast for POLYLINE not supported
-  89: stop
-  88: which_sfc_col
-  87: st_cast.sfc
-  85: st_cast.sf
-  83: split_subgeometries [src/split_subgeometries.R#8]
-  82: process_data [src/process_data.R#43]
-  81: observe [src/server.R#102]
-  80: <observer:observeEvent(input$gerar_parcelas)>
