@@ -1,9 +1,6 @@
+
 process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_parcela,  
                          distancia.minima, espacamento_grid = 300, intensidade_amostral = 50000, update_progress) {
-  
-  library(sf)
-  library(dplyr)
-  
   parc_exist <- st_read(parc_exist_path, quiet = TRUE)
   
   shape <- st_transform(shape, 31982)
@@ -42,36 +39,34 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_p
     poly <- shapeb[shapeb$Index == poly_idx,]
     subgeoms <- split_subgeometries(poly)
     
-    # Verificação para garantir que subgeoms não esteja vazio
     if (nrow(subgeoms) == 0) {
-      next  # Pula para a próxima iteração se não houver subgeometrias
+      next  
     }
     
     for (i in 1:nrow(subgeoms)) {
       sg <- subgeoms[i,]
       sg_area <- as.numeric(st_area(sg))
 
-      # Verifica se a área é válida
       if (is.na(sg_area) || sg_area < 400) next
       
       active_points_all <- parc_exist[parc_exist$STATUS == "ATIVA" & parc_exist$Index == poly_idx,]
       active_points <- st_intersection(st_geometry(active_points_all), st_geometry(sg))
-
+      
       num_parc <- ceiling(sg_area / intensidade_amostral)
-
+      
       grid_points <- st_make_grid(sg, cellsize = c(espacamento_grid, espacamento_grid), what = "centers") %>%
         st_sf() %>%
         st_intersection(sg)
-
+      
       if (nrow(active_points) > 0) {
         grid_points <- grid_points[st_is_within_distance(grid_points, active_points, dist = distancia.minima, sparse = FALSE) == FALSE, ]
       }
-
+      
       if (nrow(grid_points) == 0) next
       if (nrow(grid_points) > num_parc) {
         grid_points <- grid_points[1:num_parc, ]
       }
-
+      
       points_list <- lapply(1:nrow(grid_points), function(j) {
         pt <- grid_points[j,]
         st_sf(data.frame(
