@@ -1,0 +1,126 @@
+process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_parcela,  
+                         distancia.minima, espacamento_grid = 300, intensidade_amostral = 50000, update_progress) {
+  parc_exist <- st_read(parc_exist_path, quiet = TRUE)
+  
+  shape <- st_transform(shape, 31982)
+  parc_exist <- st_transform(parc_exist, 31982)
+  
+  shape$Index <- paste0(shape$ID_PROJETO, shape$TALHAO)
+  parc_exist$Index <- paste0(parc_exist$PROJETO, parc_exist$TALHAO)
+  
+  buffer_distance <- -15
+  
+  shapeb <- list()
+  empty_indexes <- c()
+  
+  for (i in 1:nrow(shape)) {
+    buffered <- st_buffer(shape[i,], buffer_distance)
+    if (nrow(buffered) == 0 || isTRUE(st_is_empty(buffered)[1])) {
+      empty_indexes <- c(empty_indexes, i)
+    } else {
+      shapeb[[i]] <- buffered
+    }
+  }
+  
+  if (!is.null(empty_indexes)) {
+    shapeb <- shapeb[-empty_indexes]
+  }
+  shapeb <- do.call("rbind", shapeb)
+  
+  result_points <- list()
+  points2 <- NULL
+  
+  total_poly_idx <- length(unique(shapeb$Index)) 
+  completed_poly_idx <- 0
+  
+  for (poly_idx in unique(shapeb$Index)) {
+    
+    poly <- shapeb[shapeb$Index == poly_idx,]
+    subgeoms <- split_subgeometries(poly)
+    
+    if (nrow(subgeoms) == 0) {
+      next  
+    }
+    
+    for (i in 1:nrow(subgeoms)) {
+      sg <- subgeoms[i,]
+      sg_area <- as.numeric(st_area(sg))
+      
+      if (is.na(sg_area) || sg_area < 400) next
+      
+      active_points_all <- parc_exist[parc_exist$STATUS == "ATIVA" & parc_exist$Index == poly_idx,]
+      active_points <- st_intersection(st_geometry(active_points_all), st_geometry(sg))
+      
+      # Calcula o número de parcelas com base na recomendação (pontos por hectare)
+      num_parc <- ceiling((sg_area / 10000) * recomend)
+      
+      grid_points <- st_make_grid(sg, cellsize = c(espacamento_grid, espacamento_grid), what = "centers") %>%
+        st_sf() %>%
+        st_intersection(sg)
+      
+      if (nrow(active_points) > 0) {
+        grid_points <- grid_points[st_is_within_distance(grid_points, active_points, dist = distancia.minima, sparse = FALSE) == FALSE, ]
+      }
+      
+      if (nrow(grid_points) == 0) next
+      if (nrow(grid_points) > num_parc) {
+        grid_points <- grid_points[1:num_parc, ]
+      }
+      
+      points_list <- lapply(1:nrow(grid_points), function(j) {
+        pt <- grid_points[j,]
+        st_sf(data.frame(
+          Area = sg_area,
+          Index = poly_idx,
+          PROJETO = poly$ID_PROJETO,
+          TALHAO = poly$TALHAO,
+          CICLO = poly$CICLO,
+          ROTACAO = poly$ROTACAO,
+          STATUS = "ATIVA",
+          FORMA = forma_parcela, 
+          TIPO_INSTA = tipo_parcela,
+          TIPO_ATUAL = tipo_parcela, 
+          DATA = Sys.Date(),
+          DATA_ATUAL = Sys.Date(),
+          COORD_X = st_coordinates(pt)[1],
+          COORD_Y = st_coordinates(pt)[2]
+        ), geometry = st_geometry(pt))
+      })
+      
+      points2 <- do.call("rbind", points_list)
+      result_points[[paste(poly_idx, i, sep = "-" )]] <- points2
+    }
+    
+    completed_poly_idx <- completed_poly_idx + 1
+    progress_percent <- round((completed_poly_idx / total_poly_idx) * 100, 2)
+    update_progress(progress_percent)
+  }
+  
+  result_points <- do.call("rbind", result_points)
+  
+  parcelasinv <- parc_exist %>%
+    group_by(PROJETO) %>%
+    summarise(numeracao = max(PARCELAS[PARCELAS < 500], na.rm = TRUE),
+              numeracao2 = max(PARCELAS, na.rm = TRUE)) %>% 
+    as.data.frame()
+  
+  if (tipo_parcela %in% c("IFQ6", "IFQ12", "S30", "S90", "PP")) {
+    parcelasinv <- parcelasinv %>%
+      mutate(numeracao.inicial = if_else(numeracao == 499, numeracao2 + 1, numeracao + 1)) %>%
+      select(PROJETO, numeracao.inicial)
+  } else {
+    parcelasinv <- parcelasinv %>%
+      mutate(numeracao.inicial = replace(numeracao, numeracao < 500, 501)) %>%
+      select(PROJETO, numeracao.inicial)
+  }
+  
+  result_points <- result_points %>%
+    left_join(parcelasinv, by = "PROJETO") %>%
+    mutate(numeracao.inicial = replace_na(numeracao.inicial, 1)) %>%
+    group_by(PROJETO) %>%
+    mutate(PARCELAS = row_number() - 1 + first(numeracao.inicial)) %>%
+    ungroup() %>%
+    select(-Area, -numeracao.inicial)
+  
+  return(result_points)
+}
