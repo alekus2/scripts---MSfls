@@ -124,3 +124,12 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_p
   
   return(result_points)
 }
+Aviso: Error in FUN: argumento não-numérico para operador binário
+  85: eval
+  84: eval
+  83: Ops.data.frame
+  82: process_data [src/process_data.R#55]
+  81: observe [src/server.R#129]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
+
