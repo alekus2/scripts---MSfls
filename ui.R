@@ -1,8 +1,8 @@
 library(shiny)
 library(shinythemes)
 
-bracell_primary <- "#003366"
-bracell_secondary <- "#0077C8"
+bracell_primary <- "#007E69"
+bracell_secondary <- "#5f8b27"
 bracell_white <- "#FFFFFF"
 
 ui <- tagList(
@@ -23,7 +23,7 @@ ui <- tagList(
         color: ", bracell_white, " !important;
       }
       .navbar-nav > li.active > a {
-        color: blue !important;
+        color: ", bracell_secondary, " !important;
       }
       .tab-content {
         padding: 20px;
@@ -60,24 +60,10 @@ ui <- tagList(
         max-height: 40px;
         margin-right: 10px;
       }
-      .file-input-button {
-        position: relative;
-        overflow: hidden;
-        margin: 0;
-      }
-      .file-input-button input[type='file'] {
-        position: absolute;
-        top: 0;
-        right: 0;
-        opacity: 0;
-        height: 100%;
-        width: 100%;
-        cursor: pointer;
-      }
     ")))
   ),
   
-  navbarPage(title = div(tags$img(src = "logo.png", height = "40px"), "AUTOALOCAR - Alocador de Parcelas"),
+  navbarPage(title = div(tags$img(src = "logo.png", height = "40px"), "ALOCADOR DE PARCELAS"),
              
              tabPanel("Sobre", icon = icon("info"),
                       fluidRow(
@@ -94,41 +80,36 @@ ui <- tagList(
              tabPanel("Dados", icon = icon("file-upload"),
                       sidebarLayout(
                         sidebarPanel(
-                          div(class = "file-input-button",
-                              actionButton("upload_shape", "Upload do Shapefile dos talhões", class = "btn btn-danger"),
-                              fileInput("shape", NULL, accept = c(".zip"))
-                          ),
-                          div(class = "file-input-button",
-                              actionButton("upload_grid", "Carregar Grid Existente (.shp):", class = "btn btn-danger"),
-                              fileInput("grid_existente", NULL, multiple = TRUE, accept = c('.shp','.dbf','.sbn','.sbx','.shx','.prj'))
-                          ),
+                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
+                          
                           radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
-                                       choices = list("ARUDEK.VW_GIS_POL_USO_SOLO" = 1, "Outro" = 0), selected = 1),
+                                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0), selected = 1),
+                          
                           conditionalPanel("input.shape_input_pergunta_arudek == 0",
                                            textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
                                            textInput("mudar_nome_arudek_talhao", "Talhão:", "CD_TALHAO"),
                                            textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
                                            textInput("mudar_nome_arudek_rotacao", "Rotação:", "NUM_ROTAC")
                           ),
+                          
                           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 1),
                           conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           div(class = "file-input-button",
-                                               actionButton("upload_recomend", "Upload do arquivo de recomendação", class = "btn btn-danger"),
-                                               fileInput("recomend", NULL, accept = c(".csv"))
-                                           )
+                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))
                           ),
                           conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                           numericInput("recomend_intensidade", "Intensidade por parcela (ha):", value = 3)
+                                           numericInput("recomend_intensidade", "Intensidade amostral por parcela (ha):", value = 3)
                           ),
+                          
+                          h2("Insira a intensidade amostral desejada: "),
+                          numericInput("intensidade_amostral", "Intensidade amostral por parcela (ha):", value = 5),
+                          
                           radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
                                        choices = list("Sim" = 1, "Não" = 0), selected = 0),
                           conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           div(class = "file-input-button",
-                                               actionButton("upload_parc_exist", "Upload do Shapefile das parcelas já existentes", class = "btn btn-danger"),
-                                               fileInput("parc_exist", NULL, accept = c(".zip"))
-                                           )
+                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))
                           ),
+                          
                           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
                           selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
                           conditionalPanel("input.tipo_parcela == 'IPC'",
@@ -220,21 +201,11 @@ ui <- tagList(
     Shiny.addCustomMessageHandler('hide_completed', function(message) {
       $('#completed-message').hide();
     });
+
+    // Script para mudar a cor da aba selecionada
     $(document).on('click', '.navbar-nav > li', function() {
       $('.navbar-nav > li').removeClass('active');
       $(this).addClass('active');
-    });
-    $(document).on('click', '#upload_shape', function() {
-      $('#shape').click();
-    });
-    $(document).on('click', '#upload_grid', function() {
-      $('#grid_existente').click();
-    });
-    $(document).on('click', '#upload_recomend', function() {
-      $('#recomend').click();
-    });
-    $(document).on('click', '#upload_parc_exist', function() {
-      $('#parc_exist').click();
     });
   "))
 )
