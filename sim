@@ -124,3 +124,22 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_p
   
   return(result_points)
 }
+Listening on http://127.0.0.1:3159
+Reading layer `shape_betel' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmpc3Gljb\shape_betel.shp' using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 60 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -52.91471 ymin: -20.13345 xmax: -52.90406 ymax: -20.12555
+Geodetic CRS:  SIRGAS 2000
+`summarise()` has grouped output by 'ID_PROJETO'. You can override using the `.groups` argument.
+Aviso em process_data(shape(), recomend(), parc_exist_path(), forma_parcela(),  :
+  NAs introduzidos por coerção
+Aviso em process_data(shape(), recomend(), parc_exist_path(), forma_parcela(),  :
+  NAs introduzidos por coerção
+Aviso: Error in /: argumento não-numérico para operador binário
+  85: st_sf
+  84: st_intersection
+  82: process_data [src/process_data.R#57]
+  81: observe [src/server.R#129]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
