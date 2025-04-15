@@ -1,4 +1,3 @@
-
 process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_parcela,  
                          distancia.minima, espacamento_grid = 300, intensidade_amostral = 50000, update_progress) {
   parc_exist <- st_read(parc_exist_path, quiet = TRUE)
@@ -15,11 +14,11 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela, tipo_p
   empty_indexes <- c()
   
   for (i in 1:nrow(shape)) {
-    if (st_is_empty(st_buffer(shape[i,], buffer_distance))) {
+    buffered <- st_buffer(shape[i,], buffer_distance)
+    if (nrow(buffered) == 0 || isTRUE(st_is_empty(buffered)[1])) {
       empty_indexes <- c(empty_indexes, i)
     } else {
-      dt_aux <- st_buffer(shape[i,], buffer_distance)
-      shapeb[[i]] <- dt_aux
+      shapeb[[i]] <- buffered
     }
   }
   
