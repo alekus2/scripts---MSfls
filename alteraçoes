@@ -1,15 +1,26 @@
-content = function(file) {
-  req(values$result_points)
-  temp_dir <- tempdir()
-  
-  name <- as.character(input$download_name)
-  if (is.null(name) || name == "") name <- "parcelas_exportadas"
-  shapefile_base <- file.path(temp_dir, name)
-  
-  st_write(values$result_points, dsn = shapefile_base, driver = "ESRI Shapefile", delete_layer = TRUE)
-  
-  # Lista os arquivos .shp, .shx, .dbf etc que foram criados
-  shapefile_files <- list.files(temp_dir, pattern = paste0("^", basename(name), "\\."), full.names = TRUE)
-  
-  zip::zipr(zipfile = file, files = shapefile_files, root = temp_dir)
-}
+output$download_result <- downloadHandler(
+  filename = function() {
+    now <- Sys.time()
+    data_str <- format(now, "%d-%m-%y_%H.%M")
+    paste0("parcelas_", data_str, ".zip")
+  },
+  content = function(file) {
+    req(values$result_points)
+
+    temp_dir <- tempdir()
+    now <- Sys.time()
+    data_str <- format(now, "%d-%m-%y_%H.%M")
+    shapefile_base <- file.path(temp_dir, paste0("parcelas_", data_str))
+
+    st_write(values$result_points, dsn = shapefile_base, driver = "ESRI Shapefile", delete_layer = TRUE)
+
+    shapefile_files <- list.files(
+      path = temp_dir,
+      pattern = paste0("parcelas_", data_str, "\\."), 
+      full.names = TRUE
+    )
+
+    zip::zipr(zipfile = file, files = shapefile_files, root = temp_dir)
+  },
+  contentType = "application/zip"
+)
