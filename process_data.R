@@ -147,6 +147,20 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
       dplyr::mutate(numeracao.inicial = if_else(numeracao == 499, numeracao2 + 1, numeracao + 1)) %>%
       dplyr::select(PROJETO, numeracao.inicial)
   } else {
-    parcelasinv
-::contentReference[oaicite:0]{index=0}
+        parcelasinv <- parcelasinv %>%
+      dplyr::mutate(numeracao.inicial = dplyr::if_else(numeracao < 500, 501, numeracao)) %>%
+      dplyr::select(PROJETO, numeracao.inicial)
+  }
+
+  result_points <- result_points %>%
+    dplyr::left_join(parcelasinv, by = "PROJETO") %>%
+    dplyr::mutate(numeracao.inicial = tidyr::replace_na(numeracao.inicial, 1)) %>%
+    dplyr::group_by(PROJETO) %>%
+    dplyr::mutate(PARCELAS = dplyr::row_number() - 1 + dplyr::first(numeracao.inicial)) %>%
+    dplyr::ungroup() %>%
+    dplyr::select(-Area, -numeracao.inicial)
+
+  return(result_points)
+}
+
  
