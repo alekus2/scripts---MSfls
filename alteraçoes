@@ -1,21 +1,20 @@
-output$download_result <- downloadHandler(
-  filename = function() {
-    paste0(input$download_name, ".zip")
-  },
-  content = function(file) {
-    req(values$result_points)
-    temp_dir <- tempdir()
-    
-    # Define o caminho base (sem extensão)
-    shapefile_base <- file.path(temp_dir, input$download_name)
-    
-    # Cria os arquivos do shapefile no tempdir
-    st_write(values$result_points, dsn = shapefile_base, driver = "ESRI Shapefile", delete_layer = TRUE)
-    
-    # Pega todos os arquivos gerados (.shp, .shx, .dbf, .prj, etc.)
-    shapefile_files <- list.files(temp_dir, pattern = paste0(input$download_name, "\\.(shp|shx|dbf|prj|cpg)$"), full.names = TRUE)
-    
-    # Compacta tudo num .zip
-    zip(file, shapefile_files)
-  }
-)
+Listening on http://127.0.0.1:6487
+Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocar\data\parc.shp' using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 20 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
+Geodetic CRS:  SIRGAS 2000
+Reading layer `shape_betel' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmp6N5LX1\shape_betel.shp' using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 60 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -52.91471 ymin: -20.13345 xmax: -52.90406 ymax: -20.12555
+Geodetic CRS:  SIRGAS 2000
+[1] 576327.1
+`summarise()` has grouped output by 'ID_PROJETO'. You can override using the `.groups` argument.
+Aviso em process_data(shape(), recomend(), parc_exist_path(), forma_parcela(),  :
+  Talhão 6163022-01 não é suficiente para a intensidade amostral desejada ( 5 ha). Máximo de parcelas possíveis: 11
+Aviso: Error in : argument dsn, layer or driver not of length 1.
+
+  1: runApp
