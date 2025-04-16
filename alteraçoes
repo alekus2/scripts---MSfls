@@ -1,15 +1,7 @@
-> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoParc/AutoParc.R')
-Aviso: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.
-
-Listening on http://127.0.0.1:3159
-Reading layer `shape_betel' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmpc3Gljb\shape_betel.shp' using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 60 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -52.91471 ymin: -20.13345 xmax: -52.90406 ymax: -20.12555
-Geodetic CRS:  SIRGAS 2000
-Aviso: Error in process_data: argumento "intensidade_amostral" ausente, sem padrão
-  82: process_data [src/process_data.R#55]
-  81: observe [src/server.R#133]
+Listening on http://127.0.0.1:6487
+Aviso: Error in process_data: argumento não utilizado (function(percent) {
+    session$sendCustomMessage("update_progress", percent)
+})
+  81: observe [src/server.R#125]
   80: <observer:observeEvent(input$gerar_parcelas)>
    1: runApp
