@@ -52,7 +52,6 @@ server <- function(input, output, session) {
   
   shape <- reactive({
     req(shape_path())
-    
     shp <- st_read(shape_path())
     
     if(input$shape_input_pergunta_arudek == 0) {
@@ -122,9 +121,18 @@ server <- function(input, output, session) {
   observeEvent(input$gerar_parcelas, {
     session$sendCustomMessage("hide_completed", message = "")
     
-    result <- process_data(shape(), recomend(), parc_exist_path(), forma_parcela(), tipo_parcela(), distancia_minima(), intensidade_amostral(), function(percent) {
-      session$sendCustomMessage("update_progress", percent)
-    })
+    result <- process_data(
+      shape(),
+      recomend(),
+      parc_exist_path(),
+      forma_parcela(),
+      tipo_parcela(),
+      distancia_minima(),
+      intensidade_amostral(),
+      function(percent) {
+        session$sendCustomMessage("update_progress", percent)
+      }
+    )
     
     if(input$lancar_sobrevivencia == 1){
       unique_indexes <- unique(result$Index)
@@ -144,13 +152,13 @@ server <- function(input, output, session) {
         s30_counts <- sum(dt_aux$TIPO_ATUAL == "S30")
         
         if (nrow(dt_aux) >= 2 && s30_counts < 2) {
-          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind = TRUE)
           if (length(idx_rows) >= 2 - s30_counts) {
             s30_idx <- sample(idx_rows, 2 - s30_counts)
             result$TIPO_ATUAL[s30_idx] <- "S30"
           }
         } else if (nrow(dt_aux) < 2 && s30_counts < 1) {
-          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind = TRUE)
           if (length(idx_rows) >= 1 - s30_counts) {
             s30_idx <- sample(idx_rows, 1 - s30_counts)
             result$TIPO_ATUAL[s30_idx] <- "S30"
@@ -175,21 +183,30 @@ server <- function(input, output, session) {
   observeEvent(input$gerar_novamente, {
     selected_index <- input$selected_index
     values$result_points <- values$result_points %>% 
-      mutate(Index = paste0(PROJETO, TALHAO)) %>%
+      mutate(Index = paste0(PROJETO, TALHAO)) %>% 
       filter(Index != selected_index)
     
     session$sendCustomMessage("hide_completed", message = "")
     shape_selected <- shape() %>%
-      mutate( Index = paste0(ID_PROJETO, TALHAO)) %>% 
+      mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% 
       filter(Index == selected_index)
     
     recomend_selected <- recomend() %>% 
       mutate(Index = paste0(ID_PROJETO, TALHAO)) %>%
       filter(Index == selected_index)
     
-    result <- process_data(shape_selected, recomend_selected, parc_exist_path(), forma_parcela(), tipo_parcela(), distancia_minima(), function(percent) {
-      session$sendCustomMessage("update_progress", percent)
-    })
+    result <- process_data(
+      shape_selected,
+      recomend_selected,
+      parc_exist_path(),
+      forma_parcela(),
+      tipo_parcela(),
+      distancia_minima(),
+      intensidade_amostral(),
+      function(percent) {
+        session$sendCustomMessage("update_progress", percent)
+      }
+    )
     
     if(input$lancar_sobrevivencia == 1){
       unique_indexes <- unique(result$Index)
@@ -209,13 +226,13 @@ server <- function(input, output, session) {
         s30_counts <- sum(dt_aux$TIPO_ATUAL == "S30")
         
         if (nrow(dt_aux) >= 2 && s30_counts < 2) {
-          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind = TRUE)
           if (length(idx_rows) >= 2 - s30_counts) {
             s30_idx <- sample(idx_rows, 2 - s30_counts)
             result$TIPO_ATUAL[s30_idx] <- "S30"
           }
         } else if (nrow(dt_aux) < 2 && s30_counts < 1) {
-          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind=TRUE)
+          idx_rows <- which(result$Index == i & result$TIPO_ATUAL == "IPC", arr.ind = TRUE)
           if (length(idx_rows) >= 1 - s30_counts) {
             s30_idx <- sample(idx_rows, 1 - s30_counts)
             result$TIPO_ATUAL[s30_idx] <- "S30"
@@ -264,30 +281,28 @@ server <- function(input, output, session) {
     shape_aux <- st_transform(shape_aux, 31982)
     
     shape_aux$Index <- paste0(shape_aux$ID_PROJETO, shape_aux$ITALHAO)
-    shape_filtrado <- shape_aux %>% filter(Index == selected_index)
-    points_df <- result_aux %>% filter(Index == selected_index)
+    shape_filtrado <- shape_aux %>% dplyr::filter(Index == selected_index)
+    points_df <- result_aux %>% dplyr::filter(Index == selected_index)
     
     num_parc_title <- shape_filtrado %>% 
-      group_by(ID_PROJETO, ID_TALHAO) %>%
-      summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
-      mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
-             Index = paste0(ID_PROJETO, TALHAO)) %>%
-      pull(Num.parc)
+      dplyr::group_by(ID_PROJETO, ID_TALHAO) %>%
+      dplyr::summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
+      dplyr::mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
+                    Index = paste0(ID_PROJETO, TALHAO)) %>%
+      dplyr::pull(Num.parc)
     
     area_titulo <- round(sum(st_area(shape_filtrado)) / 10000, 2)
     
     ggplot() + 
-      geom_sf(aes(), data = shape_filtrado) + 
+      geom_sf(data = shape_filtrado) + 
       theme_bw() +
-      geom_sf(data = points_df %>% filter(!is.na(LATITUDE)), aes(geometry = geometry)) + 
+      geom_sf(data = points_df %>% dplyr::filter(!is.na(LATITUDE)), aes(geometry = geometry)) + 
       theme(legend.position = "none") +
       ggtitle(paste0("Área (ha): ", area_titulo, "\nNum de Parcelas:", num_parc_title))
   })
-
-
   
-    output$download_result <- downloadHandler(
-      filename = function() {
+  output$download_result <- downloadHandler(
+    filename = function() {
       paste0(input$download_name, ".zip")
     },
     content = function(file) {
@@ -300,5 +315,4 @@ server <- function(input, output, session) {
       zip(file, shapefile_files)
     }
   )
-  
 }
