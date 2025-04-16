@@ -11,17 +11,10 @@ Geometry type: POLYGON
 Dimension:     XY
 Bounding box:  xmin: -52.91471 ymin: -20.13345 xmax: -52.90406 ymax: -20.12555
 Geodetic CRS:  SIRGAS 2000
-[1] 0
-[1] 0
-Aviso: Error in UseMethod: método não aplicável para 'left_join' aplicado a um objeto de classe "NULL"
-  89: dplyr::left_join
-  88: dplyr::mutate
-  87: dplyr::group_by
-  86: dplyr::mutate
-  85: dplyr::ungroup
-  84: dplyr::select
-  83: %>%
-  82: process_data [src/process_data.R#173]
+[1] 576327.1
+`summarise()` has grouped output by 'ID_PROJETO'. You can override using the `.groups` argument.
+Aviso: Error in if: argumento tem comprimento zero
+  82: process_data [src/process_data.R#91]
   81: observe [src/server.R#125]
   80: <observer:observeEvent(input$gerar_parcelas)>
    1: runApp
