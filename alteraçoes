@@ -1,3 +1,6 @@
+> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/AutoParc.R')
+Error in install.packages : Updating loaded packages
+
 Listening on http://127.0.0.1:6487
 Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocar\data\parc.shp' using driver `ESRI Shapefile'
 Simple feature collection with 1 feature and 20 fields
@@ -13,8 +16,15 @@ Bounding box:  xmin: -52.91471 ymin: -20.13345 xmax: -52.90406 ymax: -20.12555
 Geodetic CRS:  SIRGAS 2000
 [1] 576327.1
 `summarise()` has grouped output by 'ID_PROJETO'. You can override using the `.groups` argument.
-Aviso: Error in if: argumento tem comprimento zero
-  82: process_data [src/process_data.R#91]
-  81: observe [src/server.R#125]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
+Aviso em process_data(shape(), recomend(), parc_exist_path(), forma_parcela(),  :
+  Talhão 6163022-01 não é suficiente para a intensidade amostral desejada ( 5 ha). Máximo de parcelas possíveis: 11
+Layer ESRI Shapefile in dataset C:\Users\alex_santos4\AppData\Local\Temp\Rtmp6N5LX1\.shp already exists:
+use either append=TRUE to append to layer or append=FALSE to overwrite layer
+Aviso: Error in : Dataset already exists.
+
+  1: runApp
+Layer ESRI Shapefile in dataset C:\Users\alex_santos4\AppData\Local\Temp\Rtmp6N5LX1\.shp already exists:
+use either append=TRUE to append to layer or append=FALSE to overwrite layer
+Aviso: Error in : Dataset already exists.
+
+  1: runApp
