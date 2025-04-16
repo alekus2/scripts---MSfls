@@ -1,34 +1,20 @@
 output$download_result <- downloadHandler(
   filename = function() {
-    # Garante que o nome final contenha um nome válido com extensão .zip
-    paste0("parcelas_", input$download_name, ".zip")
+    name <- input$download_name
+    if (is.null(name) || name == "") name <- "parcelas_exportadas"
+    paste0("parcelas_", name, ".zip")
   },
   content = function(file) {
     req(values$result_points)
-
-    # Diretório temporário
+    
     temp_dir <- tempdir()
-
-    # Caminho completo do shapefile sem extensão (st_write vai adicionar)
     shapefile_base <- file.path(temp_dir, input$download_name)
-
-    # Escreve o shapefile
+    
+    # Escreve os arquivos .shp, .shx, .dbf etc.
     st_write(values$result_points, dsn = shapefile_base, driver = "ESRI Shapefile", delete_layer = TRUE)
-
-    # Pega todos os arquivos criados com aquele nome base (shp, shx, dbf, etc.)
+    
+    # Lista todos os arquivos gerados com o nome base
     shapefile_files <- list.files(temp_dir, pattern = paste0(basename(shapefile_base), "\\."), full.names = TRUE)
-
-    # Cria o ZIP no local final esperado pelo Shiny
-    zip::zipr(zipfile = file, files = shapefile_files, root = temp_dir)
-  },
-  contentType = "application/zip"
-)
-
-
-
-
-filename = function() {
-  name <- input$download_name
-  if (is.null(name) || name == "") name <- "parcelas_exportadas"
-  paste0(name, ".zip")
-}
+    
+    # Cria o arquivo .zip final
+    zip::zipr(zipfile = file, files = shapefile_files_
