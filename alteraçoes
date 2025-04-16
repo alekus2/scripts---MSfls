@@ -1,5 +1,20 @@
-> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocar/AutoParc.R')
-Error in install.packages : Updating loaded packages
+ output$download_result <- downloadHandler(
+    filename = function() {
+      name <- as.character(input$download_name)
+      if (is.null(name) || name == "") name <- "parcelas_exportadas"
+      paste0("parcelas_", name, ".zip")
+    },
+    content = function(file) {
+      req(values$result_points)
+      temp_dir <- tempdir()
+      shapefile_base <- file.path(temp_dir, input$download_name)
+      st_write(values$result_points, dsn = shapefile_base, driver = "ESRI Shapefile", delete_layer = TRUE)
+      shapefile_files <- list.files(temp_dir, pattern = paste0(basename(shapefile_base), "\\."), full.names = TRUE)
+      zip::zipr(zipfile = file, files = shapefile_files,root = tempdir)
+    },
+    contentType = "application/zip"
+  )
+}
 
 Listening on http://127.0.0.1:6487
 Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocar\data\parc.shp' using driver `ESRI Shapefile'
@@ -18,6 +33,5 @@ Geodetic CRS:  SIRGAS 2000
 `summarise()` has grouped output by 'ID_PROJETO'. You can override using the `.groups` argument.
 Aviso em process_data(shape(), recomend(), parc_exist_path(), forma_parcela(),  :
   Talhão 6163022-01 não é suficiente para a intensidade amostral desejada ( 5 ha). Máximo de parcelas possíveis: 11
-Aviso: Error in : argument dsn, layer or driver not of length 1.
-
+Aviso: Error in if: valor ausente onde TRUE/FALSE necessário
   1: runApp
