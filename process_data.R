@@ -1,15 +1,20 @@
 process_data <- function(shape, recomend, parc_exist_path, forma_parcela, 
                          tipo_parcela, distancia.minima, intensidade_amostral, 
                          update_progress) {
+  require(sf)
+  require(dplyr)
+  require(tidyr)
+
   parc_exist <- st_read(parc_exist_path)
   shape <- st_transform(shape, 31982)
   parc_exist <- st_transform(parc_exist, 31982)
   shape$Index <- paste0(shape$ID_PROJETO, shape$TALHAO)
   parc_exist$Index <- paste0(parc_exist$PROJETO, parc_exist$TALHAO)
+
   buffer_distance <- -30
   shapeb <- list()
   empty_indexes <- c()
-  for (i in 1:nrow(shape)) {
+  for (i in seq_len(nrow(shape))) {
     buffered <- st_buffer(shape[i, ], buffer_distance)
     if (st_is_empty(buffered)) {
       empty_indexes <- c(empty_indexes, i)
@@ -21,22 +26,24 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
     shapeb <- shapeb[-empty_indexes]
   }
   shapeb <- do.call("rbind", shapeb)
+
   result_points <- list()
   completed_poly_idx <- 0
   total_poly_idx <- length(unique(shapeb$Index))
+
   for (poly_idx in unique(shapeb$Index)) {
     poly <- shapeb[shapeb$Index == poly_idx, ]
     subgeoms <- split_subgeometries(poly)
-    for (i in 1:nrow(subgeoms)) {
+    for (i in seq_len(nrow(subgeoms))) {
       sg <- subgeoms[i, ]
       sg_area <- as.numeric(st_area(sg))
       if (sg_area < 400) next
+
       active_points_all <- parc_exist[parc_exist$STATUS == "ATIVA" & parc_exist$Index == poly_idx, ]
       active_points <- st_intersection(st_geometry(active_points_all), st_geometry(sg))
-      if (sg_area >= 400 & sg_area <= 1000) {
-        if (length(active_points) > 0) {
-          next
-        } else {
+
+      if (sg_area <= 1000) {
+        if (length(active_points) == 0) {
           cell.point <- st_centroid(st_geometry(sg))
           points2 <- st_sf(data.frame(
             Area       = sg_area,
@@ -58,33 +65,37 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
         }
       } else {
         num_parc_recom <- as.numeric(recomend[recomend$Index == poly_idx, "Num.parc"])
-        num_parc_desejado <- round(num_parc_recom * as.numeric(intensidade_amostral))
+        num_parc <- round(num_parc_recom * as.numeric(intensidade_amostral))
         sg_area_ha <- sg_area / 10000
-        max_possible_plots <- floor(sg_area_ha / as.numeric(intensidade_amostral))
-        if (max_possible_plots < num_parc_desejado) {
-          warning(paste("Talhão", poly_idx, "não é suficiente para a intensidade amostral desejada (", intensidade_amostral, "ha).", "Máximo de parcelas possíveis:", max_possible_plots))
-          num_parc <- max_possible_plots
-        } else {
-          num_parc <- num_parc_desejado
-        }
+        max_plots <- floor(sg_area_ha / as.numeric(intensidade_amostral))
+        num_parc <- ifelse(max_plots < num_parc, max_plots, num_parc)
+
         grid_spacing <- as.numeric(intensidade_amostral)
         bbox <- st_bbox(sg)
         offset <- c(bbox["xmin"] + grid_spacing/2, bbox["ymin"] + grid_spacing/2)
-        grid_all <- st_make_grid(sg, cellsize = grid_spacing, offset = offset, what = "centers", square = TRUE)
+        grid_all <- st_make_grid(
+          sg,
+          cellsize = grid_spacing,
+          offset   = offset,
+          what     = "centers",
+          square   = TRUE
+        )
         grid_all <- st_sf(geometry = grid_all)
         inside <- st_intersects(grid_all, sg, sparse = FALSE)[,1]
         grid <- grid_all[inside, ]
         if (nrow(grid) == 0) next
+
         coords <- st_coordinates(grid)
         grid <- grid %>%
           mutate(X = coords[,1], Y = coords[,2]) %>%
           arrange(desc(Y), X)
+
         num_parc <- min(num_parc, nrow(grid))
-        grid_sel <- grid[1:num_parc, ]
-        points_list <- list()
-        for (j in 1:nrow(grid_sel)) {
+        grid_sel <- grid[seq_len(num_parc), ]
+
+        pts <- lapply(seq_len(nrow(grid_sel)), function(j) {
           pt <- grid_sel[j, ]
-          points_list[[j]] <- st_sf(data.frame(
+          st_sf(data.frame(
             Area       = sg_area,
             Index      = poly_idx,
             PROJETO    = poly$ID_PROJETO,
@@ -100,37 +111,39 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
             COORD_X    = st_coordinates(pt)[1],
             COORD_Y    = st_coordinates(pt)[2]
           ), geometry = st_geometry(pt))
-        }
-        if (length(points_list) > 0) {
-          points2 <- do.call("rbind", points_list)
-          result_points[[paste(poly_idx, i, sep = "-")]] <- points2
-        }
+        })
+        points2 <- do.call("rbind", pts)
+        result_points[[paste(poly_idx, i, sep = "-")]] <- points2
       }
+
       completed_poly_idx <- completed_poly_idx + 1
     }
-    progress_percent <- round((completed_poly_idx / total_poly_idx) * 100, 2)
-    update_progress(progress_percent)
+    update_progress(round((completed_poly_idx / total_poly_idx) * 100, 2))
   }
+
   result_points <- do.call("rbind", result_points)
   parcelasinv <- parc_exist %>%
-    dplyr::group_by(PROJETO) %>%
-    dplyr::summarise(numeracao = max(PARCELAS[PARCELAS < 500]), numeracao2 = max(PARCELAS)) %>%
+    group_by(PROJETO) %>%
+    summarise(numeracao = max(PARCELAS[PARCELAS < 500]), numeracao2 = max(PARCELAS)) %>%
     as.data.frame()
-  if (tipo_parcela %in% c("IFQ6", "IFQ12", "S30", "S90", "PP")) {
+
+  if (tipo_parcela %in% c("IFQ6","IFQ12","S30","S90","PP")) {
     parcelasinv <- parcelasinv %>%
-      dplyr::mutate(numeracao.inicial = if_else(numeracao == 499, numeracao2 + 1, numeracao + 1)) %>%
-      dplyr::select(PROJETO, numeracao.inicial)
+      mutate(numeracao.inicial = if_else(numeracao == 499, numeracao2+1, numeracao+1)) %>%
+      select(PROJETO, numeracao.inicial)
   } else {
     parcelasinv <- parcelasinv %>%
-      dplyr::mutate(numeracao.inicial = dplyr::if_else(numeracao < 500, 501, numeracao)) %>%
-      dplyr::select(PROJETO, numeracao.inicial)
+      mutate(numeracao.inicial = if_else(numeracao < 500, 501, numeracao)) %>%
+      select(PROJETO, numeracao.inicial)
   }
+
   result_points <- result_points %>%
-    dplyr::left_join(parcelasinv, by = "PROJETO") %>%
-    dplyr::mutate(numeracao.inicial = tidyr::replace_na(numeracao.inicial, 1)) %>%
-    dplyr::group_by(PROJETO) %>%
-    dplyr::mutate(PARCELAS = dplyr::row_number() - 1 + dplyr::first(numeracao.inicial)) %>%
-    dplyr::ungroup() %>%
-    dplyr::select(-Area, -numeracao.inicial)
+    left_join(parcelasinv, by="PROJETO") %>%
+    mutate(numeracao.inicial = replace_na(numeracao.inicial, 1)) %>%
+    group_by(PROJETO) %>%
+    mutate(PARCELAS = row_number() - 1 + first(numeracao.inicial)) %>%
+    ungroup() %>%
+    select(-Area, -numeracao.inicial)
+
   return(result_points)
 }
