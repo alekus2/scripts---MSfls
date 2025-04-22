@@ -6,7 +6,7 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
   shape <- st_transform(shape, 31982)
   parc_exist <- st_transform(parc_exist, 31982)
   
-  shape$Index <- paste0(shape$ID_PROJETO, shape$ID_TALHAO)
+  shape$Index <- paste0(shape$ID_PROJETO, shape$TALHAO)
   parc_exist$Index <- paste0(parc_exist$PROJETO, parc_exist$TALHAO)
   
   buffer_distance <- -15
@@ -58,7 +58,7 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
             Area = sg_area,
             Index = poly_idx,
             PROJETO = poly$ID_PROJETO,
-            TALHAO = poly$ID_TALHAO,
+            TALHAO = poly$TALHAO,
             CICLO = poly$CICLO,
             ROTACAO = poly$ROTACAO,
             STATUS = "ATIVA",
@@ -110,7 +110,7 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
             Area = area_vector,
             Index = index_vector,
             PROJETO = poly$ID_PROJETO,
-            TALHAO = poly$ID_TALHAO,
+            TALHAO = poly$TALHAO,
             CICLO = poly$CICLO,
             ROTACAO = poly$ROTACAO,
             STATUS = "ATIVA",
@@ -147,11 +147,11 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
       dplyr::mutate(numeracao.inicial = if_else(numeracao == 499, numeracao2 + 1, numeracao + 1)) %>%
       dplyr::select(PROJETO, numeracao.inicial)
   } else {
-        parcelasinv <- parcelasinv %>%
+    parcelasinv <- parcelasinv %>%
       dplyr::mutate(numeracao.inicial = dplyr::if_else(numeracao < 500, 501, numeracao)) %>%
       dplyr::select(PROJETO, numeracao.inicial)
   }
-
+  
   result_points <- result_points %>%
     dplyr::left_join(parcelasinv, by = "PROJETO") %>%
     dplyr::mutate(numeracao.inicial = tidyr::replace_na(numeracao.inicial, 1)) %>%
@@ -159,8 +159,6 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
     dplyr::mutate(PARCELAS = dplyr::row_number() - 1 + dplyr::first(numeracao.inicial)) %>%
     dplyr::ungroup() %>%
     dplyr::select(-Area, -numeracao.inicial)
-
+  
   return(result_points)
 }
-
- 
