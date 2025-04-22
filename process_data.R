@@ -87,8 +87,11 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
           num_parc <- num_parc_desejado
         }
         
-        d <- 2 * sqrt(400 / pi)
-        grid <- st_make_grid(sg, cellsize = c(d, d), what = "centers", square = TRUE)
+        # Calcular a distância entre as parcelas com base na intensidade amostral
+        grid_spacing <- as.numeric(intensidade_amostral)  # Distância entre as parcelas
+        
+        # Criar uma grade regular com base na intensidade amostral
+        grid <- st_make_grid(sg, cellsize = c(grid_spacing, grid_spacing), what = "centers", square = TRUE)
         grid <- st_sf(geometry = grid)
         grid <- grid[st_intersects(grid, sg, sparse = FALSE), ]
         
@@ -97,8 +100,8 @@ process_data <- function(shape, recomend, parc_exist_path, forma_parcela,
         }
         
         num_parc <- min(num_parc, nrow(grid))
-        indices_grid <- sample(1:nrow(grid), num_parc)
-        grid_selecionado <- grid[indices_grid, ]
+        # Selecionar as parcelas de maneira sistemática
+        grid_selecionado <- grid[seq(1, nrow(grid), length.out = num_parc), ]
         
         points_list <- list()
         for (j in 1:nrow(grid_selecionado)) {
