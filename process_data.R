@@ -3,77 +3,80 @@ library(dplyr)
 
 process_data <- function(shape, recomend, parc_exist_path, 
                          forma_parcela, tipo_parcela,  
-                         distancia.minima,      # aqui não usamos, fixo -30 m
+                         distancia.minima,      # não usado, buffer fixo de 30 m
                          intensidade_amostral,  # X em “1 ponto a cada X ha”
                          update_progress) {
   
-  # 1) Lê e transforma as parcelas existentes
+  # 1) lê as parcelas existentes e marca Index = TALHAO
   parc_exist <- st_read(parc_exist_path) %>%
     st_transform(31982) %>%
-    mutate(Index = paste0(PROJETO, TALHAO))
+    mutate(Index = as.character(TALHAO))
   
-  # 2) Transforma e marca os talhões originais
-  shape <- shape %>%
+  # 2) transforma shape e marca Index = TALHAO
+  shape_full <- shape %>%
     st_transform(31982) %>%
-    mutate(Index = paste0(ID_PROJETO, TALHAO))
+    mutate(Index   = as.character(TALHAO),
+           AREA_HA = as.numeric(AREA_HA))  # garante numérico
   
-  # 3) Buffer interno fixo de -30 m (retração)
-  shapeb <- shape %>%
-    st_buffer(-30) %>%                 # encolhe 30 m por toda a volta
-    filter(!st_is_empty(geometry))     # descarta talhões que sumiriam
+  # 3) tabela de lookup de área (ha) por talhão
+  area_lookup <- shape_full %>%
+    st_drop_geometry() %>%
+    select(Index, AREA_HA) %>%
+    distinct()
+  
+  # 4) aplica buffer interno fixo de -30 m
+  shapeb <- shape_full %>%
+    st_buffer(-30) %>%
+    filter(!st_is_empty(geometry))
   
   result_points <- list()
   total_poly   <- n_distinct(shapeb$Index)
   completed     <- 0
   
-  # 4) Para cada talhão bufferizado
+  # 5) para cada talhão bufferizado
   for (poly_idx in unique(shapeb$Index)) {
     poly     <- filter(shapeb, Index == poly_idx)
     subgeoms <- split_subgeometries(poly)
+    orig_ha  <- area_lookup$AREA_HA[area_lookup$Index == poly_idx]
     
     for (i in seq_len(nrow(subgeoms))) {
       sg      <- subgeoms[i, ]
-      area_sg <- as.numeric(st_area(sg))    # área em m²
-      if (area_sg < 400) next               # ignora pedaços pequenininhos
+      area_sg <- as.numeric(st_area(sg))
+      if (area_sg < 400) next  # pula pedaços pequenos demais
       
       # a) quantos pontos em 1 por X ha?
-      area_ha       <- area_sg / 10000
-      n_req         <- max(1, floor(area_ha / intensidade_amostral))
+      n_req <- max(1, floor(orig_ha / intensidade_amostral))
       
-      # b) função que gera e filtra centros de grade
-      make_pts <- function(n_pts) {
-        # spacing aproximado para obter n_pts
-        dx   <- sqrt(area_sg / n_pts)
-        grid <- st_make_grid(sg, cellsize = c(dx, dx), what = "centers")
-        inside <- st_within(grid, sg, sparse = FALSE)
-        pts    <- grid[apply(inside, 1, any)]
-        # ordena por X depois Y e seleciona n_pts
-        if (length(pts) > 1) {
-          cr <- st_coordinates(pts)
-          ord <- order(cr[,1], cr[,2])
-          pts <- pts[ord]
-        }
-        pts[ seq_len(min(length(pts), n_pts)) ]
+      # b) cria GRID de centros com espaçamento 200 m
+      grid  <- st_make_grid(
+        x       = sg,
+        cellsize= c(200, 200),
+        what    = "centers"
+      )
+      # filtra só os que caem dentro do polígono
+      inside <- st_within(grid, sg, sparse = FALSE)
+      pts    <- grid[apply(inside, 1, any)]
+      if (!length(pts)) next
+      
+      # c) ordena por X então Y
+      cr  <- st_coordinates(pts)
+      ord <- order(cr[,1], cr[,2])
+      pts <- pts[ord]
+      
+      # d) se não couberem n_req, faz fallback p/ 1:10 ha
+      if (length(pts) < n_req) {
+        n_req <- max(1, floor(orig_ha / 10))
       }
       
-      # c) tenta gerar com n_req
-      pts_sfc <- make_pts(n_req)
+      # e) seleciona os primeiros n_req pontos
+      sel_pts <- pts[ seq_len(min(length(pts), n_req)) ]
+      coords  <- st_coordinates(sel_pts)
       
-      # d) se não couber tudo, faz fallback para razão 1:10
-      if (length(pts_sfc) < n_req) {
-        fallback_ha <- 10
-        n_req2      <- max(1, floor(area_ha / fallback_ha))
-        pts_sfc     <- make_pts(n_req2)
-      }
-      
-      if (length(pts_sfc) == 0) next
-      
-      # e) monta o sf de saída com atributos
-      coords  <- st_coordinates(pts_sfc)
+      # f) monta o sf com atributos
       n_found <- nrow(coords)
       pts_sf  <- st_sf(
         data.frame(
-          Index      = rep(poly$Index, n_found),
+          Index      = rep(poly_idx, n_found),
           PROJETO    = rep(poly$ID_PROJETO, n_found),
           TALHAO     = rep(poly$TALHAO, n_found),
           CICLO      = rep(poly$CICLO, n_found),
@@ -87,7 +90,7 @@ process_data <- function(shape, recomend, parc_exist_path,
           COORD_X    = coords[,1],
           COORD_Y    = coords[,2]
         ),
-        geometry = pts_sfc
+        geometry = sel_pts
       )
       
       result_points[[paste(poly_idx, i, sep = "_")]] <- pts_sf
@@ -97,10 +100,10 @@ process_data <- function(shape, recomend, parc_exist_path,
     update_progress(round(completed / total_poly * 100, 2))
   }
   
-  # 5) consolida todos os pontos
+  # 6) combina todos os pontos gerados
   all_pts <- do.call(rbind, result_points)
   
-  # 6) numeração sequencial sem geometria em parc_exist
+  # 7) recalcula numeração sem geometria em parc_exist
   parcelasinv <- parc_exist %>%
     st_drop_geometry() %>%
     group_by(PROJETO) %>%
