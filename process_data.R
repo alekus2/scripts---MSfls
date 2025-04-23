@@ -1,26 +1,22 @@
+
 library(sf)
 library(dplyr)
 
 process_data <- function(shape, recomend, parc_exist_path,
                          forma_parcela, tipo_parcela,
-                         intensidade_amostral,    # X em “1 ponto a cada X ha”
+                         intensidade_amostral,    
                          update_progress) {
-  
-  # 1) lê e transforma shapefile de parcelas existentes
   parc_exist <- st_read(parc_exist_path) %>%
     st_transform(31982)
   
-  # 2) prepara o shapefile principal:
-  #    - reprojeta para metros,
-  #    - extrai AREA_HA (já existente) e CD_USO_SOL como Index
+
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
       Index   = as.character(CD_USO_SOL),
       AREA_HA = as.numeric(AREA_HA)
     )
-  
-  # 3) buffer interno fixo de –50 m
+
   shapeb <- shape_full %>%
     st_buffer(-50) %>%
     filter(!st_is_empty(geometry))
@@ -28,41 +24,34 @@ process_data <- function(shape, recomend, parc_exist_path,
   result_points <- list()
   total_poly   <- n_distinct(shapeb$Index)
   completed     <- 0
-  
-  # 4) itera por cada Index único
+
   for (idx in unique(shapeb$Index)) {
     talhao    <- filter(shapeb, Index == idx)
-    area_ha   <- unique(talhao$AREA_HA)  # assume AREA_HA constante por talhão
+    area_ha   <- unique(talhao$AREA_HA) 
     subgeoms  <- split_subgeometries(talhao)
     
     for (i in seq_len(nrow(subgeoms))) {
       sg      <- subgeoms[i, ]
       area_sg <- as.numeric(st_area(sg))
       if (area_sg < 400) next
-      
-      # a) número de pontos desejado (1 por X ha)
+
       n_req <- max(1, floor(area_ha / intensidade_amostral))
-      
-      # b) calcula spacing Δ e offset para cobrir bordas
+
       delta    <- sqrt(area_sg / n_req)
       bb       <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
-      
-      # c) cria grid de pontos-centro
+
       grid_pts <- st_make_grid(
         x        = sg,
         cellsize = c(delta, delta),
         offset   = offset_xy,
         what     = "centers"
       )
-      # mantém só centros dentro do buffer
       inside   <- st_within(grid_pts, sg, sparse = FALSE)
       pts      <- grid_pts[apply(inside, 1, any)]
-      
-      # d) se não couber, fallback para 1:10 ha
+
       if (length(pts) < n_req) {
         n_req <- max(1, floor(area_ha / 10))
-        # recalcula grid com novo n_req
         delta    <- sqrt(area_sg / n_req)
         offset_xy<- c(bb$xmin + delta/2, bb$ymin + delta/2)
         grid_pts <- st_make_grid(sg,
@@ -73,13 +62,11 @@ process_data <- function(shape, recomend, parc_exist_path,
         pts      <- grid_pts[apply(inside, 1, any)]
       }
       if (length(pts) == 0) next
-      
-      # e) ordena e seleciona exatamente n_req
+
       cr       <- st_coordinates(pts)
       ord      <- order(cr[,1], cr[,2])
       sel_pts  <- pts[ ord ][ seq_len( min(length(pts), n_req) ) ]
-      
-      # f) monta o sf de saída
+
       coords   <- st_coordinates(sel_pts)
       n_found  <- nrow(coords)
       pts_sf   <- st_sf(
@@ -107,11 +94,9 @@ process_data <- function(shape, recomend, parc_exist_path,
     completed <- completed + 1
     update_progress(round(completed / total_poly * 100, 2))
   }
-  
-  # 5) consolida todos
+
   all_pts <- do.call(rbind, result_points)
-  
-  # 6) numeração sequencial (sem geometria) a partir de parc_exist
+
   parcelasinv <- parc_exist %>%
     st_drop_geometry() %>%
     group_by(PROJETO) %>%
@@ -138,3 +123,11 @@ process_data <- function(shape, recomend, parc_exist_path,
   
   return(all_pts)
 }
+
+Listening on http://127.0.0.1:6979
+Aviso: Error in process_data: argumento não utilizado (function(percent) {
+    session$sendCustomMessage("update_progress", percent)
+})
+  81: observe [src/server.R#114]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
