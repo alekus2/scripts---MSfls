@@ -1,106 +1,212 @@
-# ui.R
 library(shiny)
 library(shinythemes)
 
-bracell_primary   <- "#007E69"
+bracell_primary <- "#007E69"
 bracell_secondary <- "#5f8b27"
-bracell_white     <- "#FFFFFF"
+bracell_white <- "#FFFFFF"
 
 ui <- tagList(
   tags$head(
     tags$style(HTML(paste0("
-      body { background: ", bracell_white, "; font-family: 'Segoe UI'; }
-      .navbar { background: ", bracell_primary, " !important; }
+      body {
+        background-color: ", bracell_white, ";
+        font-family: 'Segoe UI', sans-serif;
+      }
+      .navbar {
+        background-color: ", bracell_primary, " !important;
+        margin-bottom: 0px;
+        border: none;
+        border-radius: 0;
+      }
       .navbar-default .navbar-brand,
-      .navbar-default .navbar-nav > li > a { color: ", bracell_white, " !important; }
-      .navbar-nav > li.active > a { color: ", bracell_secondary, " !important; }
-      .tab-content { padding: 20px; background: #f4f4f4; border-top: 2px solid ", bracell_secondary, "; }
-      .btn { background: ", bracell_secondary, "; color: white; font-weight: bold; }
-      .btn:hover, .btn:focus { background: ", bracell_primary, "; outline: none; }
-      .sobre-texto { font-size: 16px; color: #000; text-align: justify; }
-      .sobre-texto h2 { font-size: 24px; color: ", bracell_primary, "; }
+      .navbar-default .navbar-nav > li > a {
+        color: ", bracell_white, " !important;
+      }
+      .navbar-nav > li.active > a {
+        color: ", bracell_secondary, " !important;
+      }
+      .tab-content {
+        padding: 20px;
+        background-color: #f4f4f4;
+        border-top: 2px solid ", bracell_secondary, ";
+      }
+      .btn {
+        background-color: ", bracell_secondary, ";
+        color: white;
+        border: none;
+        font-weight: bold;
+      }
+      .btn:hover {
+        background-color: ", bracell_primary, "; 
+      }
+      .btn:focus {
+        background-color: ", bracell_primary, "; 
+        outline: none; 
+      }
+      .sobre-texto {
+        font-size: 16px;
+        color: #000;
+        text-align: justify;
+      }
+      .sobre-texto h2 {
+        font-size: 24px;
+        color: ", bracell_primary, ";
+      }
+      .navbar-brand {
+        display: flex !important;
+        align-items: center !important;
+      }
+      .navbar-brand img {
+        max-height: 40px;
+        margin-right: 10px;
+      }
     ")))
   ),
-
-  navbarPage(
-    title = div(img(src="logo.png", height="40px"), "ALOCADOR DE PARCELAS"),
-    theme = shinytheme("flatly"),
-
-    tabPanel("Dados", icon = icon("file-upload"),
-      sidebarLayout(
-        sidebarPanel(
-          fileInput("shape", "Shapefile dos talhões (.zip)", accept = ".zip"),
-          radioButtons("shape_fmt", "Formato do shape:",
-            choices = c("Bracell SDE" = 1, "Outro" = 0), selected = 1),
-          conditionalPanel("input.shape_fmt == 0",
-            textInput("col_projeto", "Coluna Projeto:", "ID_PROJETO"),
-            textInput("col_talhao", "Coluna Talhão:",  "CD_TALHAO"),
-            textInput("col_ciclo",   "Coluna Ciclo:",   "NUM_CICLO"),
-            textInput("col_rotac",   "Coluna Rotação:", "NUM_ROTAC")
-          ),
-
-          radioButtons("has_recomend", "Upload de recomendação?",
-            choices = c("Sim" = 1, "Não" = 0), selected = 1),
-          conditionalPanel("input.has_recomend == 1",
-            fileInput("recomend", "CSV de recomendação", accept = ".csv")
-          ),
-          conditionalPanel("input.has_recomend == 0",
-            numericInput("recomend_intensidade",
-              "Intensidade (ha/ponto) p/ cálculo de Num.parc:", value = 3, min = 0.1)
-          ),
-
-          numericInput("intensidade_amostral",
-            "Intensidade (ha/ponto) → espaçamento [m]:", value = 5, min = 0.1),
-
-          radioButtons("has_existentes", "Parcelas existentes?",
-            choices = c("Sim" = 1, "Não" = 0), selected = 0),
-          conditionalPanel("input.has_existentes == 1",
-            fileInput("parc_exist", "Shapefile existente (.zip)", accept = ".zip")
-          ),
-
-          selectizeInput("forma_parcela", "Forma da parcela:",
-            choices = c("CIRCULAR","RETANGULAR")),
-          selectizeInput("tipo_parcela", "Tipo da parcela:",
-            choices = c("S30","S90","IFQ6","IFQ12","IFC","IPC")),
-
-          actionButton("confirmar", "Confirmar Dados", class="btn btn-danger")
-        ),
-
-        mainPanel(
-          verbatimTextOutput("shape_text"),
-          verbatimTextOutput("recomend_text"),
-          verbatimTextOutput("parc_exist_text"),
-          verbatimTextOutput("confirmation")
-        )
-      )
-    ),
-
-    tabPanel("Plot & Download", icon = icon("map"),
-      sidebarLayout(
-        sidebarPanel(
-          actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger"),
-          div(id="progress-container",
-            div(id="progress-bar", style="
-              width:0%; height:20px; background:#4CAF50; text-align:center; color:white;
-            ")
-          ),
-          div(id="completed-msg", style="display:none; color:green; font-weight:bold;", "Concluído!")
-        ),
-        mainPanel(
-          plotOutput("map_plot", height="600px"),
-          textInput("nome_arquivo", "Nome do shapefile:", value = paste0("Parcelas_", format(Sys.Date(),"%Y%m%d"))),
-          downloadButton("download_result", "Download ZIP", class="btn btn-danger")
-        )
-      )
-    )
+  
+  navbarPage(title = div(tags$img(src = "logo.png", height = "40px"), "ALOCADOR DE PARCELAS"),
+             
+             tabPanel("Sobre", icon = icon("info"),
+                      fluidRow(
+                        column(12,
+                               div(class = "sobre-texto",
+                                   h2("Sobre"),
+                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas."),
+                                   HTML("<b style='color:red;'>O aplicativo foi desenvolvido para facilitar o processo de lançamento de parcelas para ArcGIS PRO. No entanto, sua utilizção NÃO elimina a necessidade de análises criteriosas!</b>")
+                               )
+                        )
+                      )
+             ),
+             
+             tabPanel("Dados", icon = icon("file-upload"),
+                      sidebarLayout(
+                        sidebarPanel(
+                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
+                          
+                          radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
+                                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0), selected = 1),
+                          
+                          conditionalPanel("input.shape_input_pergunta_arudek == 0",
+                                           textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
+                                           textInput("mudar_nome_arudek_talhao", "Talhão:", "CD_TALHAO"),
+                                           textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
+                                           textInput("mudar_nome_arudek_rotacao", "Rotação:", "NUM_ROTAC")
+                          ),
+                          
+                          radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação",
+                                       choices = list("Sim" = 1, "Não" = 0), selected = 1),
+                          conditionalPanel("input.recomendacao_pergunta_upload == 1",
+                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))
+                          ),
+                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
+                                           numericInput("recomend_intensidade", "Número de parcelas desejadas do talhão:", value = 10)
+                          ),
+                          
+                          h2("Insira a intensidade amostral desejada: "),
+                          numericInput("intensidade_amostral", "Intensidade amostral por parcela (ha):", value = 5),
+                          
+                          radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
+                                       choices = list("Sim" = 1, "Não" = 0), selected = 0),
+                          conditionalPanel("input.parcelas_existentes_lancar == 1",
+                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))
+                          ),
+                          
+                          selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
+                          selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
+                          conditionalPanel("input.tipo_parcela == 'IPC'",
+                                           radioButtons("lancar_sobrevivencia", "Lançar parcelas de sobrevivência?", choices = list("Sim" = 1, "Não" = 0), selected = 0)
+                          ),
+                          sliderInput("distancia_minima", "Distância Mínima:", min = 5, max = 25, value = 20, step = 0.5),
+                          actionButton("confirmar", "Confirmar", class = "btn btn-danger")
+                        ),
+                        mainPanel(
+                          div(class = "sobre-texto",
+                              h2("Sobre os arquivos"),
+                              p("Shape dos talhões: .zip com todos os arquivos do shapefile."),
+                              p("Recomendação: planilha .csv com colunas Projeto, Talhão e N."),
+                              p("Parcelas históricas: .zip com os shapefiles das parcelas existentes.")
+                          ),
+                          verbatimTextOutput("shape_text"),
+                          verbatimTextOutput("recomend_text"),
+                          verbatimTextOutput("parc_exist_text"),
+                          verbatimTextOutput("confirmation"),
+                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
+                                           textInput("download_recomend_name", "Nome do arquivo de recomendação:", "Recomendação-"),
+                                           downloadButton("download_recomend", "Download da Recomendação criada*"),
+                                           p("*Disponível após o upload das demais informações")
+                          )
+                        )
+                      )
+             ),
+             
+             tabPanel("Parcelas Plotadas", icon = icon("chart-bar"),
+                      tabsetPanel(
+                        tabPanel("Status", icon = icon("clock"),
+                                 sidebarLayout(
+                                   sidebarPanel(
+                                     h2("Gerar parcelas", style = paste0("color:", bracell_primary, ";")),
+                                     p("Clique no botão abaixo para gerar as parcelas."),
+                                     actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
+                                   ),
+                                   mainPanel(
+                                     div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
+                                         div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
+                                     ),
+                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
+                                   )
+                                 )
+                        ),
+                        tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
+                                 fluidPage(
+                                   br(),
+                                   fluidRow(
+                                     column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
+                                     column(2, actionButton("proximo", "PRÓXIMO", class = "btn btn-danger")),
+                                     column(5, actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
+                                   ),
+                                   br(), br(),
+                                   fluidRow(
+                                     column(10, offset = 1,
+                                            div(style = "color:red; font-weight:bold; font-size:16px; text-align:justify;",
+                                                "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!")
+                                     )
+                                   )
+                                 )
+                        ),
+                        tabPanel("DOWNLOAD",
+                                 fluidPage(
+                                   br(),
+                                   wellPanel(
+                                     h4("Download"),
+                                     p("Arquivo gerado com base nas especificações."),
+                                     downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-danger"),
+                                     br(), br(),
+                                     div(style = "color:red; font-weight:bold;",
+                                         "O nome do arquivo será gerado automaticamente com data e hora.")
+                                   )
+                                 )
+                        )
+                      )
+             )
   ),
-
+  
   tags$script(HTML("
-    Shiny.addCustomMessageHandler('update_progress', function(p) {
-      $('#progress-bar').css('width', p+'%').text(p+'%');
+    Shiny.addCustomMessageHandler('update_progress', function(percent) {
+      $('#progress-bar').css('width', percent + '%');
+      $('#progress-bar').text(percent + '%');
     });
-    Shiny.addCustomMessageHandler('show_completed', function(m) {
-      $('#completed-msg').show();
+    Shiny.addCustomMessageHandler('show_completed', function(message) {
+      $('#completed-message').show();
+    });
+    Shiny.addCustomMessageHandler('hide_completed', function(message) {
+      $('#completed-message').hide();
+    });
+
+    // Script para mudar a cor da aba selecionada
+    $(document).on('click', '.navbar-nav > li', function() {
+      $('.navbar-nav > li').removeClass('active');
+      $(this).addClass('active');
     });
   "))
 )
+
+shinyApp(ui = ui, server = function(input, output) {})
