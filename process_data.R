@@ -3,117 +3,93 @@ library(dplyr)
 
 process_data <- function(shape, recomend, parc_exist_path, 
                          forma_parcela, tipo_parcela,  
-                         distancia.minima, intensidade_amostral,
+                         distancia.minima,    # distância mínima ao bordo (ex.: 50 m)
+                         intensidade_amostral,
                          update_progress) {
   
-  # 1) Leitura e transformação das parcelas existentes
-  parc_exist <- st_read(parc_exist_path)
-  parc_exist <- st_transform(parc_exist, 31982)
-  parc_exist$Index <- paste0(parc_exist$PROJETO, parc_exist$TALHAO)
+  # 1) Lê e transforma shapefile de parcelas existentes
+  parc_exist <- st_read(parc_exist_path) %>%
+    st_transform(31982) %>%
+    mutate(Index = paste0(PROJETO, TALHAO))
   
-  # 2) Transformação e marcação dos talhões de shape
-  shape <- st_transform(shape, 31982)
-  shape$Index <- paste0(shape$ID_PROJETO, shape$TALHAO)
+  # 2) Transforma e marca talhões
+  shape <- shape %>%
+    st_transform(31982) %>%
+    mutate(Index = paste0(ID_PROJETO, TALHAO))
   
-  # 3) Buffer interno fixo de -30 m
-  buffer_distance <- -30
-  shapeb_list <- lapply(seq_len(nrow(shape)), function(i) {
-    buf <- st_buffer(shape[i, ], buffer_distance)
-    if (st_is_empty(buf)) NULL else buf
-  })
-  shapeb <- do.call(rbind, Filter(NROW, shapeb_list))
+  # 3) Buffer interno igual a -distancia.minima
+  buffer_distance <- -abs(distancia.minima)
+  shapeb <- shape %>%
+    st_buffer(buffer_distance) %>%         # encolhe cada polígono
+    filter(!st_is_empty(.))                # descarta polígonos que sumiram
   
-  # 4) Preparação de saída e progresso
+  # 4) Prepara lista de saída e progresso
   result_points <- list()
   total_poly   <- length(unique(shapeb$Index))
   completed     <- 0
   
-  # 5) Para cada talhão (agrupado por Index)
+  # 5) Para cada talhão bufferizado
   for (poly_idx in unique(shapeb$Index)) {
-    poly      <- shapeb[shapeb$Index == poly_idx, ]
-    subgeoms  <- split_subgeometries(poly)
+    poly     <- filter(shapeb, Index == poly_idx)
+    subgeoms <- split_subgeometries(poly) 
     
-    for (j in seq_len(nrow(subgeoms))) {
-      sg      <- subgeoms[j, ]
+    for (i in seq_len(nrow(subgeoms))) {
+      sg      <- subgeoms[i, ]
       area_sg <- as.numeric(st_area(sg))
       
-      # 5.1) descarta áreas < 400 m²
-      if (area_sg < 400) next
+      if (area_sg < 400) next  # pula polígonos minúsculos
       
-      # 5.2) 400–1000 m² → centróide
+      # 5.1) talhões pequenos: um ponto no centróide
       if (area_sg <= 1000) {
-        centroid <- st_centroid(st_geometry(sg))
-        pts_sf <- st_sf(
-          data.frame(
-            Index      = poly_idx,
-            PROJETO    = poly$ID_PROJETO,
-            TALHAO     = poly$TALHAO,
-            CICLO      = poly$CICLO,
-            ROTACAO    = poly$ROTACAO,
-            STATUS     = "ATIVA",
-            FORMA      = forma_parcela,
-            TIPO_INSTA = tipo_parcela,
-            TIPO_ATUAL = tipo_parcela,
-            DATA       = Sys.Date(),
-            DATA_ATUAL = Sys.Date(),
-            COORD_X    = st_coordinates(centroid)[,1],
-            COORD_Y    = st_coordinates(centroid)[,2]
-          ),
-          geometry = centroid
-        )
+        pts_sfc <- st_centroid(st_geometry(sg))
         
       } else {
-        # 5.3) >1000 m² → grade regular com intensidade_amostral
-        # (1) cria pontos numa grade regular sobre a geometria reduzida
+        # 5.2) talhões grandes: grade regular com intensidade_amostral
         pts_sfc <- st_sample(
           x    = st_geometry(sg),
           size = intensidade_amostral,
           type = "regular"
         )
-        
-        # (2) filtra de novo para garantir que só fique INSIDE do buffer
+        # reforça: só mantém pontos que realmente caem em 'sg'
         if (length(pts_sfc)) {
-          inside_mat <- st_within(pts_sfc, st_geometry(sg), sparse = FALSE)
-          pts_sfc     <- pts_sfc[apply(inside_mat, 1, any)]
+          inside <- st_within(pts_sfc, st_geometry(sg), sparse = FALSE)
+          pts_sfc <- pts_sfc[apply(inside, 1, any)]
         }
-        
-        n_found <- length(pts_sfc)
-        if (n_found == 0) next
-        
-        # (3) monta o sf com atributos
-        coords <- st_coordinates(pts_sfc)
-        pts_sf <- st_sf(
-          data.frame(
-            Index      = rep(poly_idx, n_found),
-            PROJETO    = rep(poly$ID_PROJETO, n_found),
-            TALHAO     = rep(poly$TALHAO, n_found),
-            CICLO      = rep(poly$CICLO, n_found),
-            ROTACAO    = rep(poly$ROTACAO, n_found),
-            STATUS     = rep("ATIVA", n_found),
-            FORMA      = rep(forma_parcela, n_found),
-            TIPO_INSTA = rep(tipo_parcela, n_found),
-            TIPO_ATUAL = rep(tipo_parcela, n_found),
-            DATA       = rep(Sys.Date(), n_found),
-            DATA_ATUAL = rep(Sys.Date(), n_found),
-            COORD_X    = coords[,1],
-            COORD_Y    = coords[,2]
-          ),
-          geometry = pts_sfc
-        )
+        if (!length(pts_sfc)) next
       }
       
-      result_points[[paste(poly_idx, j, sep = "_")]] <- pts_sf
+      # 6) monta o sf com atributos
+      coords  <- st_coordinates(pts_sfc)
+      n_found <- nrow(coords)
+      pts_sf  <- st_sf(
+        data.frame(
+          Index      = rep(poly_idx, n_found),
+          PROJETO    = rep(poly$ID_PROJETO, n_found),
+          TALHAO     = rep(poly$TALHAO, n_found),
+          CICLO      = rep(poly$CICLO, n_found),
+          ROTACAO    = rep(poly$ROTACAO, n_found),
+          STATUS     = rep("ATIVA", n_found),
+          FORMA      = rep(forma_parcela, n_found),
+          TIPO_INSTA = rep(tipo_parcela, n_found),
+          TIPO_ATUAL = rep(tipo_parcela, n_found),
+          DATA       = rep(Sys.Date(), n_found),
+          DATA_ATUAL = rep(Sys.Date(), n_found),
+          COORD_X    = coords[,1],
+          COORD_Y    = coords[,2]
+        ),
+        geometry = pts_sfc
+      )
+      
+      result_points[[paste(poly_idx, i, sep = "_")]] <- pts_sf
     }
     
-    # atualiza progresso
     completed <- completed + 1
     update_progress(round(completed / total_poly * 100, 2))
   }
   
-  # 6) junta tudo num único sf
+  # 7) consolida e numera parcelas
   all_pts <- do.call(rbind, result_points)
   
-  # 7) numeração sequencial de parcelas (sem geometria em parc_exist)
   parcelasinv <- parc_exist %>%
     st_drop_geometry() %>%
     group_by(PROJETO) %>%
