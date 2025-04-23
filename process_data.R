@@ -23,24 +23,24 @@ process_data <- function(shape, recomend, parc_exist_path,
   })
   shapeb <- do.call(rbind, Filter(NROW, shapeb_list))
   
-  # 4) Preparação para coleta de pontos
+  # 4) Preparação de saída e progresso
   result_points <- list()
-  total_poly <- length(unique(shapeb$Index))
-  completed   <- 0
+  total_poly   <- length(unique(shapeb$Index))
+  completed     <- 0
   
-  # 5) Loop por cada talhão (Index)
+  # 5) Para cada talhão (agrupado por Index)
   for (poly_idx in unique(shapeb$Index)) {
-    poly <- shapeb[shapeb$Index == poly_idx, ]
-    subgeoms <- split_subgeometries(poly)
+    poly      <- shapeb[shapeb$Index == poly_idx, ]
+    subgeoms  <- split_subgeometries(poly)
     
     for (j in seq_len(nrow(subgeoms))) {
-      sg <- subgeoms[j, ]
+      sg      <- subgeoms[j, ]
       area_sg <- as.numeric(st_area(sg))
       
-      # Ignora áreas muito pequenas
+      # 5.1) descarta áreas < 400 m²
       if (area_sg < 400) next
       
-      # 5.1) Caso 400–1000 m²: um ponto no centróide
+      # 5.2) 400–1000 m² → centróide
       if (area_sg <= 1000) {
         centroid <- st_centroid(st_geometry(sg))
         pts_sf <- st_sf(
@@ -63,15 +63,24 @@ process_data <- function(shape, recomend, parc_exist_path,
         )
         
       } else {
-        # 5.2) Caso >1000 m²: usa intensidade_amostral em grade regular
+        # 5.3) >1000 m² → grade regular com intensidade_amostral
+        # (1) cria pontos numa grade regular sobre a geometria reduzida
         pts_sfc <- st_sample(
-          x    = sg,
+          x    = st_geometry(sg),
           size = intensidade_amostral,
           type = "regular"
         )
+        
+        # (2) filtra de novo para garantir que só fique INSIDE do buffer
+        if (length(pts_sfc)) {
+          inside_mat <- st_within(pts_sfc, st_geometry(sg), sparse = FALSE)
+          pts_sfc     <- pts_sfc[apply(inside_mat, 1, any)]
+        }
+        
         n_found <- length(pts_sfc)
         if (n_found == 0) next
         
+        # (3) monta o sf com atributos
         coords <- st_coordinates(pts_sfc)
         pts_sf <- st_sf(
           data.frame(
@@ -96,17 +105,17 @@ process_data <- function(shape, recomend, parc_exist_path,
       result_points[[paste(poly_idx, j, sep = "_")]] <- pts_sf
     }
     
-    # Atualiza barra de progresso
+    # atualiza progresso
     completed <- completed + 1
     update_progress(round(completed / total_poly * 100, 2))
   }
   
-  # 6) Combina todos os pontos
+  # 6) junta tudo num único sf
   all_pts <- do.call(rbind, result_points)
   
-  # 7) Calcula numeração de parcelas sem manter geometria em parc_exist
+  # 7) numeração sequencial de parcelas (sem geometria em parc_exist)
   parcelasinv <- parc_exist %>%
-    st_drop_geometry() %>%           
+    st_drop_geometry() %>%
     group_by(PROJETO) %>%
     summarise(
       max_antiga = max(PARCELAS[PARCELAS < 500], na.rm = TRUE),
