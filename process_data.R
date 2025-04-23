@@ -120,3 +120,35 @@ process_data <- function(shape, recomend, parc_exist_path,
   
   return(all_pts)
 }
+
+
+Listening on http://127.0.0.1:6979
+Reading layer `parc' from data source 
+  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 20 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
+Geodetic CRS:  SIRGAS 2000
+Reading layer `shape_test2' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmp46xCWu\shape_test2.shp' using driver `ESRI Shapefile'
+Simple feature collection with 3 features and 59 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -53.64954 ymin: -20.87277 xmax: -53.62931 ymax: -20.8468
+Geodetic CRS:  SIRGAS 2000
+Aviso: Error in : y should not have class sf; for spatial joins, use st_join
+  92: stop
+  91: check_join
+  90: left_join.sf
+  89: left_join
+  88: replace_na
+  87: group_by
+  86: mutate
+  85: ungroup
+  84: select
+  83: %>%
+  82: process_data [src/process_data.R#101]
+  81: observe [src/server.R#114]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
