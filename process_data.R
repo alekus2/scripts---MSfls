@@ -126,6 +126,29 @@ process_data <- function(shape, recomend, parc_exist_path,
     mutate(PARCELAS = row_number() - 1 + first(numeracao_inicial)) %>%
     ungroup() %>%
     select(-numeracao_inicial)
+
+Listening on http://127.0.0.1:6979
+Reading layer `parc' from data source 
+  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 20 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
+Geodetic CRS:  SIRGAS 2000
+Reading layer `shape_test2' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmp46xCWu\shape_test2.shp' using driver `ESRI Shapefile'
+Simple feature collection with 3 features and 59 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -53.64954 ymin: -20.87277 xmax: -53.62931 ymax: -20.8468
+Geodetic CRS:  SIRGAS 2000
+Aviso: Error in data.frame: argumentos implicam em número de linhas distintos: 5, 4
+  85: stop
+  84: data.frame
+  82: process_data [src/process_data.R#74]
+  81: observe [src/server.R#114]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
   
   return(all_pts)
 }
