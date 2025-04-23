@@ -8,10 +8,12 @@ process_data <- function(shape, recomend, parc_exist_path,
                          update_progress) {     # callback para progresso
 
   # 1) lê e reprojeta as parcelas existentes
-  parc_exist <- st_read(parc_exist_path) %>%
+  parc_exist <- st_read(parc_exist_path) %>% 
     st_transform(31982)
 
-  # 2) prepara shapefile principal com AREA_HA e Index = CD_USO_SOL
+  # 2) prepara shapefile principal:
+  #    - reprojeta para metros,
+  #    - extrai AREA_HA (já existente) e CD_USO_SOL como Index
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
@@ -29,52 +31,47 @@ process_data <- function(shape, recomend, parc_exist_path,
   total_poly   <- n_distinct(shapeb$Index)
   completed    <- 0
 
-  # 4) loop por cada talhão (Index)
+  # 4) itera por cada talhão (Index)
   for (idx in unique(shapeb$Index)) {
     talhao   <- filter(shapeb, Index == idx)
-    area_ha  <- unique(talhao$AREA_HA)
+    area_ha  <- unique(talhao$AREA_HA)    # em hectares
     subgeo   <- split_subgeometries(talhao)
 
     for (i in seq_len(nrow(subgeo))) {
       sg      <- subgeo[i, ]
-      area_sg <- as.numeric(st_area(sg))
-      if (area_sg < 400) next
+      area_sg <- as.numeric(st_area(sg))   # em m²
+      if (area_sg < 400) next              # pula pedaços muito pequenos
 
-      # 5a) calcula quantos pontos: 1 por intensidade_amostral ha
+      # 5a) determina quantos pontos: 1 por intensidade_amostral ha
       n_req <- max(1, floor(area_ha / intensidade_amostral))
 
-      # 5b) define espaçamento e offset para grade
+      # 5b) inicia delta para grade
       delta     <- sqrt(area_sg / n_req)
       bb        <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
 
-      # 5c) gera grid de pontos-centro
-      grid_pts <- st_make_grid(sg,
-                               cellsize = c(delta, delta),
-                               offset   = offset_xy,
-                               what     = "centers")
-      inside   <- st_within(grid_pts, sg, sparse = FALSE)
-      pts      <- grid_pts[apply(inside, 1, any)]
+      # 5c) ajusta delta dinamicamente para obter ≥ n_req centros
+      for (iter in seq_len(20)) {
+        grid_pts <- st_make_grid(
+          x        = sg,
+          cellsize = c(delta, delta),
+          offset   = offset_xy,
+          what     = "centers"
+        )
+        inside   <- st_within(grid_pts, sg, sparse = FALSE)
+        pts      <- grid_pts[apply(inside, 1, any)]
 
-      # 5d) fallback para 1:10 ha se faltar pontos
-      if (length(pts) < n_req) {
-        n_req <- max(1, floor(area_ha / 10))
-        delta     <- sqrt(area_sg / n_req)
-        offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
-        grid_pts  <- st_make_grid(sg,
-                                  cellsize = c(delta, delta),
-                                  offset   = offset_xy,
-                                  what     = "centers")
-        inside    <- st_within(grid_pts, sg, sparse = FALSE)
-        pts       <- grid_pts[apply(inside, 1, any)]
+        if (length(pts) >= n_req) break
+        delta <- delta * 0.95  # aperta grade em 5%
       }
       if (length(pts) == 0) next
 
-      # 5e) ordena, seleciona n_req e monta sf
-      cr       <- st_coordinates(pts)
-      ord      <- order(cr[,1], cr[,2])
-      sel_pts  <- pts[ord][ seq_len(min(length(pts), n_req)) ]
+      # 5d) ordena e seleciona exatamente n_req (ou o máximo que couber)
+      cr      <- st_coordinates(pts)
+      ord     <- order(cr[,1], cr[,2])
+      sel_pts <- pts[ord][ seq_len(min(length(pts), n_req)) ]
 
+      # 5e) monta o sf de saída
       coords   <- st_coordinates(sel_pts)
       n_found  <- nrow(coords)
       pts_sf   <- st_sf(
@@ -84,12 +81,12 @@ process_data <- function(shape, recomend, parc_exist_path,
           TALHAO     = rep(talhao$TALHAO,    n_found),
           CICLO      = rep(talhao$CICLO,     n_found),
           ROTACAO    = rep(talhao$ROTACAO,   n_found),
-          STATUS     = rep("ATIVA",           n_found),
-          FORMA      = rep(forma_parcela,     n_found),
-          TIPO_INSTA = rep(tipo_parcela,      n_found),
-          TIPO_ATUAL = rep(tipo_parcela,      n_found),
-          DATA       = rep(Sys.Date(),        n_found),
-          DATA_ATUAL = rep(Sys.Date(),        n_found),
+          STATUS     = rep("ATIVA",          n_found),
+          FORMA      = rep(forma_parcela,    n_found),
+          TIPO_INSTA = rep(tipo_parcela,     n_found),
+          TIPO_ATUAL = rep(tipo_parcela,     n_found),
+          DATA       = rep(Sys.Date(),       n_found),
+          DATA_ATUAL = rep(Sys.Date(),       n_found),
           COORD_X    = coords[,1],
           COORD_Y    = coords[,2]
         ),
@@ -103,10 +100,10 @@ process_data <- function(shape, recomend, parc_exist_path,
     update_progress(round(completed / total_poly * 100, 2))
   }
 
-  # 6) combina todos os pontos
+  # 6) combina todos os pontos gerados
   all_pts <- do.call(rbind, result_points)
 
-  # 7) numeração sequencial a partir de parc_exist
+  # 7) numeração sequencial com base em parc_exist
   parcelasinv <- parc_exist %>%
     st_drop_geometry() %>%
     group_by(PROJETO) %>%
