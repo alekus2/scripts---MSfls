@@ -15,7 +15,7 @@ process_data <- function(shape, recomend, parc_exist_path,
   shape <- st_transform(shape, 31982)
   shape$Index <- paste0(shape$ID_PROJETO, shape$TALHAO)
   
-  # 3) Buffer interno de -30 m
+  # 3) Buffer interno fixo de -30 m
   buffer_distance <- -30
   shapeb_list <- lapply(seq_len(nrow(shape)), function(i) {
     buf <- st_buffer(shape[i, ], buffer_distance)
@@ -40,7 +40,7 @@ process_data <- function(shape, recomend, parc_exist_path,
       # Ignora áreas muito pequenas
       if (area_sg < 400) next
       
-      # Caso 400–1000 m²: um ponto no centróide
+      # 5.1) Caso 400–1000 m²: um ponto no centróide
       if (area_sg <= 1000) {
         centroid <- st_centroid(st_geometry(sg))
         pts_sf <- st_sf(
@@ -63,27 +63,29 @@ process_data <- function(shape, recomend, parc_exist_path,
         )
         
       } else {
-        # Caso >1000 m²: usa intensidade_amostral em grade regular
-        n_pts <- intensidade_amostral
-        pts_sfc <- st_sample(x    = sg,
-                             size = n_pts,
-                             type = "regular")
-        if (length(pts_sfc) == 0) next
+        # 5.2) Caso >1000 m²: usa intensidade_amostral em grade regular
+        pts_sfc <- st_sample(
+          x    = sg,
+          size = intensidade_amostral,
+          type = "regular"
+        )
+        n_found <- length(pts_sfc)
+        if (n_found == 0) next
         
         coords <- st_coordinates(pts_sfc)
         pts_sf <- st_sf(
           data.frame(
-            Index      = rep(poly_idx, n_pts),
-            PROJETO    = rep(poly$ID_PROJETO, n_pts),
-            TALHAO     = rep(poly$TALHAO, n_pts),
-            CICLO      = rep(poly$CICLO, n_pts),
-            ROTACAO    = rep(poly$ROTACAO, n_pts),
-            STATUS     = rep("ATIVA", n_pts),
-            FORMA      = rep(forma_parcela, n_pts),
-            TIPO_INSTA = rep(tipo_parcela, n_pts),
-            TIPO_ATUAL = rep(tipo_parcela, n_pts),
-            DATA       = rep(Sys.Date(), n_pts),
-            DATA_ATUAL = rep(Sys.Date(), n_pts),
+            Index      = rep(poly_idx, n_found),
+            PROJETO    = rep(poly$ID_PROJETO, n_found),
+            TALHAO     = rep(poly$TALHAO, n_found),
+            CICLO      = rep(poly$CICLO, n_found),
+            ROTACAO    = rep(poly$ROTACAO, n_found),
+            STATUS     = rep("ATIVA", n_found),
+            FORMA      = rep(forma_parcela, n_found),
+            TIPO_INSTA = rep(tipo_parcela, n_found),
+            TIPO_ATUAL = rep(tipo_parcela, n_found),
+            DATA       = rep(Sys.Date(), n_found),
+            DATA_ATUAL = rep(Sys.Date(), n_found),
             COORD_X    = coords[,1],
             COORD_Y    = coords[,2]
           ),
@@ -104,7 +106,7 @@ process_data <- function(shape, recomend, parc_exist_path,
   
   # 7) Calcula numeração de parcelas sem manter geometria em parc_exist
   parcelasinv <- parc_exist %>%
-    st_drop_geometry() %>%           # remove geometria antes de agrupar
+    st_drop_geometry() %>%           
     group_by(PROJETO) %>%
     summarise(
       max_antiga = max(PARCELAS[PARCELAS < 500], na.rm = TRUE),
@@ -126,29 +128,6 @@ process_data <- function(shape, recomend, parc_exist_path,
     mutate(PARCELAS = row_number() - 1 + first(numeracao_inicial)) %>%
     ungroup() %>%
     select(-numeracao_inicial)
-
-Listening on http://127.0.0.1:6979
-Reading layer `parc' from data source 
-  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Reading layer `shape_test2' from data source `C:\Users\alex_santos4\AppData\Local\Temp\Rtmp46xCWu\shape_test2.shp' using driver `ESRI Shapefile'
-Simple feature collection with 3 features and 59 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -53.64954 ymin: -20.87277 xmax: -53.62931 ymax: -20.8468
-Geodetic CRS:  SIRGAS 2000
-Aviso: Error in data.frame: argumentos implicam em número de linhas distintos: 5, 4
-  85: stop
-  84: data.frame
-  82: process_data [src/process_data.R#74]
-  81: observe [src/server.R#114]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
   
   return(all_pts)
 }
