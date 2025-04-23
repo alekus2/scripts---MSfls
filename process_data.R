@@ -3,13 +3,13 @@ library(dplyr)
 
 process_data <- function(shape, recomend, parc_exist_path,
                          forma_parcela, tipo_parcela,
-                         intensidade_proporcao,    # 5 ou 10
-                         update_progress,
-                         distancia_minima = 200) {
-  
-  parc_exist <- st_read(parc_exist_path) %>%
-    st_transform(31982)
+                         distancia.minima,      
+                         intensidade_amostral,  
+                         update_progress) {    
 
+  parc_exist <- st_read(parc_exist_path) %>% 
+    st_transform(31982)
+  
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
@@ -17,52 +17,55 @@ process_data <- function(shape, recomend, parc_exist_path,
       AREA_HA = as.numeric(AREA_HA)
     )
 
-  shapeb <- shape_full %>%
-    st_buffer(-50) %>%
+  buf_dist <- -abs(distancia.minima)
+  shapeb   <- shape_full %>%
+    st_buffer(buf_dist) %>%
     filter(!st_is_empty(geometry))
   
   result_points <- list()
-  total_poly    <- n_distinct(shapeb$Index)
-  completed     <- 0
+  total_poly   <- n_distinct(shapeb$Index)
+  completed    <- 0
 
   for (idx in unique(shapeb$Index)) {
-    talhao    <- filter(shapeb, Index == idx)
-    area_ha   <- unique(talhao$AREA_HA)
-    subgeoms  <- split_subgeometries(talhao)
+    talhao   <- filter(shapeb, Index == idx)
+    area_ha  <- unique(talhao$AREA_HA)    
+    subgeo   <- split_subgeometries(talhao)
     
-    for (i in seq_len(nrow(subgeoms))) {
-      sg      <- subgeoms[i, ]
-      area_sg <- as.numeric(st_area(sg))
-      if (area_sg < 400) next
+    for (i in seq_len(nrow(subgeo))) {
+      sg      <- subgeo[i, ]
+      area_sg <- as.numeric(st_area(sg))   
+      if (area_sg < 400) next              
 
-      n_req <- max(1, floor(area_ha / intensidade_proporcao))
+      n_req <- max(1, floor(area_ha / intensidade_amostral))
 
-      # Geração inicial com grade regular
+      delta     <- sqrt(area_sg / n_req)
       bb        <- st_bbox(sg)
-      grid_pts  <- st_make_grid(
-        x        = sg,
-        cellsize = c(distancia_minima, distancia_minima),
-        offset   = c(bb$xmin + distancia_minima/2, bb$ymin + distancia_minima/2),
-        what     = "centers"
-      )
-      inside    <- st_within(grid_pts, sg, sparse = FALSE)
-      pts       <- grid_pts[apply(inside, 1, any)]
-
-      # Se houver mais pontos que o necessário, selecionar apenas os mais centrais
-      if (length(pts) > n_req) {
-        cr       <- st_coordinates(pts)
-        center   <- c(mean(range(cr[,1])), mean(range(cr[,2])))
-        dists    <- sqrt((cr[,1] - center[1])^2 + (cr[,2] - center[2])^2)
-        pts      <- pts[order(dists)][1:n_req]
+      offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
+      
+      for (iter in seq_len(20)) {
+        grid_pts <- st_make_grid(
+          x        = sg,
+          cellsize = c(delta, delta),
+          offset   = offset_xy,
+          what     = "centers"
+        )
+        inside   <- st_within(grid_pts, sg, sparse = FALSE)
+        pts      <- grid_pts[apply(inside, 1, any)]
+        
+        if (length(pts) >= n_req) break
+        delta <- delta * 0.95  
       }
-
       if (length(pts) == 0) next
 
-      coords   <- st_coordinates(pts)
+      cr      <- st_coordinates(pts)
+      ord     <- order(cr[,1], cr[,2])
+      sel_pts <- pts[ord][ seq_len(min(length(pts), n_req)) ]
+      
+      coords   <- st_coordinates(sel_pts)
       n_found  <- nrow(coords)
       pts_sf   <- st_sf(
         data.frame(
-          Index      = rep(idx,     n_found),
+          Index      = rep(idx,      n_found),
           PROJETO    = rep(talhao$ID_PROJETO, n_found),
           TALHAO     = rep(talhao$TALHAO,    n_found),
           CICLO      = rep(talhao$CICLO,     n_found),
@@ -76,12 +79,12 @@ process_data <- function(shape, recomend, parc_exist_path,
           COORD_X    = coords[,1],
           COORD_Y    = coords[,2]
         ),
-        geometry = pts
+        geometry = sel_pts
       )
       
       result_points[[paste(idx, i, sep = "_")]] <- pts_sf
     }
-
+    
     completed <- completed + 1
     update_progress(round(completed / total_poly * 100, 2))
   }
@@ -111,6 +114,6 @@ process_data <- function(shape, recomend, parc_exist_path,
     mutate(PARCELAS = row_number() - 1 + first(numeracao_inicial)) %>%
     ungroup() %>%
     select(-numeracao_inicial)
-
+  
   return(all_pts)
 }
