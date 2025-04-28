@@ -1,9 +1,25 @@
-  all_pts <- do.call(rbind, result_points)
+output$plot <- renderPlot({
+  req(values$result_points, input$selected_index, shape())
 
-  # Numerar parcelas de 1 até N dentro de cada talhão (Index)
-  all_pts <- all_pts %>%
-    group_by(Index) %>%
-    mutate(PARCELAS = row_number()) %>%
-    ungroup()
+  sf_sel <- shape() %>%
+    st_transform(31982) %>%
+    mutate(Index = paste0(ID_PROJETO, TALHAO))
 
-  return(all_pts)
+  shp_sel <- sf_sel %>% filter(Index == input$selected_index)
+  pts_sel <- values$result_points %>% filter(Index == input$selected_index)
+
+  # cálculo de área em hectares como numeric
+  total_area <- sum(st_area(shp_sel))
+  area_ha    <- as.numeric(total_area) / 10000
+
+  # número recomendado, sem units, e mínimo de 2
+  num_rec <- ceiling(area_ha / as.numeric(input$recomend_intensidade))
+  if (num_rec < 2) num_rec <- 2
+
+  ggplot() +
+    geom_sf(data = shp_sel, fill = NA, color = "black") +
+    geom_sf(data = pts_sel, size = 2) +
+    ggtitle(paste0("Recomendado: ", num_rec, " parc. (Área: ", round(area_ha, 2), " ha)")) +
+    theme_minimal() +
+    theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+})
