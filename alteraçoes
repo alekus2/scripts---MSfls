@@ -2,27 +2,18 @@ tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
   fluidPage(
     br(),
     fluidRow(
-      column(10, offset = 1,
-        plotOutput("plot", height = "600px")
-      )
-    ),
-    br(),
-    fluidRow(
-      column(4, offset = 1,
-        actionButton("anterior", "ANTERIOR", class = "btn btn-danger btn-sm", width = "100%")
+      column(3,
+        actionButton("anterior", "ANTERIOR", class = "btn btn-danger", width = "100%"),
+        br(), br(),
+        actionButton("proximo", "PRÓXIMO", class = "btn btn-danger", width = "100%"),
+        br(), br(),
+        actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger", width = "100%")
       ),
-      column(4,
-        actionButton("proximo", "PRÓXIMO", class = "btn btn-danger btn-sm", width = "100%")
-      ),
-      column(4,
-        actionButton("gerar_parcelas", "GERAR NOVAMENTE", class = "btn btn-danger btn-sm", width = "100%")
-      )
-    ),
-    br(), br(),
-    fluidRow(
-      column(10, offset = 1,
+      column(9,
+        plotOutput("plot", height = "600px"),
+        br(),
         div(style = "color:red; font-weight:bold; font-size:16px; text-align:justify;",
-          "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
+            "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
         )
       )
     )
