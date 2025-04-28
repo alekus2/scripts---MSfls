@@ -1,28 +1,19 @@
-tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
-  fluidPage(
-    br(),
-    fluidRow(
-      column(10, offset = 1,
-             plotOutput("plot", height = "400px")
-      )
-    ),
-    div(style = "height: 20px;"),  # Pequeno espaço entre o mapa e os botões
-    fluidRow(
-      column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
-      column(2, actionButton("proximo", "PRÓXIMO", class = "btn btn-danger")),
-      column(5, actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
-    ),
-    br(),
-    fluidRow(
-      column(10, offset = 1,
-             div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
-                 "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
-             )
-      )
-    ),
-    br(),
-    fluidRow(
-      column(4, uiOutput("index_filter"))
-    )
-  )
-)
+> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocador/AutoParc.R')
+
+Listening on http://127.0.0.1:4542
+Aviso: Error in runApp: ! ODBC failed with error IM002 from [Microsoft][ODBC Driver Manager].
+x  Nome da fonte de dados n<e3>o encontrado e nenhum driver padr<e3>o especificado
+i From nanodbc/nanodbc.cpp:1150.
+  93: <Anonymous>
+  92: signalCondition
+  91: signal_abort
+  90: rlang::abort
+  89: cli::cli_abort
+  88: <Anonymous>
+  87: odbc_connect
+  85: OdbcConnection
+  84: .local
+  83: dbConnect
+  81: observe [src/server.R#17]
+  80: <observer:observeEvent(input$db_connect)>
+   1: runApp
