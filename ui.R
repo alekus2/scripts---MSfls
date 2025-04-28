@@ -8,46 +8,18 @@ bracell_white     <- "#FFFFFF"
 ui <- tagList(
   tags$head(
     tags$style(HTML(paste0("
-      body {
-        background-color: ", bracell_white, ";
-        font-family: 'Segoe UI', sans-serif;
-      }
-      .navbar {
-        background-color: ", bracell_primary, " !important;
-        margin-bottom: 0px; border: none; border-radius: 0;
-      }
-      .navbar-default .navbar-brand,
-      .navbar-default .navbar-nav > li > a {
-        color: ", bracell_white, " !important;
-      }
-      .navbar-nav > li.active > a {
-        color: ", bracell_secondary, " !important;
-      }
-      .tab-content {
-        padding: 20px;
-        background-color: ", bracell_white, " !important;
-        border-top: 2px solid ", bracell_secondary, ";
-      }
-      .panel, .well {
-        background-color: ", bracell_white, " !important;
-        border-color: ", bracell_secondary, " !important;
-      }
-      .btn {
-        background-color: ", bracell_secondary, ";
-        color: white; border: none; font-weight: bold;
-      }
-      .btn:hover, .btn:focus {
-        background-color: ", bracell_primary, ";
-        outline: none;
-      }
-      .sobre-texto {
-        font-size: 16px; color: #000; text-align: justify;
-      }
-      .sobre-texto h2 {
-        font-size: 24px; color: ", bracell_primary, ";
-      }
-      .navbar-brand { display: flex !important; align-items: center !important; }
-      .navbar-brand img { max-height: 40px; margin-right: 10px; }
+      body { background-color: ", bracell_white, "; font-family: 'Segoe UI', sans-serif; }
+      .navbar { background-color: ", bracell_primary, " !important; margin-bottom:0; border:none; }
+      .navbar-default .navbar-brand, .navbar-default .navbar-nav > li > a { color: ", bracell_white, " !important; }
+      .navbar-nav > li.active > a { color: ", bracell_secondary, " !important; }
+      .tab-content { padding:20px; background-color:", bracell_white, " !important; border-top:2px solid ", bracell_secondary, "; }
+      .panel, .well { background-color:", bracell_white, " !important; border-color:", bracell_secondary, " !important; }
+      .btn { background-color:", bracell_secondary, "; color:white; border:none; font-weight:bold; }
+      .btn:hover, .btn:focus { background-color:", bracell_primary, "; outline:none; }
+      .sobre-texto { font-size:16px; color:#000; text-align:justify; }
+      .sobre-texto h2 { font-size:24px; color:", bracell_primary, "; }
+      .navbar-brand { display:flex !important; align-items:center !important; }
+      .navbar-brand img { max-height:40px; margin-right:10px; }
     ")))
   ),
   
@@ -77,10 +49,8 @@ ui <- tagList(
           
           conditionalPanel(
             "input.data_source == 'db'",
+            textInput("db_tns", "TNS alias (ex: brcsp):", value = "brcsp"),
             checkboxInput("db_os_auth", "Usar autenticação do sistema operacional", value = TRUE),
-            textInput("db_host",    "Host Oracle:",    value = "meu.host.oracle"),
-            numericInput("db_port", "Porta:",           value = 1521),
-            textInput("db_service","Service Name:",     value = "ORCL"),
             conditionalPanel("input.db_os_auth == false",
               textInput("db_user", "Usuário:", ""),
               passwordInput("db_pwd", "Senha:", "")
@@ -96,12 +66,13 @@ ui <- tagList(
           ),
           
           radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
-                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0), selected = 1),
+                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0),
+                       selected = 1),
           conditionalPanel("input.shape_input_pergunta_arudek == 0",
             textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
-            textInput("mudar_nome_arudek_talhao",  "Talhão:", "CD_TALHAO"),
+            textInput("mudar_nome_arudek_talhao",  "Talhão:",  "CD_TALHAO"),
             textInput("mudar_nome_arudek_ciclo",   "Ciclo:",   "NUM_CICLO"),
-            textInput("mudar_nome_arudek_rotacao","Rotação:","NUM_ROTAC")
+            textInput("mudar_nome_arudek_rotacao","Rotação:",  "NUM_ROTAC")
           ),
           
           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação",
@@ -173,9 +144,7 @@ ui <- tagList(
         tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
           fluidPage(
             br(),
-            fluidRow(
-              column(10, offset = 1, plotOutput("plot", height = "400px"))
-            ),
+            fluidRow(column(10, offset = 1, plotOutput("plot", height = "400px"))),
             div(style = "height:20px;"),
             fluidRow(
               column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
@@ -183,13 +152,11 @@ ui <- tagList(
               column(5,           actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
             ),
             br(),
-            fluidRow(
-              column(10, offset = 1,
-                div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
-                    "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
-                )
+            fluidRow(column(10, offset = 1,
+              div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
+                  "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
               )
-            ),
+            )),
             br(),
             fluidRow(column(4, uiOutput("index_filter")))
           )
