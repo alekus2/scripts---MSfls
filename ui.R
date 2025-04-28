@@ -1,10 +1,9 @@
-
 library(shiny)
 library(shinythemes)
 
-bracell_primary <- "#007E69"
+bracell_primary   <- "#007E69"
 bracell_secondary <- "#5f8b27"
-bracell_white <- "#FFFFFF"
+bracell_white     <- "#FFFFFF"
 
 ui <- tagList(
   tags$head(
@@ -64,142 +63,171 @@ ui <- tagList(
     ")))
   ),
   
-  navbarPage(title = div(tags$img(src = "logo.png", height = "40px"), "ALOCADOR DE PARCELAS"),
-             
-             tabPanel("Sobre", icon = icon("info"),
-                      fluidRow(
-                        column(12,
-                               div(class = "sobre-texto",
-                                   h2("Sobre"),
-                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas."),
-                                   HTML("<b style='color:red;'>O aplicativo foi desenvolvido para facilitar o processo de lançamento de parcelas para ArcGIS PRO. No entanto, sua utilizção NÃO elimina a necessidade de análises criteriosas!</b>")
-                               )
-                        )
-                      )
-             ),
-             
-             tabPanel("Dados", icon = icon("file-upload"),
-                      sidebarLayout(
-                        sidebarPanel(
-                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
-                          
-                          radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
-                                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0), selected = 1),
-                          
-                          conditionalPanel("input.shape_input_pergunta_arudek == 0",
-                                           textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
-                                           textInput("mudar_nome_arudek_talhao", "Talhão:", "CD_TALHAO"),
-                                           textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
-                                           textInput("mudar_nome_arudek_rotacao", "Rotação:", "NUM_ROTAC")
-                          ),
-                          
-                          radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação",
-                                       choices = list("Sim" = 1, "Não" = 0), selected = 1),
-                          conditionalPanel("input.recomendacao_pergunta_upload == 1",
-                                           fileInput("recomend", "Upload do arquivo de recomendação", accept = c(".csv"))
-                          ),
-                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                           numericInput("recomend_intensidade", "Número de parcelas desejadas do talhão:", value = 10)
-                          ),
-                          
-                          h2("Insira a intensidade amostral desejada: "),
-                          numericInput("intensidade_amostral", "A quantidade de parcelas por área (ha) :", value = 5),
-                          
-                          radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
-                                       choices = list("Sim" = 1, "Não" = 0), selected = 0),
-                          conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))
-                          ),
-                          
-                          selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
-                          selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
-                          conditionalPanel("input.tipo_parcela == 'IPC'",
-                                           radioButtons("lancar_sobrevivencia", "Lançar parcelas de sobrevivência?", choices = list("Sim" = 1, "Não" = 0), selected = 0)
-                          ),
-                          sliderInput("distancia_minima", "Distância Mínima:", min = 30, max = 100, value = 50, step = 10),
-                          actionButton("confirmar", "Confirmar", class = "btn btn-danger")
-                        ),
-                        mainPanel(
-                          div(class = "sobre-texto",
-                              h2("Sobre os arquivos"),
-                              p("Shape dos talhões: .zip com todos os arquivos do shapefile."),
-                              p("Recomendação: planilha .csv com colunas Projeto, Talhão e N."),
-                              p("Parcelas históricas: .zip com os shapefiles das parcelas existentes.")
-                          ),
-                          verbatimTextOutput("shape_text"),
-                          verbatimTextOutput("recomend_text"),
-                          verbatimTextOutput("parc_exist_text"),
-                          verbatimTextOutput("confirmation"),
-                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                           textInput("download_recomend_name", "Nome do arquivo de recomendação:", "Recomendação-"),
-                                           downloadButton("download_recomend", "Download da Recomendação criada*"),
-                                           p("*Disponível após o upload das demais informações")
-                          )
-                        )
-                      )
-             ),
-             
-             tabPanel("Parcelas Plotadas", icon = icon("chart-bar"),
-                      tabsetPanel(
-                        tabPanel("Status", icon = icon("clock"),
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     h2("Gerar parcelas", style = paste0("color:", bracell_primary, ";")),
-                                     p("Clique no botão abaixo para gerar as parcelas."),
-                                     actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
-                                   ),
-                                   mainPanel(
-                                     div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
-                                         div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
-                                     ),
-                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
-                                   )
-                                 )
-                        ),
-                        tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
-                                 fluidPage(
-                                   br(),
-                                   fluidRow(
-                                     column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
-                                     column(2, actionButton("proximo", "PRÓXIMO", class = "btn btn-danger")),
-                                     column(5, actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
-                                   ),
-                                   br(), br(),
-                                   fluidRow(
-                                     column(10, offset = 1,
-                                            div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
-                                                "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
-                                            )
-                                     )
-                                   ),
-                                   br(),
-                                   fluidRow(
-                                     column(4, uiOutput("index_filter"))
-                                   ),
-                                   br(),
-                                   fluidRow(
-                                     column(10, offset = 1,
-                                            plotOutput("plot", height = "400px")
-                                     )
-                                   )
-                                 )
-                        ),
-                        tabPanel("DOWNLOAD",
-                                 fluidPage(
-                                   br(),
-                                   wellPanel(
-                                     h4("Download"),
-                                     p("Arquivo gerado com base nas especificações."),
-                                     downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-danger"),
-                                     br(), br(),
-                                     div(style = "color:red; font-weight:bold;",
-                                         "O nome do arquivo será gerado automaticamente com data e hora o tipo de parcela que deseja ser gerada."
-                                     )
-                                   )
-                                 )
-                        )
-                      )
-             )
+  navbarPage(
+    title = div(tags$img(src = "logo.png", height = "40px"), "ALOCADOR DE PARCELAS"),
+    theme = shinytheme("flatly"),
+    
+    tabPanel("Sobre", icon = icon("info"),
+      fluidRow(
+        column(12,
+          div(class = "sobre-texto",
+            h2("Sobre"),
+            p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas."),
+            HTML("<b style='color:red;'>O aplicativo foi desenvolvido para facilitar o processo de lançamento de parcelas para ArcGIS PRO. No entanto, sua utilização NÃO elimina a necessidade de análises criteriosas!</b>")
+          )
+        )
+      )
+    ),
+    
+    tabPanel("Dados", icon = icon("file-upload"),
+      sidebarLayout(
+        sidebarPanel(
+          # escolha de fonte
+          radioButtons("data_source", "Fonte dos talhões:",
+                       choices = c("Upload shapefile (.zip)" = "upload",
+                                   "Banco ArcSDE Oracle"    = "db"),
+                       selected = "upload"),
+          
+          # se for DB, mostra credenciais e botão conectar
+          conditionalPanel(
+            "input.data_source == 'db'",
+            textInput("db_host",    "Host Oracle:",    value = "meu.host.oracle"),
+            numericInput("db_port", "Porta:",           value = 1521),
+            textInput("db_service","Service Name:",     value = "ORCL"),
+            textInput("db_user",    "Usuário:",         value = ""),
+            passwordInput("db_pwd", "Senha:",           value = ""),
+            actionButton("db_connect", "Conectar ao Banco", class = "btn btn-secondary"),
+            uiOutput("db_layer_selector"),
+            hr()
+          ),
+          
+          # se for upload, mantém o fileInput
+          conditionalPanel(
+            "input.data_source == 'upload'",
+            fileInput("shape", "Upload do Shapefile dos talhões (.zip)", accept = c(".zip"))
+          ),
+          
+          radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
+                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0),
+                       selected = 1),
+          conditionalPanel("input.shape_input_pergunta_arudek == 0",
+            textInput("mudar_nome_arudek_projeto", "Projeto:",   "ID_PROJETO"),
+            textInput("mudar_nome_arudek_talhao", "Talhão:",    "CD_TALHAO"),
+            textInput("mudar_nome_arudek_ciclo",   "Ciclo:",     "NUM_CICLO"),
+            textInput("mudar_nome_arudek_rotacao","Rotação:",   "NUM_ROTAC")
+          ),
+          
+          radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação",
+                       choices = list("Sim" = 1, "Não" = 0), selected = 1),
+          conditionalPanel("input.recomendacao_pergunta_upload == 1",
+            fileInput("recomend", "Upload do arquivo de recomendação (.csv)", accept = c(".csv"))
+          ),
+          conditionalPanel("input.recomendacao_pergunta_upload == 0",
+            numericInput("recomend_intensidade", "Número de parcelas desejadas do talhão:", value = 10)
+          ),
+          
+          h2("Insira a intensidade amostral desejada:"),
+          numericInput("intensidade_amostral", "Parcels / ha:", value = 5),
+          
+          radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
+                       choices = list("Sim" = 1, "Não" = 0), selected = 0),
+          conditionalPanel("input.parcelas_existentes_lancar == 1",
+            fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes (.zip)", accept = c(".zip"))
+          ),
+          
+          selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
+          selectizeInput("tipo_parcela",  "Tipo da Parcela:", choices = c("S30","S90","IFQ6","IFQ12","IFC","IPC")),
+          conditionalPanel("input.tipo_parcela == 'IPC'",
+            radioButtons("lancar_sobrevivencia", "Lançar parcelas de sobrevivência?", choices = list("Sim"=1,"Não"=0), selected=0)
+          ),
+          sliderInput("distancia_minima", "Distância Mínima (m):", min = 30, max = 100, value = 50, step = 10),
+          actionButton("confirmar", "Confirmar", class = "btn btn-danger")
+        ),
+        
+        mainPanel(
+          div(class = "sobre-texto",
+            h2("Sobre os arquivos"),
+            p("Shape dos talhões: .zip com todos os arquivos do shapefile ou camada do ArcSDE."),
+            p("Recomendação: planilha .csv com colunas Projeto, Talhão e N."),
+            p("Parcelas históricas: .zip com os shapefiles das parcelas existentes.")
+          ),
+          verbatimTextOutput("shape_text"),
+          verbatimTextOutput("recomend_text"),
+          verbatimTextOutput("parc_exist_text"),
+          verbatimTextOutput("confirmation"),
+          
+          conditionalPanel("input.recomendacao_pergunta_upload == 0",
+            textInput("download_recomend_name", "Nome do arquivo de recomendação:", "Recomendação-"),
+            downloadButton("download_recomend", "Download da Recomendação criada*"),
+            p("*Disponível após o upload das demais informações")
+          )
+        )
+      )
+    ),
+    
+    tabPanel("Parcelas Plotadas", icon = icon("chart-bar"),
+      tabsetPanel(
+        tabPanel("Status", icon = icon("clock"),
+          sidebarLayout(
+            sidebarPanel(
+              h2("Gerar parcelas", style = paste0("color:", bracell_primary, ";")),
+              p("Clique no botão abaixo para gerar as parcelas."),
+              actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
+            ),
+            mainPanel(
+              div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
+                  div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
+              ),
+              div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
+            )
+          )
+        ),
+        
+        tabPanel("PARCELAS PLOTADAS", icon = icon("map"),
+          fluidPage(
+            br(),
+            fluidRow(
+              column(10, offset = 1,
+                     plotOutput("plot", height = "400px")
+              )
+            ),
+            div(style = "height: 20px;"), 
+            fluidRow(
+              column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
+              column(2,           actionButton("proximo",  "PRÓXIMO",   class = "btn btn-danger")),
+              column(5,           actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
+            ),
+            br(),
+            fluidRow(
+              column(10, offset = 1,
+                     div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
+                         "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
+                     )
+              )
+            ),
+            br(),
+            fluidRow(
+              column(4, uiOutput("index_filter"))
+            )
+          )
+        ),
+        
+        tabPanel("DOWNLOAD",
+          fluidPage(
+            br(),
+            wellPanel(
+              h4("Download"),
+              p("Arquivo gerado com base nas especificações."),
+              downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-danger"),
+              br(), br(),
+              div(style = "color:red; font-weight:bold;",
+                  "O nome do arquivo será gerado automaticamente com data e hora e o tipo de parcela."
+              )
+            )
+          )
+        )
+      )
+    )
   ),
   
   tags$script(HTML("
@@ -213,7 +241,6 @@ ui <- tagList(
     Shiny.addCustomMessageHandler('hide_completed', function(message) {
       $('#completed-message').hide();
     });
-
     $(document).on('click', '.navbar-nav > li', function() {
       $('.navbar-nav > li').removeClass('active');
       $(this).addClass('active');
@@ -221,4 +248,4 @@ ui <- tagList(
   "))
 )
 
-shinyApp(ui = ui, server = server)
+# Se quiser separar ui e server em arquivos, salve este bloco como app_ui.R
