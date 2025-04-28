@@ -14,9 +14,7 @@ ui <- tagList(
       }
       .navbar {
         background-color: ", bracell_primary, " !important;
-        margin-bottom: 0px;
-        border: none;
-        border-radius: 0;
+        margin-bottom: 0px; border: none; border-radius: 0;
       }
       .navbar-default .navbar-brand,
       .navbar-default .navbar-nav > li > a {
@@ -27,39 +25,29 @@ ui <- tagList(
       }
       .tab-content {
         padding: 20px;
-        background-color: #f4f4f4;
+        background-color: ", bracell_white, " !important;
         border-top: 2px solid ", bracell_secondary, ";
+      }
+      .panel, .well {
+        background-color: ", bracell_white, " !important;
+        border-color: ", bracell_secondary, " !important;
       }
       .btn {
         background-color: ", bracell_secondary, ";
-        color: white;
-        border: none;
-        font-weight: bold;
+        color: white; border: none; font-weight: bold;
       }
-      .btn:hover {
-        background-color: ", bracell_primary, "; 
-      }
-      .btn:focus {
-        background-color: ", bracell_primary, "; 
-        outline: none; 
+      .btn:hover, .btn:focus {
+        background-color: ", bracell_primary, ";
+        outline: none;
       }
       .sobre-texto {
-        font-size: 16px;
-        color: #000;
-        text-align: justify;
+        font-size: 16px; color: #000; text-align: justify;
       }
       .sobre-texto h2 {
-        font-size: 24px;
-        color: ", bracell_primary, ";
+        font-size: 24px; color: ", bracell_primary, ";
       }
-      .navbar-brand {
-        display: flex !important;
-        align-items: center !important;
-      }
-      .navbar-brand img {
-        max-height: 40px;
-        margin-right: 10px;
-      }
+      .navbar-brand { display: flex !important; align-items: center !important; }
+      .navbar-brand img { max-height: 40px; margin-right: 10px; }
     ")))
   ),
   
@@ -82,45 +70,44 @@ ui <- tagList(
     tabPanel("Dados", icon = icon("file-upload"),
       sidebarLayout(
         sidebarPanel(
-          # escolha de fonte
           radioButtons("data_source", "Fonte dos talhões:",
                        choices = c("Upload shapefile (.zip)" = "upload",
                                    "Banco ArcSDE Oracle"    = "db"),
                        selected = "upload"),
           
-          # se for DB, mostra credenciais e botão conectar
           conditionalPanel(
             "input.data_source == 'db'",
+            checkboxInput("db_os_auth", "Usar autenticação do sistema operacional", value = TRUE),
             textInput("db_host",    "Host Oracle:",    value = "meu.host.oracle"),
             numericInput("db_port", "Porta:",           value = 1521),
             textInput("db_service","Service Name:",     value = "ORCL"),
-            textInput("db_user",    "Usuário:",         value = ""),
-            passwordInput("db_pwd", "Senha:",           value = ""),
+            conditionalPanel("input.db_os_auth == false",
+              textInput("db_user", "Usuário:", ""),
+              passwordInput("db_pwd", "Senha:", "")
+            ),
             actionButton("db_connect", "Conectar ao Banco", class = "btn btn-secondary"),
             uiOutput("db_layer_selector"),
             hr()
           ),
           
-          # se for upload, mantém o fileInput
           conditionalPanel(
             "input.data_source == 'upload'",
-            fileInput("shape", "Upload do Shapefile dos talhões (.zip)", accept = c(".zip"))
+            fileInput("shape", "Upload do Shapefile dos talhões (.zip)", accept = ".zip")
           ),
           
           radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
-                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0),
-                       selected = 1),
+                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0), selected = 1),
           conditionalPanel("input.shape_input_pergunta_arudek == 0",
-            textInput("mudar_nome_arudek_projeto", "Projeto:",   "ID_PROJETO"),
-            textInput("mudar_nome_arudek_talhao", "Talhão:",    "CD_TALHAO"),
-            textInput("mudar_nome_arudek_ciclo",   "Ciclo:",     "NUM_CICLO"),
-            textInput("mudar_nome_arudek_rotacao","Rotação:",   "NUM_ROTAC")
+            textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
+            textInput("mudar_nome_arudek_talhao",  "Talhão:", "CD_TALHAO"),
+            textInput("mudar_nome_arudek_ciclo",   "Ciclo:",   "NUM_CICLO"),
+            textInput("mudar_nome_arudek_rotacao","Rotação:","NUM_ROTAC")
           ),
           
           radioButtons("recomendacao_pergunta_upload", "Deseja realizar o upload do arquivo de recomendação",
                        choices = list("Sim" = 1, "Não" = 0), selected = 1),
           conditionalPanel("input.recomendacao_pergunta_upload == 1",
-            fileInput("recomend", "Upload do arquivo de recomendação (.csv)", accept = c(".csv"))
+            fileInput("recomend", "Upload do arquivo de recomendação (.csv)", accept = ".csv")
           ),
           conditionalPanel("input.recomendacao_pergunta_upload == 0",
             numericInput("recomend_intensidade", "Número de parcelas desejadas do talhão:", value = 10)
@@ -132,7 +119,7 @@ ui <- tagList(
           radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
                        choices = list("Sim" = 1, "Não" = 0), selected = 0),
           conditionalPanel("input.parcelas_existentes_lancar == 1",
-            fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes (.zip)", accept = c(".zip"))
+            fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes (.zip)", accept = ".zip")
           ),
           
           selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
@@ -175,10 +162,10 @@ ui <- tagList(
               actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
             ),
             mainPanel(
-              div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
-                  div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
+              div(id = "progress-container", style = "width:100%; background:#f3f3f3; padding:3px;",
+                  div(id = "progress-bar", style = "width:0%; height:20px; background-color:#4CAF50; text-align:center; line-height:20px; color:white;")
               ),
-              div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
+              div(id = "completed-message", style = "display:none; font-weight:bold; color:green;", "Concluído")
             )
           )
         ),
@@ -187,11 +174,9 @@ ui <- tagList(
           fluidPage(
             br(),
             fluidRow(
-              column(10, offset = 1,
-                     plotOutput("plot", height = "400px")
-              )
+              column(10, offset = 1, plotOutput("plot", height = "400px"))
             ),
-            div(style = "height: 20px;"), 
+            div(style = "height:20px;"),
             fluidRow(
               column(2, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
               column(2,           actionButton("proximo",  "PRÓXIMO",   class = "btn btn-danger")),
@@ -200,15 +185,13 @@ ui <- tagList(
             br(),
             fluidRow(
               column(10, offset = 1,
-                     div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
-                         "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
-                     )
+                div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
+                    "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
+                )
               )
             ),
             br(),
-            fluidRow(
-              column(4, uiOutput("index_filter"))
-            )
+            fluidRow(column(4, uiOutput("index_filter")))
           )
         ),
         
@@ -232,20 +215,12 @@ ui <- tagList(
   
   tags$script(HTML("
     Shiny.addCustomMessageHandler('update_progress', function(percent) {
-      $('#progress-bar').css('width', percent + '%');
-      $('#progress-bar').text(percent + '%');
+      $('#progress-bar').css('width', percent+'%').text(percent+'%');
     });
-    Shiny.addCustomMessageHandler('show_completed', function(message) {
-      $('#completed-message').show();
-    });
-    Shiny.addCustomMessageHandler('hide_completed', function(message) {
-      $('#completed-message').hide();
-    });
+    Shiny.addCustomMessageHandler('show_completed',  function() { $('#completed-message').show(); });
+    Shiny.addCustomMessageHandler('hide_completed',  function() { $('#completed-message').hide(); });
     $(document).on('click', '.navbar-nav > li', function() {
-      $('.navbar-nav > li').removeClass('active');
-      $(this).addClass('active');
+      $('.navbar-nav > li').removeClass('active'); $(this).addClass('active');
     });
   "))
 )
-
-# Se quiser separar ui e server em arquivos, salve este bloco como app_ui.R
