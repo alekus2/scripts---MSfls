@@ -295,7 +295,7 @@ server <- function(input, output, session) {
     filename = function() {
       now <- Sys.time()
       data_str <- format(now, "%d-%m-%y_%H.%M")
-      paste0("parcelas_", data_str, ".zip")
+      paste0("parcelas_",tipo_parcela,"_", data_str, ".zip")
     },
     content = function(file) {
       req(values$result_points)
@@ -304,7 +304,7 @@ server <- function(input, output, session) {
       data_str <- format(now, "%d-%m-%y_%H.%M")
       shapefile_dir <- file.path(temp_dir, paste0("parcelas_", data_str))
       dir.create(shapefile_dir)
-      shapefile_path <- file.path(shapefile_dir, "parcelas.shp")
+      shapefile_path <- file.path(shapefile_dir, paste0("parcelas_",tipo_parcela,"_", data_str,".shp"))
       st_write(values$result_points, dsn = shapefile_path, driver = "ESRI Shapefile", delete_dsn = TRUE)
       shapefile_files <- list.files(
         path = shapefile_dir,
