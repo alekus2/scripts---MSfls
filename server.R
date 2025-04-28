@@ -263,39 +263,11 @@ server <- function(input, output, session) {
     updateSelectInput(session, "selected_index", selected = indexes_list[prev_index])
   })
   
-  output$plot <- renderPlot({
-    req(values$result_points, input$selected_index, shape())
-    selected_index <- input$selected_index
-    result_aux <- values$result_points
-    shape_aux <- shape()
-    shape_aux <- st_transform(shape_aux, 31982)
-    
-    shape_aux$Index <- paste0(shape_aux$ID_PROJETO, shape_aux$ITALHAO)
-    shape_filtrado <- shape_aux %>% dplyr::filter(Index == selected_index)
-    points_df <- result_aux %>% dplyr::filter(Index == selected_index)
-    
-    num_parc_title <- shape_filtrado %>% 
-      dplyr::group_by(ID_PROJETO, ID_TALHAO) %>%
-      dplyr::summarise(Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade)))) %>%
-      dplyr::mutate(Num.parc = ifelse(as.numeric(Num.parc) < 2, 2, Num.parc),
-                    Index = paste0(ID_PROJETO, TALHAO)) %>%
-      dplyr::pull(Num.parc)
-    
-    area_titulo <- round(sum(st_area(shape_filtrado)) / 10000, 2)
-    
-    ggplot() + 
-      geom_sf(data = shape_filtrado) + 
-      theme_bw() +
-      geom_sf(data = points_df %>% dplyr::filter(!is.na(LATITUDE)), aes(geometry = geometry)) + 
-      theme(legend.position = "none") +
-      ggtitle(paste0("Área (ha): ", area_titulo, "\nNum de Parcelas:", num_parc_title))
-  })
-  
   output$download_result <- downloadHandler(
     filename = function() {
       now <- Sys.time()
       data_str <- format(now, "%d-%m-%y_%H.%M")
-      paste0("parcelas_",tipo_parcela,"_", data_str, ".zip")
+      paste0("parcelas_", tipo_parcela(), "_", data_str, ".zip")  # Alteração aqui
     },
     content = function(file) {
       req(values$result_points)
@@ -304,7 +276,7 @@ server <- function(input, output, session) {
       data_str <- format(now, "%d-%m-%y_%H.%M")
       shapefile_dir <- file.path(temp_dir, paste0("parcelas_", data_str))
       dir.create(shapefile_dir)
-      shapefile_path <- file.path(shapefile_dir, paste0("parcelas_",tipo_parcela,"_", data_str,".shp"))
+      shapefile_path <- file.path(shapefile_dir, paste0("parcelas_", tipo_parcela(), "_", data_str, ".shp"))  # Alteração aqui
       st_write(values$result_points, dsn = shapefile_path, driver = "ESRI Shapefile", delete_dsn = TRUE)
       shapefile_files <- list.files(
         path = shapefile_dir,
