@@ -8,11 +8,8 @@ output$plot <- renderPlot({
   shp_sel <- sf_sel %>% filter(Index == input$selected_index)
   pts_sel <- values$result_points %>% filter(Index == input$selected_index)
 
-  # cálculo de área em hectares como numeric
-  total_area <- sum(st_area(shp_sel))
-  area_ha    <- as.numeric(total_area) / 10000
-
-  # número recomendado, sem units, e mínimo de 2
+  # usa a coluna AREA_HA do shapefile
+  area_ha <- as.numeric(shp_sel$AREA_HA[1])
   num_rec <- ceiling(area_ha / as.numeric(input$recomend_intensidade))
   if (num_rec < 2) num_rec <- 2
 
