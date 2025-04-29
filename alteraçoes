@@ -1,47 +1,42 @@
->> server inicializado
->> botão Confirmar clicado
->> botão Gerar Parcelas clicado
->> shape datapath: C:\Users\ALEX_S~1\AppData\Local\Temp\RtmpKerM85/da379cff9ae0daaba486f7de/0.zip 
->> descompactando shapefile em: C:\Users\ALEX_S~1\AppData\Local\Temp\RtmpKerM85 
-[1] "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.cpg"     "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.dbf"    
-[3] "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.prj"     "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.sbn"    
-[5] "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.sbx"     "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.shp"    
-[7] "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.shp.xml" "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.shx"    
->> shape_path() encontrou: C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.shp 
-[1] "C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.shp"
->> usando shapefile padrão data/parc.shp
-[1] "data/parc.shp"
->> entrou em recomend()
->> calculando recomendação internamente
->> lendo shapefile: C:/Users/ALEX_S~1/AppData/Local/Temp/RtmpKerM85/shape_test2.shp 
->> shape() linhas: 3 
-Aviso: Error in stopifnot: i In argument: `Num.parc = ifelse(Num.parc < 2, 2, Num.parc)`.
-Caused by error in `Ops.units()`:
-! both operands of the expression should be "units" objects
-  127: <Anonymous>
-  126: signalCondition
-  125: signal_abort
-  124: abort
-  123: h
-  122: .handleSimpleError
-  121: stop
-  120: Ops.units
-  119: ifelse
-  118: eval
-  117: mask$eval_all_mutate
-  116: mutate_col
-  114: mutate_cols
-  113: mutate.data.frame
-  112: NextMethod
-  111: stopifnot
-  110: .re_sf
-  109: mutate.sf
-  108: mutate
-  107: select
-  106: as.data.frame
-  105: %>%
-  104: <reactive:recomend> [src/server.R#125]
-   84: recomend
-   81: observe [src/server.R#150]
-   80: <observer:observeEvent(input$gerar_parcelas)>
-    1: runApp
+# 6) recomendação de parcelas
+recomend <- reactive({
+  cat(">> entrou em recomend()\n")
+  if (input$recomendacao_pergunta_upload == 1) {
+    req(input$recomend)
+    cat(">> lendo CSV de recomendação:", input$recomend$name, "\n")
+    df <- read.csv2(input$recomend$datapath)
+    print(head(df))
+    df <- df %>%
+      mutate(
+        Projeto = str_pad(Projeto, 4, pad = "0"),
+        Talhao  = str_pad(Talhao, 3, pad = "0"),
+        Index   = paste0(Projeto, Talhao)
+      ) %>%
+      rename(Num.parc = N, ID_PROJETO = Projeto, TALHAO = Talhao)
+    cat(">> recomend() upload linhas:", nrow(df), "\n")
+    df
+  } else {
+    cat(">> calculando recomendação internamente\n")
+    req(shape(), input$recomend_intensidade)
+    shp_valid <- shape() %>% st_make_valid()
+    
+    shp_valid$area_ha <- as.numeric(st_area(shp_valid)) / 10000
+    
+    df <- shp_valid %>%
+      group_by(ID_PROJETO, TALHAO) %>%
+      summarise(
+        total_area = sum(area_ha),
+        .groups = "drop"
+      ) %>%
+      mutate(
+        Num.parc = ceiling(total_area / as.numeric(input$recomend_intensidade)),
+        Num.parc = ifelse(Num.parc < 2, 2, Num.parc),
+        Index = paste0(ID_PROJETO, TALHAO)
+      ) %>%
+      select(ID_PROJETO, TALHAO, Num.parc, Index) %>%
+      as.data.frame()
+    
+    cat(">> recomend() interno linhas:", nrow(df), "\n")
+    df
+  }
+})
