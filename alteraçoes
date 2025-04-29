@@ -5,8 +5,13 @@ library(dplyr)
 library(zip)
 
 server <- function(input, output, session) {
+  # 1) Debug na inicialização
+  cat(">> server inicializado\n")
   
+  # CONFIRMAR UPLOADS
   observeEvent(input$confirmar, {
+    cat(">> botão Confirmar clicado\n")
+    
     output$shape_text <- renderText({
       req(input$shape)
       paste("Upload realizado referente aos talhões:", input$shape$name)
@@ -28,78 +33,98 @@ server <- function(input, output, session) {
     
     output$confirmation <- renderText({
       req(input$forma_parcela, input$tipo_parcela, input$distancia_minima)
-      paste("Forma Parcela:", input$forma_parcela, 
-            "Tipo Parcela:", input$tipo_parcela, 
+      paste("Forma Parcela:", input$forma_parcela,
+            "Tipo Parcela:", input$tipo_parcela,
             "Distância Mínima:", input$distancia_minima)
     })
   })
   
-  forma_parcela <- reactive({ input$forma_parcela })
-  tipo_parcela  <- reactive({ input$tipo_parcela })
-  distancia_minima <- reactive({ input$distancia_minima })
+  # REACTIVES BÁSICOS
+  forma_parcela        <- reactive({ input$forma_parcela })
+  tipo_parcela         <- reactive({ input$tipo_parcela })
+  distancia_minima     <- reactive({ input$distancia_minima })
   intensidade_amostral <- reactive({ input$intensidade_amostral })
   
+  # shape_path: unzip + grep
   shape_path <- reactive({
     req(input$shape)
-    # descompacta todos os arquivos em tempdir()
-    shape_files <- unzip(input$shape$datapath, exdir = tempdir())
-    # encontra o .shp corretamente
-    shp <- grep("\\.shp$", shape_files, value = TRUE)
-    req(shp)  # erro se não encontrou
+    cat(">> unzip shape em:", tempdir(), "\n")
+    files <- unzip(input$shape$datapath, exdir = tempdir())
+    print(files)
+    shp <- grep("\\.shp$", files, value = TRUE)
+    cat(">> shape_path() encontrou:", shp, "\n")
+    req(shp)
     shp
   })
   
+  # leitura e renomeação do shapefile
   shape <- reactive({
     shp_file <- shape_path()
+    cat(">> lendo shapefile:", shp_file, "\n")
     shp <- st_read(shp_file, quiet = TRUE)
     
     if (input$shape_input_pergunta_arudek == 0) {
+      cat(">> renomeando campos conforme inputs Arudek\n")
       shp <- shp %>%
         rename(
           ID_PROJETO = !!sym(input$mudar_nome_arudek_projeto),
-          TALHAO    = !!sym(input$mudar_nome_arudek_talhao),
-          CICLO     = !!sym(input$mudar_nome_arudek_ciclo),
-          ROTACAO   = !!sym(input$mudar_nome_arudek_rotacao)
+          TALHAO     = !!sym(input$mudar_nome_arudek_talhao),
+          CICLO      = !!sym(input$mudar_nome_arudek_ciclo),
+          ROTACAO    = !!sym(input$mudar_nome_arudek_rotacao)
         )
     }
     
-    shp %>%
+    shp <- shp %>%
       mutate(
         ID_PROJETO = str_pad(ID_PROJETO, 4, pad = "0"),
         TALHAO     = str_pad(TALHAO, 3, pad = "0")
       )
+    cat(">> shape() pronto: linhas =", nrow(shp), "\n")
+    shp
   })
   
+  # parcelas existentes
   parc_exist_path <- reactive({
     if (input$parcelas_existentes_lancar == 1) {
       req(input$parc_exist)
-      parc_files <- unzip(input$parc_exist$datapath, exdir = tempdir())
-      shp2 <- grep("\\.shp$", parc_files, value = TRUE)
+      cat(">> unzip parcelas existentes em:", tempdir(), "\n")
+      files <- unzip(input$parc_exist$datapath, exdir = tempdir())
+      print(files)
+      shp2 <- grep("\\.shp$", files, value = TRUE)
+      cat(">> parc_exist_path() encontrou:", shp2, "\n")
       req(shp2)
       shp2
     } else {
+      cat(">> usando shapefile padrão data/parc.shp\n")
       "data/parc.shp"
     }
   })
   
+  # recomendação
   recomend <- reactive({
+    cat(">> entrou em recomend()\n")
     if (input$recomendacao_pergunta_upload == 1) {
       req(input$recomend)
-      read.csv2(input$recomend$datapath) %>% 
+      cat(">> lendo CSV de recomendação:", input$recomend$name, "\n")
+      df <- read.csv2(input$recomend$datapath)
+      print(head(df))
+      df <- df %>%
         mutate(
           Projeto = str_pad(Projeto, 4, pad = "0"),
           Talhao  = str_pad(Talhao, 3, pad = "0"),
           Index   = paste0(Projeto, Talhao)
         ) %>%
         rename(Num.parc = N, ID_PROJETO = Projeto, TALHAO = Talhao)
+      cat(">> recomend() upload: linhas =", nrow(df), "\n")
+      df
     } else {
+      cat(">> calculando recomendação internamente\n")
       req(shape(), input$recomend_intensidade)
-      shp <- shape() %>% st_make_valid()
-      shp %>%
+      shp_valid <- shape() %>% st_make_valid()
+      df <- shp_valid %>%
         group_by(ID_PROJETO, TALHAO) %>%
         summarise(
-          Num.parc = ceiling(sum(st_area(geometry)) / 
-                             (10000 * as.numeric(input$recomend_intensidade))),
+          Num.parc = ceiling(sum(st_area(geometry)) / (10000 * as.numeric(input$recomend_intensidade))),
           .groups = "drop"
         ) %>%
         mutate(
@@ -108,42 +133,64 @@ server <- function(input, output, session) {
         ) %>%
         select(ID_PROJETO, TALHAO, Num.parc, Index) %>%
         as.data.frame()
+      cat(">> recomend() interno: linhas =", nrow(df), "\n")
+      df
     }
   })
   
+  # valores e progresso
   progress_percentage <- reactiveVal(0)
   values <- reactiveValues(result_points = NULL, process_complete = FALSE)
   
+  # gerar parcelas
   observeEvent(input$gerar_parcelas, {
-    session$sendCustomMessage("hide_completed", "")
+    cat(">> botão Gerar Parcelas clicado\n")
+    # mostrar paths e primeiras linhas
+    print(shape_path())
+    print(parc_exist_path())
+    print(head(recomend()))
     
-    result <- process_data(
-      shape(),
-      recomend(),
-      parc_exist_path(),
-      forma_parcela(),
-      tipo_parcela(),
-      distancia_minima(),
-      intensidade_amostral(),
-      function(p) session$sendCustomMessage("update_progress", p)
-    )
+    result <- tryCatch({
+      process_data(
+        shape(),
+        recomend(),
+        parc_exist_path(),
+        forma_parcela(),
+        tipo_parcela(),
+        distancia_minima(),
+        intensidade_amostral(),
+        function(p) cat(">> progresso:", p, "\n")
+      )
+    }, error = function(e) {
+      cat("!! ERRO em process_data:", e$message, "\n")
+      return(NULL)
+    })
     
-    if (input$lancar_sobrevivencia == 1) {
+    if (is.null(result)) {
+      showNotification("Erro ao gerar parcelas (veja console)", type = "error")
+      return()
+    }
+    
+    cat(">> process_data retornou:", nrow(result), "linhas\n")
+    
+    if (input$lancar_sobrevivencia == 1){
+      # lógica S30...
       for (idx in unique(result$Index)) {
         rows_ipc <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
-        n_s30 <- round(length(rows_ipc) * 0.3)
-        s30_sel <- sample(rows_ipc, n_s30)
-        result$TIPO_ATUAL[s30_sel] <- "S30"
+        n_s30    <- round(length(rows_ipc) * 0.3)
+        sel      <- sample(rows_ipc, n_s30)
+        result$TIPO_ATUAL[sel] <- "S30"
         result$STATUS[result$Index == idx & result$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
       }
+      # garantir pelo menos 1 ou 2 S30
       for (idx in unique(result$Index)) {
-        dt <- result[result$Index == idx, ]
+        dt      <- result[result$Index == idx, ]
         cnt_s30 <- sum(dt$TIPO_ATUAL == "S30")
-        needed <- ifelse(nrow(dt) >= 2, 2, 1) - cnt_s30
+        needed  <- ifelse(nrow(dt) >= 2, 2, 1) - cnt_s30
         if (needed > 0) {
           more_idx <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
-          sel <- sample(more_idx, needed)
-          result$TIPO_ATUAL[sel] <- "S30"
+          sel2     <- sample(more_idx, needed)
+          result$TIPO_ATUAL[sel2] <- "S30"
         }
         result$STATUS[result$Index == idx & result$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
       }
@@ -151,9 +198,121 @@ server <- function(input, output, session) {
     
     result$STATUS[result$TIPO_ATUAL == "S30"] <- "ATIVA"
     values$result_points <- result
-    session$sendCustomMessage("show_completed", "")
+    showNotification("Parcelas geradas com sucesso!", type = "message")
   })
   
-  # ... resto do código permanece igual ...
+  # UI para selecionar índice
+  output$index_filter <- renderUI({
+    req(recomend())
+    selectInput("selected_index", "Selecione o talhão:", choices = unique(recomend()$Index))
+  })
+  
+  # gerar novamente para um índice específico
+  observeEvent(input$gerar_novamente, {
+    cat(">> botão Gerar Novamente clicado\n")
+    selected_index <- input$selected_index
+    values$result_points <- values$result_points %>% 
+      mutate(Index = paste0(PROJETO, TALHAO)) %>% 
+      filter(Index != selected_index)
+    
+    shape_sel   <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
+    recomend_sel<- recomend() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
+    
+    result2 <- process_data(
+      shape_sel, recomend_sel, parc_exist_path(),
+      forma_parcela(), tipo_parcela(),
+      distancia_minima(), intensidade_amostral(),
+      function(p) cat(">> progresso (regerar):", p, "\n")
+    )
+    # mesma lógica S30...
+    if (input$lancar_sobrevivencia == 1){
+      for (idx in unique(result2$Index)) {
+        rows_ipc<- which(result2$Index == idx & result2$TIPO_ATUAL == "IPC")
+        n_s30   <- round(length(rows_ipc) * 0.3)
+        sel     <- sample(rows_ipc, n_s30)
+        result2$TIPO_ATUAL[sel] <- "S30"
+        result2$STATUS[result2$Index == idx & result2$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
+      }
+      for (idx in unique(result2$Index)) {
+        dt      <- result2[result2$Index == idx, ]
+        cnt_s30 <- sum(dt$TIPO_ATUAL == "S30")
+        needed  <- ifelse(nrow(dt) >= 2, 2, 1) - cnt_s30
+        if (needed > 0) {
+          more_idx <- which(result2$Index == idx & result2$TIPO_ATUAL == "IPC")
+          sel2     <- sample(more_idx, needed)
+          result2$TIPO_ATUAL[sel2] <- "S30"
+        }
+        result2$STATUS[result2$Index == idx & result2$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
+      }
+    }
+    result2$STATUS[result2$TIPO_ATUAL == "S30"] <- "ATIVA"
+    
+    values$result_points <- bind_rows(values$result_points, result2)
+    showNotification("Parcelas regeneradas para " %+% selected_index, type = "message")
+  })
+  
+  # navegação entre índices
+  indexes      <- reactive({ unique(recomend()$Index) })
+  current_index<- reactiveVal(1)
+  
+  observeEvent(input$proximo, {
+    idxs <- indexes()
+    ni   <- current_index() + 1
+    if (ni > length(idxs)) ni <- 1
+    current_index(ni)
+    updateSelectInput(session, "selected_index", selected = idxs[ni])
+  })
+  observeEvent(input$anterior, {
+    idxs <- indexes()
+    pi   <- current_index() - 1
+    if (pi < 1) pi <- length(idxs)
+    current_index(pi)
+    updateSelectInput(session, "selected_index", selected = idxs[pi])
+  })
+  
+  # download das parcelas geradas
+  output$download_result <- downloadHandler(
+    filename = function() {
+      data_str <- format(Sys.time(), "%d-%m-%y_%H.%M")
+      paste0("parcelas_", tipo_parcela(), "_", data_str, ".zip")
+    },
+    content = function(file) {
+      req(values$result_points)
+      temp_dir      <- tempdir()
+      shapefile_dir <- file.path(temp_dir, "parcelas")
+      dir.create(shapefile_dir, showWarnings = FALSE)
+      
+      shp_path <- file.path(
+        shapefile_dir,
+        paste0("parcelas_", tipo_parcela(), "_", format(Sys.time(), "%d-%m-%y_%H.%M"), ".shp")
+      )
+      cat(">> escrevendo shapefile em:", shp_path, "\n")
+      st_write(values$result_points, dsn = shp_path, driver = "ESRI Shapefile", delete_dsn = TRUE)
+      
+      files_to_zip <- list.files(shapefile_dir, pattern = "\\.(shp|shx|dbf|prj|cpg|qpj)$", full.names = TRUE)
+      zip::zipr(zipfile = file, files = files_to_zip, root = shapefile_dir)
+      cat(">> zip criado em:", file, "\n")
+    },
+    contentType = "application/zip"
+  )
+  
+  # plot das parcelas
+  output$plot <- renderPlot({
+    req(values$result_points, input$selected_index, shape())
+    sf_sel <- shape() %>% st_transform(31982) %>% mutate(Index = paste0(ID_PROJETO, TALHAO))
+    shp_sel<- sf_sel %>% filter(Index == input$selected_index)
+    pts_sel<- values$result_points %>% filter(Index == input$selected_index)
+    area_ha<- as.numeric(shp_sel$AREA_HA[1])
+    num_rec<- ceiling(area_ha / as.numeric(input$intensidade_amostral))
+    if (num_rec < 2) num_rec <- 2
+    
+    ggplot() +
+      geom_sf(data = shp_sel, fill = NA, color = "black") +
+      geom_sf(data = pts_sel, size = 2) +
+      ggtitle(paste0("Número de parcelas recomendadas: ", num_rec,
+                     " (Área: ", round(area_ha, 2), " ha)")) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  })
   
 }
