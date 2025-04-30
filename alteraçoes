@@ -1,11 +1,9 @@
-
 library(shiny)
 library(sf)
 library(stringr)
 library(dplyr)
 library(zip)       
 library(ggplot2)
-
 
 server <- function(input, output, session) {
   observeEvent(input$confirmar, {
@@ -186,20 +184,20 @@ server <- function(input, output, session) {
   
   output$download_result <- downloadHandler(
     filename = function() {
-      data_str <- format(Sys.time(), "%d-%m-%y_%H.%M")
-      paste0("parcelas_", tipo_parcela(), "_", data_str, ".zip")
+      ts <- format(Sys.time(), "%d-%m-%y_%H.%M")
+      paste0("parcelas_", tipo_parcela(), "_", ts, ".zip")
     },
     content = function(file) {
       req(values$result_points)
-      temp_dir      <- tempdir()
-      shapefile_dir <- file.path(temp_dir, "parcelas")
+      ts             <- format(Sys.time(), "%d-%m-%y_%H.%M")
+      temp_dir       <- tempdir()
+      shapefile_dir  <- file.path(temp_dir, paste0("parcelas_", tipo_parcela(), "_", ts))
+      unlink(shapefile_dir, recursive = TRUE, force = TRUE)
       dir.create(shapefile_dir, showWarnings = FALSE)
-      shp_path <- file.path(
-        shapefile_dir,
-        paste0("parcelas_", tipo_parcela(), "_", format(Sys.time(), "%d-%m-%y_%H.%M"), ".shp")
-      )
+      shp_base       <- paste0("parcelas_", tipo_parcela(), "_", ts)
+      shp_path       <- file.path(shapefile_dir, paste0(shp_base, ".shp"))
       st_write(values$result_points, dsn = shp_path, driver = "ESRI Shapefile", delete_dsn = TRUE)
-      files_to_zip <- list.files(shapefile_dir, pattern = "\\.(shp|shx|dbf|prj|cpg|qpj)$", full.names = TRUE) #ele deveria caçar somente oque for com nome e data que foram criados no processo atual, ele esta juntando todos processos
+      files_to_zip   <- list.files(shapefile_dir, pattern = paste0("^", shp_base, "\\.(shp|shx|dbf|prj|cpg|qpj)$"), full.names = TRUE)
       zip::zipr(zipfile = file, files = files_to_zip, root = shapefile_dir)
     },
     contentType = "application/zip"
