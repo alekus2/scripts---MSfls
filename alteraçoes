@@ -1,218 +1,232 @@
+
 library(shiny)
-library(shinythemes)
+library(sf)
+library(stringr)
+library(dplyr)
+library(zip)       
+library(ggplot2)
 
-bracell_primary <- "#007E69"
-bracell_secondary <- "#5f8b27"
-bracell_white <- "#FFFFFF"
-
-ui <- tagList(
-  tags$head(
-    tags$style(HTML(paste0("
-      body {
-        background-color: ", bracell_white, ";
-        font-family: 'Segoe UI', sans-serif;
-      }
-      shiny-notification {
-      position: fixed;
-      top: 10px;
-      right: 10px;
-      }
-      .navbar {
-        background-color: ", bracell_primary, " !important;
-        margin-bottom: 0px;
-        border: none;
-        border-radius: 0;
-      }
-      .navbar-default .navbar-brand,
-      .navbar-default .navbar-nav > li > a {
-        color: ", bracell_white, " !important;
-      }
-      .navbar-nav > li.active > a {
-        color: ", bracell_secondary, " !important;
-      }
-      .tab-content {
-        padding: 20px;
-        background-color: #f4f4f4;
-        border-top: 2px solid ", bracell_secondary, ";
-      }
-      .btn {
-        background-color: ", bracell_secondary, ";
-        color: white;
-        border: none;
-        font-weight: bold;
-      }
-      .btn:hover {
-        background-color: ", bracell_primary, "; 
-      }
-      .btn:focus {
-        background-color: ", bracell_primary, "; 
-        outline: none; 
-      }
-      .sobre-texto {
-        font-size: 16px;
-        color: #000;
-        text-align: justify;
-      }
-      .sobre-texto h2 {
-        font-size: 24px;
-        color: ", bracell_primary, ";
-      }
-      .navbar-brand {
-        display: flex !important;
-        align-items: center !important;
-      }
-      
-      .navbar-brand img {
-        max-height: 40px;
-        margin-right: 10px;
-      }
-    ")))
-  ),
+server <- function(input, output, session) {
   
-  navbarPage(title = div(tags$img(src = "logo.png", height = "40px"), "ALOCADOR DE PARCELAS"),
-             
-             tabPanel("Sobre", icon = icon("info"),
-                      fluidRow(
-                        column(12,
-                               div(class = "sobre-texto",
-                                   h2("Sobre"),
-                                   p("Ferramenta desenvolvida em Shiny (R) para o lançamento de parcelas com grid da organização, que integra informações de recomendação, shapefile dos talhões e parcelas históricas."),
-                                   HTML("<b style='color:red;'>O aplicativo foi desenvolvido para facilitar o processo de lançamento de parcelas para ArcGIS PRO. No entanto, sua utilizção NÃO elimina a necessidade de análises criteriosas!</b>")
-                               )
-                        )
-                      )
-             ),
-             
-             tabPanel("Dados", icon = icon("file-upload"),
-                      sidebarLayout(
-                        sidebarPanel(
-                          fileInput("shape", "Upload do Shapefile dos talhões", accept = c(".zip")),
-                          
-                          radioButtons("shape_input_pergunta_arudek", "Formato do shape de entrada?",
-                                       choices = list("P_SDE_BRACELL_PUB.VW_GIS_POL_US" = 1, "Outro" = 0), selected = 1),
-                          
-                          conditionalPanel("input.shape_input_pergunta_arudek == 0",
-                                           textInput("mudar_nome_arudek_projeto", "Projeto:", "ID_PROJETO"),
-                                           textInput("mudar_nome_arudek_talhao", "Talhão:", "CD_TALHAO"),
-                                           textInput("mudar_nome_arudek_ciclo", "Ciclo:", "NUM_CICLO"),
-                                           textInput("mudar_nome_arudek_rotacao", "Rotação:", "NUM_ROTAC")
-                          ),
-                          
-                          h2("Insira a intensidade amostral desejada: "),
-                          numericInput("intensidade_amostral", "A quantidade de parcelas por área (ha) :", value = 5),
-                          
-                          radioButtons("parcelas_existentes_lancar", "Deseja informar as parcelas já existentes?",
-                                       choices = list("Sim" = 1, "Não" = 0), selected = 0),
-                          conditionalPanel("input.parcelas_existentes_lancar == 1",
-                                           fileInput("parc_exist", "Upload do Shapefile das parcelas já existentes", accept = c(".zip"))
-                          ),
-                          
-                          selectizeInput("forma_parcela", "Forma Parcela:", choices = c("CIRCULAR", "RETANGULAR")),
-                          selectizeInput("tipo_parcela", "Tipo da Parcela:", choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
-                          conditionalPanel("input.tipo_parcela == 'IPC'",
-                                           radioButtons("lancar_sobrevivencia", "Lançar parcelas de sobrevivência?", choices = list("Sim" = 1, "Não" = 0), selected = 0)
-                          ),
-                          sliderInput("distancia_minima", "Distância Mínima:", min = 30, max = 100, value = 50, step = 10),
-                          actionButton("confirmar", "Confirmar", class = "btn btn-danger")
-                        ),
-                        mainPanel(
-                          div(class = "sobre-texto",
-                              h2("Sobre os arquivos"),
-                              p("Shape dos talhões: .zip com todos os arquivos do shapefile."),
-                              p("Recomendação: planilha .csv com colunas Projeto, Talhão e N."),
-                              p("Parcelas históricas: .zip com os shapefiles das parcelas existentes.")
-                          ),
-                          verbatimTextOutput("shape_text"),
-                          verbatimTextOutput("parc_exist_text"),
-                          verbatimTextOutput("confirmation"),
-                          conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                           textInput("download_recomend_name", "Nome do arquivo de recomendação:", "Recomendação-"),
-                                           downloadButton("download_recomend", "Download da Recomendação criada*"),
-                                           p("*Disponível após o upload das demais informações")
-                          )
-                        )
-                      )
-             ),
-             
-             tabPanel("Plotagem", icon = icon("chart-bar"),
-                      tabsetPanel(
-                        tabPanel("Status", icon = icon("clock"),
-                                 sidebarLayout(
-                                   sidebarPanel(
-                                     h2("Gerar parcelas", style = paste0("color:", bracell_primary, ";")),
-                                     p("Clique no botão abaixo para gerar as parcelas."),
-                                     actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
-                                   ),
-                                   mainPanel(
-                                     div(id = "progress-container", style = "width: 100%; background-color: #f3f3f3; padding: 3px;",
-                                         div(id = "progress-bar", style = "width: 0%; height: 20px; background-color: #4CAF50; text-align: center; line-height: 20px; color: white;")
-                                     ),
-                                     div(id = "completed-message", style = "display: none; font-weight: bold; color: green;", "Concluído")
-                                   )
-                                 )
-                        ),
-                        tabPanel("GRAFICO DE PARCELAS", icon = icon("map"),
-                                 fluidPage(
-                                   br(),
-                                   fluidRow(
-                                     column(4, uiOutput("index_filter")),
-                                     column(8,
-                                            plotOutput("plot", height = "400px")
-                                     )
-                                   ),
-                                   br(),
-                                   fluidRow(
-                                     column(4, offset = 1, actionButton("anterior", "ANTERIOR", class = "btn btn-danger")),
-                                     column(4, actionButton("proximo", "PRÓXIMO", class = "btn btn-danger")),
-                                   ),
-                                   fluidRow(
-                                     column(8, offset = 4, actionButton("gerar_parcelas", "GERAR NOVAMENTE AS PARCELAS", class = "btn btn-danger"))
-                                   ),
-                                   br(),
-                                   fluidRow(
-                                     column(10, offset = 1,
-                                            div(style = "color:red;font-weight:bold;font-size:16px;text-align:justify;",
-                                                "O número de parcelas alocadas pode diferir do número recomendado. Avalie no ArcGIS Pro!"
-                                            )
-                                     )
-                                   )
-                                 )
-                        ),
-                        tabPanel("DOWNLOAD",
-                                 fluidPage(
-                                   br(),
-                                   wellPanel(
-                                     h4("Download"),
-                                     p("Arquivo gerado com base nas especificações."),
-                                     downloadButton("download_result", "DOWNLOAD PARCELAS", class = "btn btn-danger"),
-                                     br(), br(),
-                                     div(style = "color:red; font-weight:bold;",
-                                         "O nome do arquivo será gerado automaticamente com data e hora o tipo de parcela que deseja ser gerada."
-                                     )
-                                   )
-                                 )
-                        )
-                      )
-             )
-  ),
+  observeEvent(input$confirmar, {
+    output$shape_text <- renderText({
+      req(input$shape)
+      paste("Upload talhões:", input$shape$name)
+    })
+    output$parc_exist_text <- renderText({
+      if (input$parcelas_existentes_lancar == 1) {
+        req(input$parc_exist)
+        paste("Upload parcelas existentes:", input$parc_exist$name)
+      } else {
+        "Upload de parcelas existentes não realizado."
+      }
+    })
+    output$confirmation <- renderText({
+      req(input$forma_parcela, input$tipo_parcela, input$distancia_minima)
+      paste(
+        "Forma:", input$forma_parcela,
+        "Tipo:", input$tipo_parcela,
+        "Distância mínima:", input$distancia_minima
+      )
+    })
+  })
   
-  tags$script(HTML("
-    Shiny.addCustomMessageHandler('update_progress', function(percent) {
-      $('#progress-bar').css('width', percent + '%');
-      $('#progress-bar').text(percent + '%');
-    });
-    Shiny.addCustomMessageHandler('show_completed', function(message) {
-      $('#completed-message').show();
-    });
-    Shiny.addCustomMessageHandler('hide_completed', function(message) {
-      $('#completed-message').hide();
-    });
-
-    $(document).on('click', '.navbar-nav > li', function() {
-      $('.navbar-nav > li').removeClass('active');
-      $(this).addClass('active');
-    });
-  "))
-)
-
-shinyApp(ui = ui, server = server)
+  forma_parcela        <- reactive({ input$forma_parcela })
+  tipo_parcela         <- reactive({ input$tipo_parcela })
+  distancia_minima     <- reactive({ input$distancia_minima })
+  intensidade_amostral <- reactive({ input$intensidade_amostral })
+  
+  shape_path <- reactive({
+    req(input$shape)
+    files <- utils::unzip(input$shape$datapath, exdir = tempdir())
+    shp <- grep("\\.shp$", files, ignore.case = TRUE, value = TRUE)
+    req(length(shp) == 1, "Não encontrou nenhum .shp válido")
+    shp
+  })
+  
+  shape <- reactive({
+    shp_file <- shape_path()
+    shp <- st_read(shp_file, quiet = TRUE)
+    if (input$shape_input_pergunta_arudek == 0) {
+      shp <- shp %>%
+        rename(
+          ID_PROJETO = !!sym(input$mudar_nome_arudek_projeto),
+          TALHAO     = !!sym(input$mudar_nome_arudek_talhao),
+          CICLO      = !!sym(input$mudar_nome_arudek_ciclo),
+          ROTACAO    = !!sym(input$mudar_nome_arudek_rotacao)
+        )
+    }
+    shp %>%
+      mutate(
+        ID_PROJETO = str_pad(ID_PROJETO, 4, pad = "0"),
+        TALHAO     = str_pad(TALHAO, 3, pad = "0")
+      )
+  })
+  
+  parc_exist_path <- reactive({
+    if (input$parcelas_existentes_lancar == 1) {
+      req(input$parc_exist)
+      files <- utils::unzip(input$parc_exist$datapath, exdir = tempdir())
+      shp2 <- grep("\\.shp$", files, ignore.case = TRUE, value = TRUE)
+      req(length(shp2) == 1, "Não encontrou .shp válido para parcelas existentes")
+      shp2
+    } else {
+      "data/parc.shp"
+    }
+  })
+  
+  values <- reactiveValues(result_points = NULL)
+  observeEvent(input$gerar_parcelas, {
+    progress <- Progress$new(session, min = 0, max = 100)
+    on.exit(progress$close())
+    
+    result <- process_data(
+      shape(),
+      parc_exist_path(),
+      forma_parcela(),
+      tipo_parcela(),
+      distancia_minima(),
+      intensidade_amostral(),
+      function(p) {
+        progress$set(value = p, message = paste0(p, "% concluído"))
+      }
+    )
+    
+    if (input$lancar_sobrevivencia == 1) {
+      for (idx in unique(result$Index)) {
+        rows_ipc <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
+        n_s30    <- round(length(rows_ipc) * 0.3)
+        sel      <- sample(rows_ipc, n_s30)
+        result$TIPO_ATUAL[sel] <- "S30"
+        result$STATUS[result$Index == idx & result$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
+      }
+      for (idx in unique(result$Index)) {
+        dt      <- result[result$Index == idx, ]
+        cnt_s30 <- sum(dt$TIPO_ATUAL == "S30")
+        needed  <- ifelse(nrow(dt) >= 2, 2, 1) - cnt_s30
+        if (needed > 0) {
+          more_idx <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
+          sel2     <- sample(more_idx, needed)
+          result$TIPO_ATUAL[sel2] <- "S30"
+        }
+        result$STATUS[result$Index == idx & result$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
+      }
+    }
+    result$STATUS[result$TIPO_ATUAL == "S30"] <- "ATIVA"
+    
+    values$result_points <- result
+    
+    showNotification(
+      "Parcelas geradas com sucesso!",
+      type     = "message",
+      duration = 10
+    )
+  })
+  
+  output$index_filter <- renderUI({
+    req(values$result_points)
+    selectInput("selected_index", "Selecione o talhão:", choices = unique(values$result_points$Index))
+  })
+  
+  observeEvent(input$gerar_novamente, {
+    print(">> botão Gerar Novamente clicado\n")
+    selected_index <- input$selected_index
+    values$result_points <- values$result_points %>%
+      mutate(Index = paste0(PROJETO, TALHAO)) %>%
+      filter(Index != selected_index)
+    
+    shape_sel <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
+    
+    result2 <- process_data(
+      shape_sel, parc_exist_path(),
+      forma_parcela(), tipo_parcela(),
+      distancia_minima(), intensidade_amostral(),
+      function(p) cat(">> progresso (regerar):", p, "\n")
+    )
+    
+    if (input$lancar_sobrevivencia == 1) {
+      for (idx in unique(result2$Index)) {
+        rows_ipc <- which(result2$Index == idx & result2$TIPO_ATUAL == "IPC")
+        n_s30    <- round(length(rows_ipc) * 0.3)
+        sel      <- sample(rows_ipc, n_s30)
+        result2$TIPO_ATUAL[sel] <- "S30"
+        result2$STATUS[result2$Index == idx & result2$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
+      }
+      for (idx in unique(result2$Index)) {
+        dt      <- result2[result2$Index == idx, ]
+        cnt_s30 <- sum(dt$TIPO_ATUAL == "S30")
+        needed  <- ifelse(nrow(dt) >= 2, 2, 1) - cnt_s30
+        if (needed > 0) {
+          more_idx <- which(result2$Index == idx & result2$TIPO_ATUAL == "IPC")
+          sel2     <- sample(more_idx, needed)
+          result2$TIPO_ATUAL[sel2] <- "S30"
+        }
+        result2$STATUS[result2$Index == idx & result2$TIPO_ATUAL == "IPC"] <- "DESATIVADA"
+      }
+    }
+    result2$STATUS[result2$TIPO_ATUAL == "S30"] <- "ATIVA"
+    
+    values$result_points <- bind_rows(values$result_points, result2)
+    showNotification(paste("Parcelas regeneradas para", selected_index), type = "message")
+  })
+  
+  indexes       <- reactive({ unique(values$result_points$Index) })
+  current_index <- reactiveVal(1)
+  
+  observeEvent(input$proximo, {
+    idxs <- indexes()
+    ni   <- current_index() + 1
+    if (ni > length(idxs)) ni <- 1
+    current_index(ni)
+    updateSelectInput(session, "selected_index", selected = idxs[ni])
+  })
+  
+  observeEvent(input$anterior, {
+    idxs <- indexes()
+    pi   <- current_index() - 1
+    if (pi < 1) pi <- length(idxs)
+    current_index(pi)
+    updateSelectInput(session, "selected_index", selected = idxs[pi])
+  })
+  
+  output$download_result <- downloadHandler(
+    filename = function() {
+      data_str <- format(Sys.time(), "%d-%m-%y_%H.%M")
+      paste0("parcelas_", tipo_parcela(), "_", data_str, ".zip")
+    },
+    content = function(file) {
+      req(values$result_points)
+      temp_dir      <- tempdir()
+      shapefile_dir <- file.path(temp_dir, "parcelas")
+      dir.create(shapefile_dir, showWarnings = FALSE)
+      shp_path <- file.path(
+        shapefile_dir,
+        paste0("parcelas_", tipo_parcela(), "_", format(Sys.time(), "%d-%m-%y_%H.%M"), ".shp")
+      )
+      cat(">> escrevendo shapefile em:", shp_path, "\n")
+      st_write(values$result_points, dsn = shp_path, driver = "ESRI Shapefile", delete_dsn = TRUE)
+      files_to_zip <- list.files(shapefile_dir, pattern = "\\.(shp|shx|dbf|prj|cpg|qpj)$", full.names = TRUE)
+      zip::zipr(zipfile = file, files = files_to_zip, root = shapefile_dir)
+      cat(">> zip criado em:", file, "\n")
+    },
+    contentType = "application/zip"
+  )
+  
+  output$plot <- renderPlot({
+    req(values$result_points, input$selected_index, shape())
+    sf_sel <- shape() %>% st_transform(31982) %>% mutate(Index = paste0(ID_PROJETO, TALHAO))
+    shp_sel <- sf_sel %>% filter(Index == input$selected_index)
+    pts_sel <- values$result_points %>% filter(Index == input$selected_index)
+    area_ha <- as.numeric(shp_sel$AREA_HA[1])
+    num_rec <- ceiling(area_ha / as.numeric(input$intensidade_amostral))
+    if (num_rec < 2) num_rec <- 2
+    
+    ggplot() +
+      geom_sf(data = shp_sel, fill = NA, color = "black") +
+      geom_sf(data = pts_sel, size = 2) +
+      ggtitle(paste0("Número de parcelas recomendadas: ", num_rec,
+                     " (Área: ", round(area_ha, 2), " ha)")) +
+      theme_minimal() +
+      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
+  })
+}
