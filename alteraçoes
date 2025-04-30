@@ -12,10 +12,6 @@ server <- function(input, output, session) {
       req(input$shape)
       paste("Upload talhões:", input$shape$name)
     })
-    output$recomend_text <- renderText({
-      req(input$recomend)
-      paste("Upload recomendação:", input$recomend$name)
-    })
     output$parc_exist_text <- renderText({
       if (input$parcelas_existentes_lancar == 1) {
         req(input$parc_exist)
@@ -78,37 +74,6 @@ server <- function(input, output, session) {
     }
   })
   
-  #   recomend <- reactive({
-  #     if (input$recomendacao_pergunta_upload == 1) {
-  #       req(input$recomend)
-  #       df <- read.csv2(input$recomend$datapath)
-  #       df %>%
-  #         mutate(
-  #           Projeto = str_pad(Projeto, 4, pad = "0"),
-  #           Talhao  = str_pad(Talhao, 3, pad = "0"),
-  #           Index   = paste0(Projeto, Talhao)
-  #         ) %>%
-  #         rename(Num.parc = N, ID_PROJETO = Projeto, TALHAO = Talhao)
-  #     } else {
-  #       req(shape(), input$recomend_intensidade)
-  #       shp_valid <- shape() %>% st_make_valid()
-  #       shp_valid$area_ha <- as.numeric(st_area(shp_valid)) / 10000
-  #       shp_valid %>%
-  #         group_by(ID_PROJETO, TALHAO) %>%
-  #         summarise(
-  #           total_area = sum(area_ha),
-  #           .groups    = "drop"
-  #         ) %>%
-  #         mutate(
-  #           Num.parc = ceiling(total_area / as.numeric(input$recomend_intensidade)),
-  #           Num.parc = ifelse(Num.parc < 2, 2, Num.parc),
-  #           Index   = paste0(ID_PROJETO, TALHAO)
-  #         ) %>%
-  #         select(ID_PROJETO, TALHAO, Num.parc, Index) %>%
-  #         as.data.frame()
-  #     }
-  #   })
-  
   values <- reactiveValues(result_points = NULL)
   observeEvent(input$gerar_parcelas, {
     progress <- Progress$new(session, min = 0, max = 100)
@@ -125,6 +90,7 @@ server <- function(input, output, session) {
         progress$set(value = p, message = paste0(p, "% concluído"))
       }
     )
+    
     if (input$lancar_sobrevivencia == 1) {
       for (idx in unique(result$Index)) {
         rows_ipc <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
@@ -157,8 +123,8 @@ server <- function(input, output, session) {
   })
   
   output$index_filter <- renderUI({
-    req(recomend())
-    selectInput("selected_index", "Selecione o talhão:", choices = unique(recomend()$Index))
+    req(values$result_points)
+    selectInput("selected_index", "Selecione o talhão:", choices = unique(values$result_points$Index))
   })
   
   observeEvent(input$gerar_novamente, {
@@ -168,15 +134,15 @@ server <- function(input, output, session) {
       mutate(Index = paste0(PROJETO, TALHAO)) %>%
       filter(Index != selected_index)
     
-    shape_sel    <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
-    recomend_sel <- recomend() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
+    shape_sel <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
     
     result2 <- process_data(
-      shape_sel, recomend_sel, parc_exist_path(),
+      shape_sel, parc_exist_path(),
       forma_parcela(), tipo_parcela(),
       distancia_minima(), intensidade_amostral(),
       function(p) cat(">> progresso (regerar):", p, "\n")
     )
+    
     if (input$lancar_sobrevivencia == 1) {
       for (idx in unique(result2$Index)) {
         rows_ipc <- which(result2$Index == idx & result2$TIPO_ATUAL == "IPC")
@@ -203,7 +169,7 @@ server <- function(input, output, session) {
     showNotification(paste("Parcelas regeneradas para", selected_index), type = "message")
   })
   
-  indexes       <- reactive({ unique(recomend()$Index) })
+  indexes       <- reactive({ unique(values$result_points$Index) })
   current_index <- reactiveVal(1)
   
   observeEvent(input$proximo, {
@@ -213,6 +179,7 @@ server <- function(input, output, session) {
     current_index(ni)
     updateSelectInput(session, "selected_index", selected = idxs[ni])
   })
+  
   observeEvent(input$anterior, {
     idxs <- indexes()
     pi   <- current_index() - 1
