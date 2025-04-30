@@ -36,11 +36,11 @@ process_data <- function(shape, parc_exist_path,
       if (area_sg < 400) next
 
       n_req <- ceiling(area_ha / intensidade_amostral)
-
-      delta     <- sqrt(area_sg / n_req)
-      bb        <- st_bbox(sg)
+      delta <- sqrt(area_sg / n_req)
+      bb    <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
 
+      pts <- st_sfc()
       for (iter in seq_len(20)) {
         grid_pts <- st_make_grid(
           x        = sg,
@@ -49,16 +49,30 @@ process_data <- function(shape, parc_exist_path,
           what     = "centers"
         )
         inside <- st_within(grid_pts, sg, sparse = FALSE)
-        pts    <- grid_pts[apply(inside, 1, any)]
-        if (length(pts) >= n_req) {
-          pts <- pts[1:n_req]
+        cand   <- grid_pts[apply(inside, 1, any)]
+        if (length(cand) >= n_req) {
+          cand <- cand[1:n_req * 2]  # take some extras for spacing
           break
         }
         delta <- delta * 0.95
       }
-      if (length(pts) == 0) next
+      if (length(cand) == 0) next
 
-      coords  <- st_coordinates(pts)
+      # enforce minimum spacing = delta * 0.8
+      min_dist <- delta * 0.8
+      sel <- vector("list", 0)
+      for (pt in cand) {
+        if (length(sel) == 0) {
+          sel <- list(pt)
+        } else {
+          dists <- sapply(sel, function(x) as.numeric(st_distance(x, pt)))
+          if (all(dists >= min_dist)) sel <- append(sel, list(pt))
+        }
+        if (length(sel) == n_req) break
+      }
+      if (length(sel) == 0) next
+      sel <- st_sfc(sel, crs = st_crs(sg))
+      coords  <- st_coordinates(sel)
       n_found <- nrow(coords)
       pts_sf  <- st_sf(
         data.frame(
@@ -76,7 +90,7 @@ process_data <- function(shape, parc_exist_path,
           COORD_X    = coords[,1],
           COORD_Y    = coords[,2]
         ),
-        geometry = pts
+        geometry = sel
       )
 
       result_points[[paste(idx, i, sep = "_")]] <- pts_sf
@@ -88,26 +102,10 @@ process_data <- function(shape, parc_exist_path,
 
   all_pts <- do.call(rbind, result_points)
 
-  parcelasinv <- parc_exist %>%
-    st_drop_geometry() %>%
-    group_by(PROJETO) %>%
-    summarise(
-      max_antiga = max(PARCELAS[PARCELAS < 500], na.rm = TRUE),
-      max_geral  = max(PARCELAS, na.rm = TRUE)
-    ) %>%
-    mutate(
-      numeracao_inicial = if_else(
-        tipo_parcela %in% c("IFQ6","IFQ12","S30","S90","PP"),
-        if_else(max_antiga == 499, max_geral + 1, max_antiga + 1),
-        if_else(max_antiga < 500, 501, max_antiga + 1)
-      )
-    ) %>%
-    select(PROJETO, numeracao_inicial)
-
   all_pts <- all_pts %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
 
-  return(all_pts)
+  all_pts
 }
