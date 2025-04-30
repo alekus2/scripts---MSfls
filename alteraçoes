@@ -1,13 +1,4 @@
-
-library(shiny)
-library(sf)
-library(stringr)
-library(dplyr)
-library(zip)       
-library(ggplot2)
-
 server <- function(input, output, session) {
-  
   observeEvent(input$confirmar, {
     output$shape_text <- renderText({
       req(input$shape)
@@ -30,12 +21,12 @@ server <- function(input, output, session) {
       )
     })
   })
-  
+
   forma_parcela        <- reactive({ input$forma_parcela })
   tipo_parcela         <- reactive({ input$tipo_parcela })
   distancia_minima     <- reactive({ input$distancia_minima })
   intensidade_amostral <- reactive({ input$intensidade_amostral })
-  
+
   shape_path <- reactive({
     req(input$shape)
     files <- utils::unzip(input$shape$datapath, exdir = tempdir())
@@ -43,7 +34,7 @@ server <- function(input, output, session) {
     req(length(shp) == 1, "Não encontrou nenhum .shp válido")
     shp
   })
-  
+
   shape <- reactive({
     shp_file <- shape_path()
     shp <- st_read(shp_file, quiet = TRUE)
@@ -62,7 +53,7 @@ server <- function(input, output, session) {
         TALHAO     = str_pad(TALHAO, 3, pad = "0")
       )
   })
-  
+
   parc_exist_path <- reactive({
     if (input$parcelas_existentes_lancar == 1) {
       req(input$parc_exist)
@@ -74,12 +65,12 @@ server <- function(input, output, session) {
       "data/parc.shp"
     }
   })
-  
+
   values <- reactiveValues(result_points = NULL)
+
   observeEvent(input$gerar_parcelas, {
     progress <- Progress$new(session, min = 0, max = 100)
     on.exit(progress$close())
-    
     result <- process_data(
       shape(),
       parc_exist_path(),
@@ -91,7 +82,6 @@ server <- function(input, output, session) {
         progress$set(value = p, message = paste0(p, "% concluído"))
       }
     )
-    
     if (input$lancar_sobrevivencia == 1) {
       for (idx in unique(result$Index)) {
         rows_ipc <- which(result$Index == idx & result$TIPO_ATUAL == "IPC")
@@ -113,37 +103,30 @@ server <- function(input, output, session) {
       }
     }
     result$STATUS[result$TIPO_ATUAL == "S30"] <- "ATIVA"
-    
     values$result_points <- result
-    
     showNotification(
       "Parcelas geradas com sucesso!",
       type     = "message",
       duration = 10
     )
   })
-  
+
   output$index_filter <- renderUI({
     req(values$result_points)
     selectInput("selected_index", "Selecione o talhão:", choices = unique(values$result_points$Index))
   })
-  
+
   observeEvent(input$gerar_novamente, {
-    print(">> botão Gerar Novamente clicado\n")
-    selected_index <- input$selected_index
-    values$result_points <- values$result_points %>%
-      mutate(Index = paste0(PROJETO, TALHAO)) %>%
-      filter(Index != selected_index)
-    
-    shape_sel <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == selected_index)
-    
+    req(values$result_points, input$selected_index)
+    sel <- input$selected_index
+    new_base <- values$result_points %>% filter(Index != sel)
+    shape_sel <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == sel)
     result2 <- process_data(
       shape_sel, parc_exist_path(),
       forma_parcela(), tipo_parcela(),
       distancia_minima(), intensidade_amostral(),
       function(p) cat(">> progresso (regerar):", p, "\n")
     )
-    
     if (input$lancar_sobrevivencia == 1) {
       for (idx in unique(result2$Index)) {
         rows_ipc <- which(result2$Index == idx & result2$TIPO_ATUAL == "IPC")
@@ -165,14 +148,17 @@ server <- function(input, output, session) {
       }
     }
     result2$STATUS[result2$TIPO_ATUAL == "S30"] <- "ATIVA"
-    
-    values$result_points <- bind_rows(values$result_points, result2)
-    showNotification(paste("Parcelas regeneradas para", selected_index), type = "message")
+    values$result_points <- bind_rows(new_base, result2)
+    showNotification(
+      "Parcelas regeneradas com sucesso!",
+      type     = "message",
+      duration = 10
+    )
   })
-  
+
   indexes       <- reactive({ unique(values$result_points$Index) })
   current_index <- reactiveVal(1)
-  
+
   observeEvent(input$proximo, {
     idxs <- indexes()
     ni   <- current_index() + 1
@@ -180,7 +166,7 @@ server <- function(input, output, session) {
     current_index(ni)
     updateSelectInput(session, "selected_index", selected = idxs[ni])
   })
-  
+
   observeEvent(input$anterior, {
     idxs <- indexes()
     pi   <- current_index() - 1
@@ -188,7 +174,7 @@ server <- function(input, output, session) {
     current_index(pi)
     updateSelectInput(session, "selected_index", selected = idxs[pi])
   })
-  
+
   output$download_result <- downloadHandler(
     filename = function() {
       data_str <- format(Sys.time(), "%d-%m-%y_%H.%M")
@@ -203,15 +189,13 @@ server <- function(input, output, session) {
         shapefile_dir,
         paste0("parcelas_", tipo_parcela(), "_", format(Sys.time(), "%d-%m-%y_%H.%M"), ".shp")
       )
-      cat(">> escrevendo shapefile em:", shp_path, "\n")
       st_write(values$result_points, dsn = shp_path, driver = "ESRI Shapefile", delete_dsn = TRUE)
       files_to_zip <- list.files(shapefile_dir, pattern = "\\.(shp|shx|dbf|prj|cpg|qpj)$", full.names = TRUE)
       zip::zipr(zipfile = file, files = files_to_zip, root = shapefile_dir)
-      cat(">> zip criado em:", file, "\n")
     },
     contentType = "application/zip"
   )
-  
+
   output$plot <- renderPlot({
     req(values$result_points, input$selected_index, shape())
     sf_sel <- shape() %>% st_transform(31982) %>% mutate(Index = paste0(ID_PROJETO, TALHAO))
@@ -220,7 +204,6 @@ server <- function(input, output, session) {
     area_ha <- as.numeric(shp_sel$AREA_HA[1])
     num_rec <- ceiling(area_ha / as.numeric(input$intensidade_amostral))
     if (num_rec < 2) num_rec <- 2
-    
     ggplot() +
       geom_sf(data = shp_sel, fill = NA, color = "black") +
       geom_sf(data = pts_sel, size = 2) +
