@@ -1,4 +1,3 @@
-
 library(sf)
 library(dplyr)
 
@@ -9,41 +8,47 @@ process_data <- function(shape, parc_exist_path,
                          update_progress) {
   parc_exist <- st_read(parc_exist_path) %>%
     st_transform(31982)
-  
+
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = as.numeric(AREA_HA)
     )
-  
+
   buf_dist <- -abs(distancia.minima)
   shapeb   <- shape_full %>%
     st_buffer(buf_dist) %>%
     filter(!st_is_empty(geometry))
-  
+
   result_points <- list()
   total_poly    <- n_distinct(shapeb$Index)
   completed     <- 0
-  
+
   for (idx in unique(shapeb$Index)) {
     talhao   <- filter(shapeb, Index == idx)
-    area_ha  <- unique(talhao$AREA_HA)  # A área agora é diretamente da coluna AREA_HA do shapefile
+    area_ha  <- unique(talhao$AREA_HA)
     subgeo   <- split_subgeometries(talhao)
-    
+
+    # Verifique se subgeo está vazio
+    if (nrow(subgeo) == 0) {
+      print(paste("Subgeometria vazia para o índice:", idx))
+      next
+    }
+
     for (i in seq_len(nrow(subgeo))) {
       sg      <- subgeo[i, ]
-      area_sg <- area_ha  # Usar a área da coluna AREA_HA
+      area_sg <- area_ha
       if (area_sg < 400) next
-      
+
       n_req <- ceiling(area_ha / intensidade_amostral)
-      n_req <- min(n_req, floor(area_sg / intensidade_amostral))  # Limitar o número de pontos
-      if (n_req < 1) next  # Se não houver pontos requeridos, continuar
-      
+      n_req <- min(n_req, floor(area_sg / intensidade_amostral))
+      if (n_req < 1) next
+
       delta <- sqrt(area_sg / n_req)
       bb    <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
-      
+
       pts <- st_sfc()
       for (iter in seq_len(20)) {
         grid_pts <- st_make_grid(
@@ -61,8 +66,7 @@ process_data <- function(shape, parc_exist_path,
         delta <- delta * 0.95
       }
       if (length(cand) == 0) next
-      
-      # enforce minimum spacing = delta * 0.8
+
       min_dist <- delta * 0.8
       sel <- vector("list", 0)
       for (pt in cand) {
@@ -96,44 +100,26 @@ process_data <- function(shape, parc_exist_path,
         ),
         geometry = sel
       )
-      
+
       result_points[[paste(idx, i, sep = "_")]] <- pts_sf
     }
-    
+
     completed <- completed + 1
     update_progress(round(completed / total_poly * 100, 2))
   }
-  
+
+  # Verifique se result_points está vazio
+  if (length(result_points) == 0) {
+    print("Nenhum ponto foi adicionado a result_points.")
+    return(NULL)  # ou retorne um objeto válido, se preferir
+  }
+
   all_pts <- do.call(rbind, result_points)
-  
+
   all_pts <- all_pts %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
-  
+
   all_pts
 }
-                          
-
-Listening on http://127.0.0.1:6158
-Reading layer `parc' from data source 
-  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Aviso em st_cast.sf(shape[i, ], "POLYGON") :
-  repeating attributes for all sub-geometries for which they may not be constant
-[1] "total de poligonos:  1"
-[1] "Processando o indice: 6163014"
-Aviso: Error in UseMethod: método não aplicável para 'group_by' aplicado a um objeto de classe "NULL"
-  86: group_by
-  85: mutate
-  84: ungroup
-  83: %>%
-  82: process_data [src/process_data.R#109]
-  81: observe [src/server.R#82]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
