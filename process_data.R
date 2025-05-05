@@ -1,3 +1,4 @@
+
 library(sf)
 library(dplyr)
 
@@ -8,64 +9,59 @@ process_data <- function(shape, parc_exist_path,
                          update_progress) {
   parc_exist <- st_read(parc_exist_path) %>%
     st_transform(31982)
-
+  
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = as.numeric(AREA_HA)
     )
-
+  
   buf_dist <- -abs(distancia.minima)
   shapeb   <- shape_full %>%
     st_buffer(buf_dist) %>%
     filter(!st_is_empty(geometry))
-
+  
   result_points <- list()
   total_poly    <- n_distinct(shapeb$Index)
   completed     <- 0
-
+  
   for (idx in unique(shapeb$Index)) {
     talhao   <- filter(shapeb, Index == idx)
     area_ha  <- unique(talhao$AREA_HA)
     
     # Mensagem de depuração
     print(paste("Processando índice:", idx, "Área:", area_ha))
-
+    
     subgeo   <- split_subgeometries(talhao)
-
+    
     if (nrow(subgeo) == 0) {
       print(paste("Subgeometria vazia para o índice:", idx))
       next
     }
-
+    
     for (i in seq_len(nrow(subgeo))) {
       sg      <- subgeo[i, ]
       area_sg <- area_ha
       
       # Mensagem de depuração
       print(paste("Processando subgeometria:", i, "Área da subgeometria:", area_sg))
-
-      if (area_sg < 400) {
-        print(paste("Área da subgeometria menor que 400:", area_sg))
-        next
-      }
-
+      
       n_req <- ceiling(area_ha / intensidade_amostral)
       n_req <- min(n_req, floor(area_sg / intensidade_amostral))
       
       # Mensagem de depuração
       print(paste("Número de pontos requeridos:", n_req))
-
+      
       if (n_req < 1) {
         print("Número de pontos requeridos menor que 1.")
         next
       }
-
+      
       delta <- sqrt(area_sg / n_req)
       bb    <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
-
+      
       pts <- st_sfc()
       for (iter in seq_len(20)) {
         grid_pts <- st_make_grid(
@@ -79,7 +75,7 @@ process_data <- function(shape, parc_exist_path,
         
         # Mensagem de depuração
         print(paste("Candidatos encontrados:", length(cand)))
-
+        
         if (length(cand) >= n_req) {
           cand <- cand[1:n_req * 2]  
           break
@@ -90,7 +86,7 @@ process_data <- function(shape, parc_exist_path,
         print("Nenhum candidato encontrado.")
         next
       }
-
+      
       min_dist <- delta * 0.8
       sel <- vector("list", 0)
       for (pt in cand) {
@@ -127,28 +123,29 @@ process_data <- function(shape, parc_exist_path,
         ),
         geometry = sel
       )
-
+      
       result_points[[paste(idx, i, sep = "_")]] <- pts_sf
     }
-
+    
     completed <- completed + 1
     update_progress(round(completed / total_poly * 100, 2))
   }
-
+  
   if (length(result_points) == 0) {
     print("Nenhum ponto foi adicionado a result_points.")
     return(NULL)
   }
-
+  
   all_pts <- do.call(rbind, result_points)
-
+  
   all_pts <- all_pts %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
-
+  
   all_pts
 }
+
 
 Listening on http://127.0.0.1:6158
 Reading layer `parc' from data source 
@@ -163,9 +160,25 @@ Geodetic CRS:  SIRGAS 2000
 Aviso em st_cast.sf(shape[i, ], "POLYGON") :
   repeating attributes for all sub-geometries for which they may not be constant
 [1] "Processando subgeometria: 1 Área da subgeometria: 131.68"
-[1] "Área da subgeometria menor que 400: 131.68"
+[1] "Número de pontos requeridos: 26"
+[1] "Candidatos encontrados: 163798"
 [1] "Processando subgeometria: 2 Área da subgeometria: 131.68"
-[1] "Área da subgeometria menor que 400: 131.68"
+[1] "Número de pontos requeridos: 26"
+[1] "Candidatos encontrados: 1220"
 [1] "Processando subgeometria: 3 Área da subgeometria: 131.68"
-[1] "Área da subgeometria menor que 400: 131.68"
-[1] "Nenhum ponto foi adicionado a result_points."
+[1] "Número de pontos requeridos: 26"
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso: Error in apply: dim(X) deve ter um comprimento positivo
+  86: stop
+  85: apply
+  82: process_data [src/process_data.R#74]
+  81: observe [src/server.R#82]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
