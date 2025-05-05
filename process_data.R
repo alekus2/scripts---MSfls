@@ -141,3 +141,20 @@ process_data <- function(shape, parc_exist_path,
   
   all_pts
 }
+
+
+Listening on http://127.0.0.1:6158
+Reading layer `parc' from data source 
+  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 20 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
+Geodetic CRS:  SIRGAS 2000
+[1] "Processando índice: 6163014 Área total (ha): 131.68"
+Aviso em st_cast.sf(shape[i, ], "POLYGON") :
+  repeating attributes for all sub-geometries for which they may not be constant
+[1] "Processando subgeometria: 1 Área (m2): 1017700.84"
+[1] "Número de pontos requeridos: 203540"
+[1] "Iter 1: candidatos = 203546"
