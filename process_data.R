@@ -122,3 +122,13 @@ process_data <- function(shape, recomend, parc_exist_path,
   
   return(all_pts)
 }
+
+Listening on http://127.0.0.1:6158
+Aviso: Error in : Cannot open "CIRCULAR"; The file doesn't seem to exist.
+  89: <Anonymous>
+  88: stop
+  84: st_transform
+  82: process_data [src/process_data.R#13]
+  81: observe [src/server.R#82]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
