@@ -12,7 +12,7 @@ process_data <- function(shape, parc_exist_path,
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
-      Index   = as.character(CD_USO_SOL),
+      Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = as.numeric(AREA_HA)
     )
   
