@@ -144,7 +144,7 @@ process_data <- function(shape, parc_exist_path,
     return(NULL)
   }
   
-  do.call(rbind, result_points) %>%
+all_pts <- do.call(rbind, result_points) %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
