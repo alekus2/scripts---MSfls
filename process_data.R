@@ -1,4 +1,3 @@
-
 library(sf)
 library(dplyr)
 
@@ -29,40 +28,35 @@ process_data <- function(shape, parc_exist_path,
   for (idx in unique(shapeb$Index)) {
     talhao   <- filter(shapeb, Index == idx)
     area_ha  <- unique(talhao$AREA_HA)
+    print(paste("Processando índice:", idx, "Área total (ha):", area_ha))
     
-    # Mensagem de depuração
-    print(paste("Processando índice:", idx, "Área:", area_ha))
-    
-    subgeo   <- split_subgeometries(talhao)
-    
+    subgeo <- split_subgeometries(talhao)
     if (nrow(subgeo) == 0) {
       print(paste("Subgeometria vazia para o índice:", idx))
       next
     }
     
     for (i in seq_len(nrow(subgeo))) {
-      sg      <- subgeo[i, ]
-      area_sg <- area_ha
+      sg <- subgeo[i, ]
+      # calcula área da subgeometria em m²
+      area_sg <- as.numeric(st_area(sg))
+      print(paste("Processando subgeometria:", i, "Área (m2):", round(area_sg, 2)))
       
-      # Mensagem de depuração
-      print(paste("Processando subgeometria:", i, "Área da subgeometria:", area_sg))
-      
-      n_req <- ceiling(area_ha / intensidade_amostral)
+      # pontos por intensidade (ha → m2)
+      n_req <- ceiling((area_ha * 10000) / intensidade_amostral)
       n_req <- min(n_req, floor(area_sg / intensidade_amostral))
-      
-      # Mensagem de depuração
       print(paste("Número de pontos requeridos:", n_req))
-      
       if (n_req < 1) {
-        print("Número de pontos requeridos menor que 1.")
+        print("Menos de 1 ponto necessário; pulando.")
         next
       }
       
-      delta <- sqrt(area_sg / n_req)
-      bb    <- st_bbox(sg)
+      delta     <- sqrt(area_sg / n_req)
+      bb        <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
       
-      pts <- st_sfc()
+      # gera e filtra grid até ter candidatos suficientes
+      cand <- st_sfc(crs = st_crs(sg))
       for (iter in seq_len(20)) {
         grid_pts <- st_make_grid(
           x        = sg,
@@ -70,25 +64,28 @@ process_data <- function(shape, parc_exist_path,
           offset   = offset_xy,
           what     = "centers"
         )
-        inside <- st_within(grid_pts, sg, sparse = FALSE)
-        cand   <- grid_pts[apply(inside, 1, any)]
-        
-        # Mensagem de depuração
-        print(paste("Candidatos encontrados:", length(cand)))
-        
+        if (length(grid_pts) == 0) {
+          delta <- delta * 0.95
+          next
+        }
+        inside_lst <- st_within(grid_pts, sg)
+        idx_keep   <- lengths(inside_lst) > 0
+        cand       <- grid_pts[idx_keep]
+        print(paste0("Iter ", iter, ": candidatos = ", length(cand)))
         if (length(cand) >= n_req) {
-          cand <- cand[1:n_req * 2]  
+          cand <- cand[seq_len(n_req * 2)]
           break
         }
         delta <- delta * 0.95
       }
       if (length(cand) == 0) {
-        print("Nenhum candidato encontrado.")
+        print("Nenhum candidato encontrado; pulando.")
         next
       }
       
+      # seleciona automaticamente garantindo distância mínima
       min_dist <- delta * 0.8
-      sel <- vector("list", 0)
+      sel <- list()
       for (pt in cand) {
         if (length(sel) == 0) {
           sel <- list(pt)
@@ -98,14 +95,15 @@ process_data <- function(shape, parc_exist_path,
         }
         if (length(sel) == n_req) break
       }
-      if (length(sel) == 0) {
-        print("Nenhum ponto selecionado.")
+      if (length(sel) < 1) {
+        print("Nenhum ponto selecionado; pulando.")
         next
       }
-      sel <- st_sfc(sel, crs = st_crs(sg))
-      coords  <- st_coordinates(sel)
+      
+      sel    <- st_sfc(sel, crs = st_crs(sg))
+      coords <- st_coordinates(sel)
       n_found <- nrow(coords)
-      pts_sf  <- st_sf(
+      pts_sf <- st_sf(
         data.frame(
           Index      = rep(idx, n_found),
           PROJETO    = rep(talhao$ID_PROJETO, n_found),
@@ -136,49 +134,10 @@ process_data <- function(shape, parc_exist_path,
     return(NULL)
   }
   
-  all_pts <- do.call(rbind, result_points)
-  
-  all_pts <- all_pts %>%
+  all_pts <- do.call(rbind, result_points) %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
   
   all_pts
 }
-
-
-Listening on http://127.0.0.1:6158
-Reading layer `parc' from data source 
-  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-[1] "Processando índice: 6163014 Área: 131.68"
-Aviso em st_cast.sf(shape[i, ], "POLYGON") :
-  repeating attributes for all sub-geometries for which they may not be constant
-[1] "Processando subgeometria: 1 Área da subgeometria: 131.68"
-[1] "Número de pontos requeridos: 26"
-[1] "Candidatos encontrados: 163798"
-[1] "Processando subgeometria: 2 Área da subgeometria: 131.68"
-[1] "Número de pontos requeridos: 26"
-[1] "Candidatos encontrados: 1220"
-[1] "Processando subgeometria: 3 Área da subgeometria: 131.68"
-[1] "Número de pontos requeridos: 26"
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso: Error in apply: dim(X) deve ter um comprimento positivo
-  86: stop
-  85: apply
-  82: process_data [src/process_data.R#74]
-  81: observe [src/server.R#82]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
