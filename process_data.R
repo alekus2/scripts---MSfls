@@ -1,4 +1,3 @@
-
 library(sf)
 library(dplyr)
 
@@ -28,15 +27,18 @@ process_data <- function(shape, parc_exist_path,
   
   for (idx in unique(shapeb$Index)) {
     talhao   <- filter(shapeb, Index == idx)
-    area_ha  <- unique(talhao$AREA_HA)
+    area_ha  <- unique(talhao$AREA_HA)  # A área agora é diretamente da coluna AREA_HA do shapefile
     subgeo   <- split_subgeometries(talhao)
     
     for (i in seq_len(nrow(subgeo))) {
       sg      <- subgeo[i, ]
-      area_sg <- as.numeric(st_area(sg))
+      area_sg <- area_ha  # Usar a área da coluna AREA_HA
       if (area_sg < 400) next
       
       n_req <- ceiling(area_ha / intensidade_amostral)
+      n_req <- min(n_req, floor(area_sg / intensidade_amostral))  # Limitar o número de pontos
+      if (n_req < 1) next  # Se não houver pontos requeridos, continuar
+      
       delta <- sqrt(area_sg / n_req)
       bb    <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
