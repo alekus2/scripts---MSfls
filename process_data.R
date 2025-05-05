@@ -28,9 +28,12 @@ process_data <- function(shape, parc_exist_path,
   for (idx in unique(shapeb$Index)) {
     talhao   <- filter(shapeb, Index == idx)
     area_ha  <- unique(talhao$AREA_HA)
+    
+    # Mensagem de depuração
+    print(paste("Processando índice:", idx, "Área:", area_ha))
+
     subgeo   <- split_subgeometries(talhao)
 
-    # Verifique se subgeo está vazio
     if (nrow(subgeo) == 0) {
       print(paste("Subgeometria vazia para o índice:", idx))
       next
@@ -39,11 +42,25 @@ process_data <- function(shape, parc_exist_path,
     for (i in seq_len(nrow(subgeo))) {
       sg      <- subgeo[i, ]
       area_sg <- area_ha
-      if (area_sg < 400) next
+      
+      # Mensagem de depuração
+      print(paste("Processando subgeometria:", i, "Área da subgeometria:", area_sg))
+
+      if (area_sg < 400) {
+        print(paste("Área da subgeometria menor que 400:", area_sg))
+        next
+      }
 
       n_req <- ceiling(area_ha / intensidade_amostral)
       n_req <- min(n_req, floor(area_sg / intensidade_amostral))
-      if (n_req < 1) next
+      
+      # Mensagem de depuração
+      print(paste("Número de pontos requeridos:", n_req))
+
+      if (n_req < 1) {
+        print("Número de pontos requeridos menor que 1.")
+        next
+      }
 
       delta <- sqrt(area_sg / n_req)
       bb    <- st_bbox(sg)
@@ -59,13 +76,20 @@ process_data <- function(shape, parc_exist_path,
         )
         inside <- st_within(grid_pts, sg, sparse = FALSE)
         cand   <- grid_pts[apply(inside, 1, any)]
+        
+        # Mensagem de depuração
+        print(paste("Candidatos encontrados:", length(cand)))
+
         if (length(cand) >= n_req) {
           cand <- cand[1:n_req * 2]  
           break
         }
         delta <- delta * 0.95
       }
-      if (length(cand) == 0) next
+      if (length(cand) == 0) {
+        print("Nenhum candidato encontrado.")
+        next
+      }
 
       min_dist <- delta * 0.8
       sel <- vector("list", 0)
@@ -78,7 +102,10 @@ process_data <- function(shape, parc_exist_path,
         }
         if (length(sel) == n_req) break
       }
-      if (length(sel) == 0) next
+      if (length(sel) == 0) {
+        print("Nenhum ponto selecionado.")
+        next
+      }
       sel <- st_sfc(sel, crs = st_crs(sg))
       coords  <- st_coordinates(sel)
       n_found <- nrow(coords)
@@ -108,10 +135,9 @@ process_data <- function(shape, parc_exist_path,
     update_progress(round(completed / total_poly * 100, 2))
   }
 
-  # Verifique se result_points está vazio
   if (length(result_points) == 0) {
     print("Nenhum ponto foi adicionado a result_points.")
-    return(NULL)  # ou retorne um objeto válido, se preferir
+    return(NULL)
   }
 
   all_pts <- do.call(rbind, result_points)
@@ -123,16 +149,3 @@ process_data <- function(shape, parc_exist_path,
 
   all_pts
 }
-
-Listening on http://127.0.0.1:6158
-Reading layer `parc' from data source 
-  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Aviso em st_cast.sf(shape[i, ], "POLYGON") :
-  repeating attributes for all sub-geometries for which they may not be constant
-[1] "Nenhum ponto foi adicionado a result_points."
