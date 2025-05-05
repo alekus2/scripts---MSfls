@@ -1,22 +1,18 @@
 library(sf)
 library(dplyr)
 
-process_data <- function(shape, recomend, parc_exist_path,
+process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,      
                          intensidade_amostral,  
                          update_progress) {    
-  
-  
-  
-  
   parc_exist <- st_read(parc_exist_path) %>% 
     st_transform(31982)
   
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
-      Index   = as.character(CD_USO_SOL),
+      Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = as.numeric(AREA_HA)
     )
   
@@ -122,24 +118,3 @@ process_data <- function(shape, recomend, parc_exist_path,
   
   return(all_pts)
 }
-
-Listening on http://127.0.0.1:6158
-Reading layer `parc' from data source 
-  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Aviso em st_cast.sf(shape[i, ], "POLYGON") :
-  repeating attributes for all sub-geometries for which they may not be constant
-Aviso: Error in if: valor ausente onde TRUE/FALSE necessário
-  176: renderPlot [src/server.R#214]
-  174: func
-  134: drawPlot
-  120: <reactive:plotObj>
-  100: drawReactive
-   87: renderFunc
-   86: output$plot
-    1: runApp
