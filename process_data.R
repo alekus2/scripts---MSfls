@@ -4,8 +4,19 @@ library(dplyr)
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
-                         intensidade_amostral,
+                         intensidade_amostral = NULL,
+                         hectares_por_ponto   = NULL,
                          update_progress) {
+  # determina quantos pontos por hectare
+  if (!is.null(hectares_por_ponto)) {
+    pontos_por_ha <- 1 / hectares_por_ponto
+  } else if (!is.null(intensidade_amostral)) {
+    pontos_por_ha <- intensidade_amostral
+  } else {
+    stop("Você precisa fornecer 'intensidade_amostral' ou 'hectares_por_ponto'")
+  }
+  message(">> pontos_por_ha = ", pontos_por_ha)
+  
   parc_exist <- st_read(parc_exist_path) %>%
     st_transform(31982)
   
@@ -26,36 +37,42 @@ process_data <- function(shape, parc_exist_path,
   completed     <- 0
   
   for (idx in unique(shapeb$Index)) {
-    talhao   <- filter(shapeb, Index == idx)
-    area_ha  <- unique(talhao$AREA_HA)
-    print(paste("Processando índice:", idx, "Área total (ha):", area_ha))
+    talhao  <- filter(shapeb, Index == idx)
+    area_ha <- unique(talhao$AREA_HA)
+    message("Processando índice: ", idx, " — Área total (ha): ", area_ha)
     
-    subgeo <- split_subgeometries(talhao)
-    if (nrow(subgeo) == 0) {
-      print(paste("Subgeometria vazia para o índice:", idx))
+    # calcula total de pontos para o talhão
+    n_req_total <- floor(area_ha * pontos_por_ha)
+    message("  n_req_total = ", n_req_total)
+    if (n_req_total < 1) {
+      message("  <1 ponto no talhão; pulando ", idx)
       next
     }
     
+    subgeo <- split_subgeometries(talhao)
+    if (nrow(subgeo) == 0) {
+      message("  sem subgeometrias em ", idx)
+      next
+    }
+    
+    # distribui proporcionalmente aos pedaços
+    areas_sg_ha <- as.numeric(st_area(subgeo)) / 10000
+    proporcao   <- areas_sg_ha / sum(areas_sg_ha)
+    n_req_vec   <- round(n_req_total * proporcao)
+    n_req_vec[n_req_vec < 1] <- 0
+    
     for (i in seq_len(nrow(subgeo))) {
-      sg <- subgeo[i, ]
-      # calcula área da subgeometria em m²
-      area_sg <- as.numeric(st_area(sg))
-      print(paste("Processando subgeometria:", i, "Área (m2):", round(area_sg, 2)))
+      sg     <- subgeo[i, ]
+      n_req  <- n_req_vec[i]
+      area_m2 <- as.numeric(st_area(sg))
+      message("  subgeom ", i, ": área (m²)=", round(area_m2,1),
+              " → pontos=", n_req)
+      if (n_req < 1) next
       
-      # pontos por intensidade (ha → m2)
-      n_req <- ceiling((area_ha * 10000) / intensidade_amostral)
-      n_req <- min(n_req, floor(area_sg / intensidade_amostral))
-      print(paste("Número de pontos requeridos:", n_req))
-      if (n_req < 1) {
-        print("Menos de 1 ponto necessário; pulando.")
-        next
-      }
-      
-      delta     <- sqrt(area_sg / n_req)
+      delta     <- sqrt(area_m2 / n_req)
       bb        <- st_bbox(sg)
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
       
-      # gera e filtra grid até ter candidatos suficientes
       cand <- st_sfc(crs = st_crs(sg))
       for (iter in seq_len(20)) {
         grid_pts <- st_make_grid(
@@ -69,23 +86,19 @@ process_data <- function(shape, parc_exist_path,
           next
         }
         inside_lst <- st_within(grid_pts, sg)
-        idx_keep   <- lengths(inside_lst) > 0
-        cand       <- grid_pts[idx_keep]
-        print(paste0("Iter ", iter, ": candidatos = ", length(cand)))
+        keep       <- lengths(inside_lst) > 0
+        cand       <- grid_pts[keep]
+        message("    iter ", iter, ": candidatos=", length(cand))
         if (length(cand) >= n_req) {
           cand <- cand[seq_len(n_req * 2)]
           break
         }
         delta <- delta * 0.95
       }
-      if (length(cand) == 0) {
-        print("Nenhum candidato encontrado; pulando.")
-        next
-      }
+      if (length(cand) < 1) next
       
-      # seleciona automaticamente garantindo distância mínima
       min_dist <- delta * 0.8
-      sel <- list()
+      sel      <- list()
       for (pt in cand) {
         if (length(sel) == 0) {
           sel <- list(pt)
@@ -95,14 +108,12 @@ process_data <- function(shape, parc_exist_path,
         }
         if (length(sel) == n_req) break
       }
-      if (length(sel) < 1) {
-        print("Nenhum ponto selecionado; pulando.")
-        next
-      }
+      if (length(sel) < 1) next
       
       sel    <- st_sfc(sel, crs = st_crs(sg))
       coords <- st_coordinates(sel)
       n_found <- nrow(coords)
+      
       pts_sf <- st_sf(
         data.frame(
           Index      = rep(idx, n_found),
@@ -121,7 +132,6 @@ process_data <- function(shape, parc_exist_path,
         ),
         geometry = sel
       )
-      
       result_points[[paste(idx, i, sep = "_")]] <- pts_sf
     }
     
@@ -130,31 +140,12 @@ process_data <- function(shape, parc_exist_path,
   }
   
   if (length(result_points) == 0) {
-    print("Nenhum ponto foi adicionado a result_points.")
+    message("Nenhum ponto foi gerado.")
     return(NULL)
   }
   
-  all_pts <- do.call(rbind, result_points) %>%
+  do.call(rbind, result_points) %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
-  
-  all_pts
 }
-
-
-Listening on http://127.0.0.1:6158
-Reading layer `parc' from data source 
-  `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-[1] "Processando índice: 6163014 Área total (ha): 131.68"
-Aviso em st_cast.sf(shape[i, ], "POLYGON") :
-  repeating attributes for all sub-geometries for which they may not be constant
-[1] "Processando subgeometria: 1 Área (m2): 1017700.84"
-[1] "Número de pontos requeridos: 203540"
-[1] "Iter 1: candidatos = 203546"
