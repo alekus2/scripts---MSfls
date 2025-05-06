@@ -1,7 +1,14 @@
-> library(shiny); runApp('AutoParc.R')
-Erro: carregamento do pacote ou namespace falhou para ‘shiny’ in get(method, envir = envir):
- lazy-load database 'C:/Users/alex_santos4/AppData/Local/R/win-library/4.4/httpuv/R/httpuv.rdb' is corrupt
-Além disso: Mensagens de aviso:
-1: pacote ‘shiny’ foi compilado no R versão 4.4.3 
-2: In get(method, envir = envir) :
-  internal error 1 in R_decompress1 with libdeflate
+Fala Fernando, Tudo certo?
+
+Eu queria te pedir se teria como eu fazer uma requisição no braservice de desatualizar o app do R desse acesso remoto aqui: ts-forest01amc.amcnet.lcl
+
+A versão que eu queria era a 4.4.0 mas a versão que está atualmente instalada nele é a 4.4.1, por conta disso surgem alguns conflitos na hora de rodar o alocador de parcelas que estou desenvolvendo.
+O que eu gostaria de tentar fazer é com que o app se conectasse direto com o banco de dados, assim não precisaria de um zipfile para alocar as parcelas.
+
+Se puder fazer isso para mim, ficaria agradecido.
+
+Muito obrigado e valeu pela atenção!!
+
+At.te
+Alex Aprendiz
+s
