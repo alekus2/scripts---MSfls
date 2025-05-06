@@ -120,18 +120,9 @@ ui <- tagList(
                  div(class = "sobre-texto",
                      h2("Sobre os arquivos."),
                      br(),
-                     div(style = "color:black; font-weight:bold;",
-                         "Shape dos talhões: .zip com todos os arquivos do shapefile." #como posso fazer para deixar somente oque tiver antes dos dois pontos em negrito?
-                     ),
-                     div(style = "color:black; font-weight:bold;",
-                         "Banco de dados: banco de dados GIS com suas informações de login e senha para a entrada rapida do Uso do solo."
-                     ),
-                     div(style = "color:black; font-weight:bold;",
-                         "Parcelas existentes: .zip com os shapefiles das parcelas existentes."
-                     ),
-                     br(),
-                     div(style = "color:red; font-weight:bold;",
-                         "O aplicativo não fornece um número exato de parcelas plotadas,entao sempre verifique e altere a distância mínima entre os resultados!"
+                     div(HTML("<b>Shape dos talhões:</b>.zip contendo os arquivos do shaperfile.")),
+                     div(HTML("<b>Banco de dados:</b> banco de dados com suas informações de login e senha para entrada rápida do Uso do solo.")),
+                     div(HTML("<b>Parcelas existentes:</b>.zip com os shaperfiles das parcelas existentes."))
                      ),
                      br(),
                      h2("Como plotar?"),
@@ -142,14 +133,11 @@ ui <- tagList(
                  verbatimTextOutput("shape_text"),
                  verbatimTextOutput("parc_exist_text"),
                  verbatimTextOutput("confirmation"),
-                 conditionalPanel("input.recomendacao_pergunta_upload == 0",
-                                  textInput("download_recomend_name", "Nome do arquivo de recomendação:", "Recomendação-"),
-                                  downloadButton("download_recomend", "Download da Recomendação criada*"),
-                                  p("*Disponível após o upload das demais informações")
+
                  )
                )
              )
-    ),
+    )
     tabPanel("Plotagem", icon = icon("chart-bar"),
              tabsetPanel(
                tabPanel("Status", icon = icon("clock"),
@@ -201,7 +189,7 @@ ui <- tagList(
                         )
                )
              )
-    ),
+    )
     tabPanel("Sobre", icon = icon("info"),
              fluidRow(
                column(12,
@@ -213,7 +201,7 @@ ui <- tagList(
                )
              )
     )
-  ),
+  )
   tags$script(HTML("
     Shiny.addCustomMessageHandler('update_progress', function(percent) {
       $('#progress-bar').css('width', percent + '%').text(percent + '%');
@@ -229,6 +217,6 @@ ui <- tagList(
       $(this).addClass('active');
     });
   "))
-)
+
 
 shinyApp(ui = ui, server = server)
