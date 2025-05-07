@@ -5,16 +5,12 @@ from datetime import datetime
 class CadastroSGF:
     def verificar(self, paths):
         nomes_colunas = [
-            "Id", "Tipo Propriedade", "Cód. Região", "Região", "Id Projeto", "Projeto", "Localidade",
-            "Talhão", "Ciclo", "Rotação", "Tipo", "Uso do Talhão", "Descrição do Uso do talhão", "Fase",
-            "Bacia", "Solo", "Relevo", "Espaçamento", "Sistema de Propagação", "Mat.Genético", "Espécie",
-            "Plantio", "Mês de Plantio", "Regime", "Sitio", "Área(ha)", "Área GIS", "Atualizar via GIS",
-            "Distância Total", "Status", "Cód. Projeto Investimento", "Dcr. Projeto Investimento",
-            "Cód. Tarefa Proj. Invest.", "ID Terra Potencial", "Observacao", "DCAA Data Emissão",
-            "DCAA Data Validade", "Início vigência", "Fim vigência", "Distância Terra", "Precipitação",
-            "Distância asfalto", "Tipo de Contrato", "Proj. de Expansão", "DCAA Número", "Cod Antigo Proj.",
-            "Área MRP", "Regional colheita", "Regional silvicultura", "Região climática", "Terra", "Bioma",
-            "Classe", "FlagCTOVirtual", "Registro", "Ativo"
+            "Id","Tipo Propriedade","Id Região","Região","Id Projeto","Projeto","Localidade","Talhão","Ciclo","Rotação","Tipo","Feição Pai","Descrição de Uso do Solo",
+            "Fase","Bacia","Solo","Relevo","Espaçamento","Sistema de Propagação","Mat.Genético","Espécie","Data Plantio","Mês de Plantio","Regime","Sítio","Área (ha)",
+            "Área GIS","Atualizar via GIS","Distância Total","Tipo de Registro","Cód. Projeto Investimento","Dcr. Projeto Investimento","Cód. Tarefa Proj. Invest.",
+            "Não tem","Observações","DCAA Data Emissão","DCAA Data Validade","Início Vigência","Fim Vigência","Distância Terra","Precipitação","Distância Asfalto",
+            "Ciclo de Investimento","Área declivosa (%)","Tipo Contrato","Projeto Expansão","DCAA Número","Não tem","Não tem","Regional Colheita","Regional Silvicultura",
+            "Região Climática","Não tem","Bioma","Não tem","Não tem","Registro","Ativo"
         ]
 
         meses = [
@@ -45,9 +41,7 @@ class CadastroSGF:
                 continue
 
             print(f"Processando: {path}")
-            df = pd.read_excel(path, sheet_name=0)
-
-            print(df.head)
+            df = pd.read_excel(path, sheet_name=0,header=1) #se nao encontrar nada, header 0
 
             colunas_presentes = []
             colunas_faltando = []
@@ -80,132 +74,10 @@ class CadastroSGF:
 cadastrar = CadastroSGF()     
 
 arquivos = [
-    r"/content/export_lmanhaes_2025-05-07_09-09-01.xlsx"
-]
+    r"colocar/nome/aqui"
+]		#se der erro de arquivo nao lido pelo excel, salvar denovo o arquivo corrompido.
 
 cadastrar.verificar(arquivos)
 
-Processando: /content/export_lmanhaes_2025-05-07_09-09-01.xlsx
-<bound method NDFrame.head of      Uso do solo         Unnamed: 1 Unnamed: 2    Unnamed: 3  Unnamed: 4  \
-0             Id   Tipo Propriedade  Id Região        Região  Id Projeto   
-1          52021           Terceiro          4  MS FLORESTAL        6160   
-2          49583           Terceiro          4  MS FLORESTAL        6160   
-3          52192           Terceiro          4  MS FLORESTAL        6160   
-4          52167           Terceiro          4  MS FLORESTAL        6160   
-...          ...                ...        ...           ...         ...   
-7873       57636  Compra de Madeira          4  MS FLORESTAL        1133   
-7874       57632  Compra de Madeira          4  MS FLORESTAL        1133   
-7875       57637  Compra de Madeira          4  MS FLORESTAL        1133   
-7876       57634  Compra de Madeira          4  MS FLORESTAL        1133   
-7877       57633  Compra de Madeira          4  MS FLORESTAL        1133   
 
-           Unnamed: 5                              Unnamed: 6 Unnamed: 7  \
-0             Projeto                              Localidade     Talhão   
-1     TUCANO II - BRS  BRASIL \ MATO GROSSO SUL \ Brasilândia     001-01   
-2     TUCANO II - BRS  BRASIL \ MATO GROSSO SUL \ Brasilândia     002-01   
-3     TUCANO II - BRS  BRASIL \ MATO GROSSO SUL \ Brasilândia     003-01   
-4     TUCANO II - BRS  BRASIL \ MATO GROSSO SUL \ Brasilândia     004-01   
-...               ...                                     ...        ...   
-7873     HORTO BONITO   BRASIL \ MATO GROSSO SUL \ Água Clara     502-00   
-7874     HORTO BONITO   BRASIL \ MATO GROSSO SUL \ Água Clara     503-00   
-7875     HORTO BONITO   BRASIL \ MATO GROSSO SUL \ Água Clara     504-00   
-7876     HORTO BONITO   BRASIL \ MATO GROSSO SUL \ Água Clara     505-00   
-7877     HORTO BONITO   BRASIL \ MATO GROSSO SUL \ Água Clara     506-00   
-
-     Unnamed: 8 Unnamed: 9  ...   Unnamed: 65      Unnamed: 66 Unnamed: 67  \
-0         Ciclo    Rotação  ...  Certificação  Tipo de Licença     Produto   
-1             1          1  ...           NaN              NaN         NaN   
-2             1          1  ...           NaN              NaN         NaN   
-3             1          1  ...           NaN              NaN         NaN   
-4             1          1  ...           NaN              NaN         NaN   
-...         ...        ...  ...           ...              ...         ...   
-7873        NaN        NaN  ...           NaN              NaN         NaN   
-7874        NaN        NaN  ...           NaN              NaN         NaN   
-7875        NaN        NaN  ...           NaN              NaN         NaN   
-7876        NaN        NaN  ...           NaN              NaN         NaN   
-7877        NaN        NaN  ...           NaN              NaN         NaN   
-
-     Unnamed: 68    Unnamed: 69 Unnamed: 70 Unnamed: 71       Unnamed: 72  \
-0        Fábrica  Manejo futuro       Bioma   Tipologia  Coletor de Custo   
-1            NaN            NaN         NaN         NaN      PP9561601122   
-2            NaN            NaN         NaN         NaN      PP9561601122   
-3            NaN            NaN         NaN         NaN      PP9561601122   
-4            NaN            NaN         NaN         NaN      PP9561601122   
-...          ...            ...         ...         ...               ...   
-7873  FABRICA-SP            NaN     Cerrado      Savana               NaN   
-7874  FABRICA-SP            NaN     Cerrado      Savana               NaN   
-7875  FABRICA-SP            NaN     Cerrado      Savana               NaN   
-7876  FABRICA-SP            NaN     Cerrado      Savana               NaN   
-7877  FABRICA-SP            NaN     Cerrado      Savana               NaN   
-
-              Unnamed: 73 Unnamed: 74  
-0                Registro       Ativo  
-1     2025-03-25 00:00:00           A  
-2     2025-03-25 00:00:00           A  
-3     2025-03-25 00:00:00           A  
-4     2025-03-25 00:00:00           A  
-...                   ...         ...  
-7873  2025-04-09 00:00:00           A  
-7874  2025-04-09 00:00:00           A  
-7875  2025-04-09 00:00:00           A  
-7876  2025-04-09 00:00:00           A  
-7877  2025-04-09 00:00:00           A  
-
-[7878 rows x 75 columns]>
-Coluna não encontrada: Id
-Coluna não encontrada: Tipo Propriedade
-Coluna não encontrada: Cód. Região
-Coluna não encontrada: Região
-Coluna não encontrada: Id Projeto
-Coluna não encontrada: Projeto
-Coluna não encontrada: Localidade
-Coluna não encontrada: Talhão
-Coluna não encontrada: Ciclo
-Coluna não encontrada: Rotação
-Coluna não encontrada: Tipo
-Coluna não encontrada: Uso do Talhão
-Coluna não encontrada: Descrição do Uso do talhão
-Coluna não encontrada: Fase
-Coluna não encontrada: Bacia
-Coluna não encontrada: Solo
-Coluna não encontrada: Relevo
-Coluna não encontrada: Espaçamento
-Coluna não encontrada: Sistema de Propagação
-Coluna não encontrada: Mat.Genético
-Coluna não encontrada: Espécie
-Coluna não encontrada: Plantio
-Coluna não encontrada: Mês de Plantio
-Coluna não encontrada: Regime
-Coluna não encontrada: Sitio
-Coluna não encontrada: Área(ha)
-Coluna não encontrada: Área GIS
-Coluna não encontrada: Atualizar via GIS
-Coluna não encontrada: Distância Total
-Coluna não encontrada: Status
-Coluna não encontrada: Cód. Projeto Investimento
-Coluna não encontrada: Dcr. Projeto Investimento
-Coluna não encontrada: Cód. Tarefa Proj. Invest.
-Coluna não encontrada: ID Terra Potencial
-Coluna não encontrada: Observacao
-Coluna não encontrada: DCAA Data Emissão
-Coluna não encontrada: DCAA Data Validade
-Coluna não encontrada: Início vigência
-Coluna não encontrada: Fim vigência
-Coluna não encontrada: Distância Terra
-Coluna não encontrada: Precipitação
-Coluna não encontrada: Distância asfalto
-Coluna não encontrada: Tipo de Contrato
-Coluna não encontrada: Proj. de Expansão
-Coluna não encontrada: DCAA Número
-Coluna não encontrada: Cod Antigo Proj.
-Coluna não encontrada: Área MRP
-Coluna não encontrada: Regional colheita
-Coluna não encontrada: Regional silvicultura
-Coluna não encontrada: Região climática
-Coluna não encontrada: Terra
-Coluna não encontrada: Bioma
-Coluna não encontrada: Classe
-Coluna não encontrada: FlagCTOVirtual
-Coluna não encontrada: Registro
-Coluna não encontrada: Ativo
-Erro: Nenhuma coluna esperada encontrada no arquivo '/content/export_lmanhaes_2025-05-07_09-09-01.xlsx'. Pulando...
+quero que ele crie essas colunas que estao na lista chamadas "não tem" e deixe em branco, e o resto é como ja ta, ele vai procurar se existe a coluna dentro da planilha e se existir ele coloca na msm ordem q a outra planilha.
