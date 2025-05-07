@@ -80,3 +80,25 @@ class CadastroSGF:
 cadastrar = CadastroSGF()
 arquivos = [r"colocar/nome/aqui.xlsx"]
 cadastrar.verificar(arquivos)
+
+
+Processando: /content/export_lmanhaes_2025-05-07_09-09-01.xls.xlsx
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-2-0eb19a31ebba> in <cell line: 0>()
+     80 cadastrar = CadastroSGF()
+     81 arquivos = [r"/content/export_lmanhaes_2025-05-07_09-09-01.xls.xlsx"]
+---> 82 cadastrar.verificar(arquivos)
+
+1 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/frame.py in insert(self, loc, column, value, allow_duplicates)
+   5156         if not allow_duplicates and column in self.columns:
+   5157             # Should this be a different kind of error??
+-> 5158             raise ValueError(f"cannot insert {column}, already exists")
+   5159         if not is_integer(loc):
+   5160             raise TypeError("loc must be int")
+
+ValueError: cannot insert Não tem, already exists
+
+
+a ordem tem que ser mantida, o codigo nao esta tentando duplicar colunas varias vezes repetidamente ne?
