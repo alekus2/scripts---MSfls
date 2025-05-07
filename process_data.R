@@ -1,3 +1,4 @@
+
 library(sf)
 library(dplyr)
 library(glue)
@@ -7,7 +8,7 @@ process_data <- function(shape, parc_exist_path,
                          distancia.minima,      
                          intensidade_amostral,  
                          update_progress) {
-
+  
   # 1) Leitura de parcelas existentes ------------------------------------------------
   parc_exist <- st_read(parc_exist_path) %>% 
     st_transform(31982)
