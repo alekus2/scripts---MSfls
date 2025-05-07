@@ -1,52 +1,82 @@
 library(shiny)
 library(sf)
+library(DBI)
+library(odbc)
 library(stringr)
 library(dplyr)
-library(zip)       
 library(ggplot2)
-
+library(zip)
 
 server <- function(input, output, session) {
+  observeEvent(input$db_connect, {
+    req(input$db_host, input$db_port, input$db_service,
+        input$db_user, input$db_pwd)
+    con <- dbConnect(odbc(),
+                     Driver   = "Oracle",       
+                     Server   = input$db_host,
+                     UID      = input$db_user,
+                     PWD      = input$db_pwd,
+                     Port     = input$db_port,
+                     SVC      = input$db_service)
+    tbls <- dbListTables(con)
+    tl <- grep("talhao", tbls, ignore.case = TRUE, value = TRUE)
+    updateSelectInput(session, "db_table",
+                      choices = tl,
+                      selected = tl[1])
+    session$userData$db_con <- con
+  })
+  
+  output$db_layer_selector <- renderUI({
+    req(input$data_source == "db")
+    selectInput("db_table", "Escolha camada de talhões:", choices = NULL)
+  })
+
   observeEvent(input$confirmar, {
     output$shape_text <- renderText({
-      req(input$shape)
-      paste("Upload talhões:", input$shape$name)
+      if (input$data_source == "upload") {
+        req(input$shape)
+        paste("Upload realizado shapefile:", input$shape$name)
+      } else {
+        req(input$db_table)
+        paste("Conectado à camada:", input$db_table)
+      }
+    })
+    output$recomend_text <- renderText({
+      req(input$recomend)
+      paste("Upload de recomendação:", input$recomend$name)
     })
     output$parc_exist_text <- renderText({
       if (input$parcelas_existentes_lancar == 1) {
         req(input$parc_exist)
-        paste("Upload parcelas existentes:", input$parc_exist$name)
+        paste("Upload parcelas históricas:", input$parc_exist$name)
       } else {
-        "Upload de parcelas existentes não realizado."
+        "Parcelas existentes não informadas."
       }
     })
     output$confirmation <- renderText({
       req(input$forma_parcela, input$tipo_parcela, input$distancia_minima)
-      paste(
-        "Forma:", input$forma_parcela,
-        "Tipo:", input$tipo_parcela,
-        "Distância mínima:", input$distancia_minima
-      )
+      paste("Forma:", input$forma_parcela,
+            "| Tipo:", input$tipo_parcela,
+            "| Distância mínima:", input$distancia_minima)
     })
   })
   
-  
-  forma_parcela        <- reactive({ input$forma_parcela })
-  tipo_parcela         <- reactive({ input$tipo_parcela })
-  distancia_minima     <- reactive({ input$distancia_minima })
-  intensidade_amostral <- reactive({ input$intensidade_amostral })
-  
-  shape_path <- reactive({
-    req(input$shape)
-    files <- utils::unzip(input$shape$datapath, exdir = tempdir())
-    shp <- grep("\\.shp$", files, ignore.case = TRUE, value = TRUE)
-    req(length(shp) == 1, "Não encontrou nenhum .shp válido")
-    shp
-  })
-  
   shape <- reactive({
-    shp_file <- shape_path()
-    shp <- st_read(shp_file, quiet = TRUE)
+    if (input$data_source == "upload") {
+      req(input$shape)
+      zp <- unzip(input$shape$datapath, exdir = tempdir())
+      shpfile <- grep("\\.shp$", zp, value = TRUE)
+      shp <- st_read(shpfile, quiet = TRUE)
+    } else {
+      con <- session$userData$db_con
+      req(con, input$db_table)
+      dsn <- sprintf("OCI:%s/%s@%s:%s/%s",
+                     input$db_user, input$db_pwd,
+                     input$db_host, input$db_port,
+                     input$db_service)
+      shp <- st_read(dsn = dsn, layer = input$db_table, quiet = TRUE)
+    }
+
     if (input$shape_input_pergunta_arudek == 0) {
       shp <- shp %>%
         rename(
@@ -58,8 +88,8 @@ server <- function(input, output, session) {
     }
     shp %>%
       mutate(
-        ID_PROJETO = str_pad(ID_PROJETO, 4, pad = "0"),
-        TALHAO     = str_pad(TALHAO, 3, pad = "0"),
+        ID_PROJETO = str_pad(ID_PROJETO, 4),
+        TALHAO     = str_pad(TALHAO,     3)
       )
   })
   
