@@ -1,15 +1,24 @@
+if (!is.null(input$shape_input_pergunta_arudek) &&
+    input$shape_input_pergunta_arudek == 0) {
+  shp <- shp %>%
+    rename(
+      ID_PROJETO = !!sym(input$mudar_nome_arudek_projeto),
+      TALHAO     = !!sym(input$mudar_nome_arudek_talhao),
+      CICLO      = !!sym(input$mudar_nome_arudek_ciclo),
+      ROTACAO    = !!sym(input$mudar_nome_arudek_rotacao)
+    )
+}
+
+
+
 output$plot <- renderPlot({
   req(values$result_points, input$selected_index)
-  shp <- shape()
-  print(class(shp))
-  print(nrow(shp))
-  print(st_geometry_type(shp))
-  shp_sel <- shp %>% filter(Index == input$selected_index)
+  shp_sel <- shape() %>%
+    filter(Index == input$selected_index)
   req(nrow(shp_sel) > 0)
-  pts_sel <- values$result_points %>% filter(Index == input$selected_index)
-  area_ha <- as.numeric(st_area(shp_sel)) / 10000
-  num_rec <- ceiling(area_ha / as.numeric(input$intensidade_amostral))
-  if (num_rec < 2) num_rec <- 2
+  pts_sel  <- values$result_points %>% filter(Index == input$selected_index)
+  area_ha  <- as.numeric(st_area(shp_sel)) / 10000
+  num_rec  <- max(2, ceiling(area_ha / as.numeric(input$intensidade_amostral)))
   ggplot() +
     geom_sf(data = shp_sel, fill = NA, color = "#007E69", size = 1) +
     geom_sf(data = pts_sel, size = 2) +
