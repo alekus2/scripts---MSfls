@@ -5,85 +5,76 @@ from datetime import datetime
 class CadastroSGF:
     def verificar(self, paths):
         nomes_colunas = [
-            "Id","Tipo Propriedade","Id Região","Região","Id Projeto","Projeto","Localidade","Talhão","Ciclo","Rotação","Tipo","Feição Pai","Descrição de Uso do Solo",
-            "Fase","Bacia","Solo","Relevo","Espaçamento","Sistema de Propagação","Mat.Genético","Espécie","Data Plantio","Mês de Plantio","Regime","Sítio","Área (ha)",
-            "Área GIS","Atualizar via GIS","Distância Total","Tipo de Registro","Cód. Projeto Investimento","Dcr. Projeto Investimento","Cód. Tarefa Proj. Invest.",
-            "Não tem","Observações","DCAA Data Emissão","DCAA Data Validade","Início Vigência","Fim Vigência","Distância Terra","Precipitação","Distância Asfalto",
-            "Ciclo de Investimento","Área declivosa (%)","Tipo Contrato","Projeto Expansão","DCAA Número","Não tem","Não tem","Regional Colheita","Regional Silvicultura",
-            "Região Climática","Não tem","Bioma","Não tem","Não tem","Registro","Ativo"
+            "Id","Tipo Propriedade","Id Região","Região","Id Projeto","Projeto",
+            "Localidade","Talhão","Ciclo","Rotação","Tipo","Feição Pai",
+            "Descrição de Uso do Solo","Fase","Bacia","Solo","Relevo","Espaçamento",
+            "Sistema de Propagação","Mat.Genético","Espécie","Data Plantio",
+            "Mês de Plantio","Regime","Sítio","Área (ha)","Área GIS","Atualizar via GIS",
+            "Distância Total","Tipo de Registro","Cód. Projeto Investimento",
+            "Dcr. Projeto Investimento","Cód. Tarefa Proj. Invest.","Não tem",
+            "Observações","DCAA Data Emissão","DCAA Data Validade","Início Vigência",
+            "Fim Vigência","Distância Terra","Precipitação","Distância Asfalto",
+            "Ciclo de Investimento","Área declivosa (%)","Tipo Contrato",
+            "Projeto Expansão","DCAA Número","Não tem","Não tem","Regional Colheita",
+            "Regional Silvicultura","Região Climática","Não tem","Bioma","Não tem",
+            "Não tem","Registro","Ativo"
         ]
 
-        meses = [
-            "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-            "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-        ]
-        mes_atual = datetime.now().month
-        nome_mes = meses[mes_atual - 1]
+        meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+                 "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
+        nome_mes = meses[datetime.now().month - 1]
         data_emissao = datetime.now().strftime("%Y%m%d")
-        
-        # --- lógica de definição de pasta de saída (mantida igual) ---
+
+        # --- monta pasta de saída (como antes) ---
         base_path = os.path.abspath(paths[0])
         if nome_mes.lower() in base_path.lower():
             parent_dir = os.path.dirname(base_path)
-            if os.path.basename(parent_dir).lower() == 'output':
-                pasta_output = parent_dir
-            else:
-                pasta_output = os.path.join(parent_dir, 'output')
-                os.makedirs(pasta_output, exist_ok=True)
+            pasta_output = parent_dir if os.path.basename(parent_dir).lower()=='output' \
+                           else os.path.join(parent_dir,'output')
         else:
             base_dir = os.path.dirname(paths[0])
             pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
             pasta_output = os.path.join(pasta_mes, 'output')
-            os.makedirs(pasta_output, exist_ok=True)
+        os.makedirs(pasta_output, exist_ok=True)
 
         for path in paths:
             if not os.path.exists(path):
                 print(f"Erro: Arquivo '{path}' não encontrado.")
                 continue
-
             print(f"Processando: {path}")
             df = pd.read_excel(path, sheet_name=0, header=1)
-
-            # Lista para log de colunas faltando (exceto "Não tem")
             colunas_faltando = []
 
-            # Contabiliza quantas vezes "Não tem" aparece na definição
-            num_nao_tem = sum(1 for col in nomes_colunas if col == "Não tem")
-
-            # Cria um dicionário para montar o DataFrame reorganizado
-            dados_reorganizados = {}
+            # Inicia DataFrame vazio
+            df_reorganizado = pd.DataFrame(index=df.index)
 
             for col in nomes_colunas:
                 if col in df.columns:
-                    # Se existir na planilha, copia a coluna
-                    dados_reorganizados.setdefault(col, df[col])
+                    # insere coluna existente, mantendo índice
+                    df_reorganizado.insert(len(df_reorganizado.columns), col, df[col].values)
+                elif col == "Não tem":
+                    # insere placeholder em branco, várias vezes
+                    blank = pd.Series([""] * len(df), index=df.index)
+                    df_reorganizado.insert(len(df_reorganizado.columns), col, blank)
                 else:
-                    if col == "Não tem":
-                        # Se for placeholder "Não tem", cria Série em branco
-                        dados_reorganizados.setdefault(col, pd.Series([""] * len(df)))
-                    else:
-                        # Coluna realmente faltando: guarda para relatório
-                        colunas_faltando.append(col)
+                    # coluna ausente e não-placeholder
+                    colunas_faltando.append(col)
 
-            # Garante a ordem original das colunas
-            df_reorganizado = pd.DataFrame({col: dados_reorganizados[col] for col in nomes_colunas})
-
-            # Gera nome de arquivo sem colisão
+            # salva sem colisão de nomes
             nome_base = f"SGF_{nome_mes}_{data_emissao}"
             contador = 1
-            novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
-            while os.path.exists(novo_arquivo_excel):
+            destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
+            novo_arquivo = destino(nome_base)
+            while os.path.exists(novo_arquivo):
                 contador += 1
-                novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
+                novo_arquivo = destino(nome_base)
 
-            # Salva e exibe resultado
-            df_reorganizado.to_excel(novo_arquivo_excel, index=False)
-            print(f"✅ Dados foram reorganizados e salvos em '{novo_arquivo_excel}'.")
+            df_reorganizado.to_excel(novo_arquivo, index=False)
+            print(f"✅ Dados reorganizados salvos em '{novo_arquivo}'.")
             if colunas_faltando:
-                print("As seguintes colunas não foram encontradas na planilha original:")
+                print("Colunas esperadas não encontradas na planilha original:")
                 for c in colunas_faltando:
                     print(f"  - {c}")
-
 
 # Exemplo de uso
 cadastrar = CadastroSGF()
