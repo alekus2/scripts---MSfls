@@ -12,7 +12,7 @@ server <- function(input, output, session) {
     req(input$db_host, input$db_port, input$db_service,
         input$db_user, input$db_pwd)
     con <- dbConnect(odbc(),
-                     Driver   = "Oracle",       
+                     Driver   = "Oracle",
                      Server   = input$db_host,
                      UID      = input$db_user,
                      PWD      = input$db_pwd,
@@ -25,7 +25,7 @@ server <- function(input, output, session) {
                       selected = tl[1])
     session$userData$db_con <- con
   })
-  
+
   output$db_layer_selector <- renderUI({
     req(input$data_source == "db")
     selectInput("db_table", "Escolha camada de talhões:", choices = NULL)
@@ -60,24 +60,23 @@ server <- function(input, output, session) {
             "| Distância mínima:", input$distancia_minima)
     })
   })
-  
+
   shape <- reactive({
-    if (input$data_source == "upload") {
+    req(input$data_source)
+    shp <- if (input$data_source == "upload") {
       req(input$shape)
-      zp <- unzip(input$shape$datapath, exdir = tempdir())
+      zp      <- unzip(input$shape$datapath, exdir = tempdir())
       shpfile <- grep("\\.shp$", zp, value = TRUE)
-      shp <- st_read(shpfile, quiet = TRUE)
+      st_read(shpfile, quiet = TRUE)
     } else {
-      con <- session$userData$db_con
-      req(con, input$db_table)
+      req(session$userData$db_con, input$db_table)
       dsn <- sprintf("OCI:%s/%s@%s:%s/%s",
                      input$db_user, input$db_pwd,
                      input$db_host, input$db_port,
                      input$db_service)
-      shp <- st_read(dsn = dsn, layer = input$db_table, quiet = TRUE)
+      st_read(dsn = dsn, layer = input$db_table, quiet = TRUE)
     }
-
-    if (input$shape_input_pergunta_arudek == 0) {
+    if (isTRUE(input$shape_input_pergunta_arudek == 0)) {
       shp <- shp %>%
         rename(
           ID_PROJETO = !!sym(input$mudar_nome_arudek_projeto),
@@ -87,13 +86,14 @@ server <- function(input, output, session) {
         )
     }
     shp %>%
+      st_transform(31982) %>%
       mutate(
-        ID_PROJETO = str_pad(ID_PROJETO, 4),
-        TALHAO     = str_pad(TALHAO,     3)
+        ID_PROJETO = str_pad(ID_PROJETO, 4, pad = "0"),
+        TALHAO     = str_pad(TALHAO,     3, pad = "0"),
+        Index      = paste0(ID_PROJETO, TALHAO)
       )
   })
-  
-  
+
   parc_exist_path <- reactive({
     if (input$parcelas_existentes_lancar == 1) {
       req(input$parc_exist)
@@ -105,10 +105,9 @@ server <- function(input, output, session) {
       "data/parc.shp"
     }
   })
-  
-  
+
   values <- reactiveValues(result_points = NULL)
-  
+
   observeEvent(input$gerar_parcelas, {
     progress <- Progress$new(session, min = 0, max = 100)
     on.exit(progress$close())
@@ -151,19 +150,17 @@ server <- function(input, output, session) {
       duration = 10
     )
   })
-  
-  
+
   output$index_filter <- renderUI({
     req(values$result_points)
     selectInput("selected_index", "Selecione o talhão:", choices = unique(values$result_points$Index))
   })
-  
-  
+
   observeEvent(input$gerar_novamente, {
     req(values$result_points, input$selected_index)
     sel <- input$selected_index
     new_base <- values$result_points %>% filter(Index != sel)
-    shape_sel <- shape() %>% mutate(Index = paste0(ID_PROJETO, TALHAO)) %>% filter(Index == sel)
+    shape_sel <- shape() %>% filter(Index == sel)
     result2 <- process_data(
       shape_sel, parc_exist_path(),
       forma_parcela(), tipo_parcela(),
@@ -198,11 +195,10 @@ server <- function(input, output, session) {
       duration = 10
     )
   })
-  
+
   indexes <- reactive({ unique(values$result_points$Index) })
-  
   current_index <- reactiveVal(1)
-  
+
   observeEvent(input$proximo, {
     idxs <- indexes()
     ni   <- current_index() + 1
@@ -210,7 +206,7 @@ server <- function(input, output, session) {
     current_index(ni)
     updateSelectInput(session, "selected_index", selected = idxs[ni])
   })
-  
+
   observeEvent(input$anterior, {
     idxs <- indexes()
     pi   <- current_index() - 1
@@ -218,8 +214,7 @@ server <- function(input, output, session) {
     current_index(pi)
     updateSelectInput(session, "selected_index", selected = idxs[pi])
   })
-  
-  
+
   output$download_result <- downloadHandler(
     filename = function() {
       ts <- format(Sys.time(), "%d-%m-%y_%H.%M")
@@ -240,17 +235,13 @@ server <- function(input, output, session) {
     },
     contentType = "application/zip"
   )
-  
-  
-  
+
   output$plot <- renderPlot({
-    req(values$result_points, input$selected_index, shape())
-    sf_sel <- shape() %>%
-      st_transform(31982) %>%
-      mutate(Index = paste0(ID_PROJETO, TALHAO))
-    shp_sel <- sf_sel %>% filter(Index == input$selected_index)
+    req(values$result_points, input$selected_index)
+    shp_sel <- shape() %>% filter(Index == input$selected_index)
+    req(nrow(shp_sel) > 0)
     pts_sel <- values$result_points %>% filter(Index == input$selected_index)
-    area_ha <- st_area(shp_sel) %>% as.numeric() / 10000
+    area_ha <- as.numeric(st_area(shp_sel)) / 10000
     num_rec <- ceiling(area_ha / as.numeric(input$intensidade_amostral))
     if (num_rec < 2) num_rec <- 2
     ggplot() +
@@ -263,18 +254,4 @@ server <- function(input, output, session) {
   })
 }
 
-
-
-Listening on http://127.0.0.1:3786
-Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Aviso: Error in if: argumento tem comprimento zero
-  85: st_transform
-  84: mutate
-  81: observe [src/server.R#115]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
+shinyApp(ui = ui, server = server)
