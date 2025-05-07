@@ -21,6 +21,7 @@ class CadastroSGF:
         nome_mes = meses[mes_atual - 1]
         data_emissao = datetime.now().strftime("%Y%m%d")
         
+        # --- lógica de definição de pasta de saída (mantida igual) ---
         base_path = os.path.abspath(paths[0])
         if nome_mes.lower() in base_path.lower():
             parent_dir = os.path.dirname(base_path)
@@ -41,24 +42,33 @@ class CadastroSGF:
                 continue
 
             print(f"Processando: {path}")
-            df = pd.read_excel(path, sheet_name=0,header=1) #se nao encontrar nada, header 0
+            df = pd.read_excel(path, sheet_name=0, header=1)
 
-            colunas_presentes = []
+            # Lista para log de colunas faltando (exceto "Não tem")
             colunas_faltando = []
+
+            # Contabiliza quantas vezes "Não tem" aparece na definição
+            num_nao_tem = sum(1 for col in nomes_colunas if col == "Não tem")
+
+            # Cria um dicionário para montar o DataFrame reorganizado
+            dados_reorganizados = {}
 
             for col in nomes_colunas:
                 if col in df.columns:
-                    colunas_presentes.append(col)
+                    # Se existir na planilha, copia a coluna
+                    dados_reorganizados.setdefault(col, df[col])
                 else:
-                    colunas_faltando.append(col)
-                    print(f"Coluna não encontrada: {col}")
+                    if col == "Não tem":
+                        # Se for placeholder "Não tem", cria Série em branco
+                        dados_reorganizados.setdefault(col, pd.Series([""] * len(df)))
+                    else:
+                        # Coluna realmente faltando: guarda para relatório
+                        colunas_faltando.append(col)
 
-            if not colunas_presentes:
-                print(f"Erro: Nenhuma coluna esperada encontrada no arquivo '{path}'. Pulando...")
-                continue  
-            
-            df_reorganizado = df[colunas_presentes]
+            # Garante a ordem original das colunas
+            df_reorganizado = pd.DataFrame({col: dados_reorganizados[col] for col in nomes_colunas})
 
+            # Gera nome de arquivo sem colisão
             nome_base = f"SGF_{nome_mes}_{data_emissao}"
             contador = 1
             novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
@@ -66,18 +76,16 @@ class CadastroSGF:
                 contador += 1
                 novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
 
+            # Salva e exibe resultado
             df_reorganizado.to_excel(novo_arquivo_excel, index=False)
             print(f"✅ Dados foram reorganizados e salvos em '{novo_arquivo_excel}'.")
             if colunas_faltando:
-                print(f"As seguintes colunas não foram encontradas: {', '.join(colunas_faltando)}")
+                print("As seguintes colunas não foram encontradas na planilha original:")
+                for c in colunas_faltando:
+                    print(f"  - {c}")
 
-cadastrar = CadastroSGF()     
 
-arquivos = [
-    r"colocar/nome/aqui"
-]		#se der erro de arquivo nao lido pelo excel, salvar denovo o arquivo corrompido.
-
+# Exemplo de uso
+cadastrar = CadastroSGF()
+arquivos = [r"colocar/nome/aqui.xlsx"]
 cadastrar.verificar(arquivos)
-
-
-quero que ele crie essas colunas que estao na lista chamadas "não tem" e deixe em branco, e o resto é como ja ta, ele vai procurar se existe a coluna dentro da planilha e se existir ele coloca na msm ordem q a outra planilha.
