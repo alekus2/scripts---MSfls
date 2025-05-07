@@ -82,17 +82,29 @@ server <- function(input, output, session) {
     return(shp_f)
   })
 
-  observeEvent(input$gerar_parcelas, {
-    message(">> [gerar_parcelas] início")
-    shp <- NULL
-    try({
-      shp <- shape()
-    }, silent = TRUE)
-    if (is.null(shp)) {
-      message("   shape() retornou NULL ou erro; abortando geração.")
-      return()
-    }
-    message("   shape() OK, seguindo para process_data.")
-    
+> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocador/AutoParc.R')
+Aviso: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.
+
+Listening on http://127.0.0.1:3786
+>> Server iniciado
+observeEvent: gerar_parcelas iniciado
+parc_exist_path(): inicio
+parc_exist_path(): usando default data/parc.shp
+Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 20 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
+Geodetic CRS:  SIRGAS 2000
+>> [shape] início
+   data_source =upload
+   lendo shapefile do upload.
+   usando .shp:
+Aviso: Error in if: argumento tem comprimento zero
+  85: st_transform
+  84: mutate
+  81: observe [src/server.R#105]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
 
 
