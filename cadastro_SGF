@@ -25,7 +25,6 @@ class CadastroSGF:
         nome_mes = meses[datetime.now().month - 1]
         data_emissao = datetime.now().strftime("%Y%m%d")
 
-        # --- monta pasta de saída (como antes) ---
         base_path = os.path.abspath(paths[0])
         if nome_mes.lower() in base_path.lower():
             parent_dir = os.path.dirname(base_path)
@@ -45,22 +44,21 @@ class CadastroSGF:
             df = pd.read_excel(path, sheet_name=0, header=1)
             colunas_faltando = []
 
-            # Inicia DataFrame vazio
-            df_reorganizado = pd.DataFrame(index=df.index)
-
+            # Aqui construímos uma lista de colunas (em ordem) que aceita nomes repetidos
+            colunas_final = []
             for col in nomes_colunas:
                 if col in df.columns:
-                    # insere coluna existente, mantendo índice
-                    df_reorganizado.insert(len(df_reorganizado.columns), col, df[col].values)
+                    colunas_final.append(df[col])
                 elif col == "Não tem":
-                    # insere placeholder em branco, várias vezes
-                    blank = pd.Series([""] * len(df), index=df.index)
-                    df_reorganizado.insert(len(df_reorganizado.columns), col, blank)
+                    colunas_final.append(pd.Series([""] * len(df)))
                 else:
-                    # coluna ausente e não-placeholder
                     colunas_faltando.append(col)
+                    colunas_final.append(pd.Series([""] * len(df)))
 
-            # salva sem colisão de nomes
+            # Agora criamos o DataFrame reorganizado com nomes de colunas repetidos permitidos
+            df_reorganizado = pd.concat(colunas_final, axis=1)
+            df_reorganizado.columns = nomes_colunas  # mantém a ordem original, incluindo "Não tem" repetido
+
             nome_base = f"SGF_{nome_mes}_{data_emissao}"
             contador = 1
             destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
@@ -78,27 +76,5 @@ class CadastroSGF:
 
 # Exemplo de uso
 cadastrar = CadastroSGF()
-arquivos = [r"colocar/nome/aqui.xlsx"]
+arquivos = [r"/content/export_lmanhaes_2025-05-07_09-09-01.xls.xlsx"]
 cadastrar.verificar(arquivos)
-
-
-Processando: /content/export_lmanhaes_2025-05-07_09-09-01.xls.xlsx
----------------------------------------------------------------------------
-ValueError                                Traceback (most recent call last)
-<ipython-input-2-0eb19a31ebba> in <cell line: 0>()
-     80 cadastrar = CadastroSGF()
-     81 arquivos = [r"/content/export_lmanhaes_2025-05-07_09-09-01.xls.xlsx"]
----> 82 cadastrar.verificar(arquivos)
-
-1 frames
-/usr/local/lib/python3.11/dist-packages/pandas/core/frame.py in insert(self, loc, column, value, allow_duplicates)
-   5156         if not allow_duplicates and column in self.columns:
-   5157             # Should this be a different kind of error??
--> 5158             raise ValueError(f"cannot insert {column}, already exists")
-   5159         if not is_integer(loc):
-   5160             raise TypeError("loc must be int")
-
-ValueError: cannot insert Não tem, already exists
-
-
-a ordem tem que ser mantida, o codigo nao esta tentando duplicar colunas varias vezes repetidamente ne?
