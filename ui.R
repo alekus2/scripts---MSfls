@@ -5,7 +5,7 @@ bracell_primary   <- "#007E69"
 bracell_secondary <- "#5f8b27"
 bracell_white     <- "#FFFFFF"
 
-ui <- tagList(
+ui <- fluidPage(
   tags$head(
     tags$style(HTML(paste0("
       body {
@@ -65,6 +65,10 @@ ui <- tagList(
         max-height: 40px;
         margin-right: 10px;
       }
+      /* Estilo personalizado para a sidebar */
+      .custom-sidebar {
+        width: 300px; /* Defina a largura desejada */
+      }
     ")))
   ),
   
@@ -73,11 +77,10 @@ ui <- tagList(
     
     tabPanel("Dados", icon = icon("file-upload"),
              sidebarLayout(
-               sidebarPanel(
+               sidebarPanel(class = "custom-sidebar",  # Aplique a classe aqui
                  radioButtons("data_source", "Fonte dos talhões:",
                               choices = c("Upload shapefile (.zip)" = "upload"),
                               selected = "upload"),
-
                  
                  conditionalPanel(
                    "input.data_source == 'upload'",
@@ -218,9 +221,4 @@ ui <- tagList(
   )
 )
 
-
-shinyApp(ui = ui, server = server)
-
-> runApp('AutoAlocar.R')
-Aviso: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.
-
+shinyApp(ui = ui, server = function(input, output) { })
