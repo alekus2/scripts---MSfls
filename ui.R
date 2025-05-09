@@ -68,6 +68,10 @@ ui <- fluidPage(
       /* Estilo personalizado para a sidebar */
       .custom-sidebar {
         width: 300px; /* Defina a largura desejada */
+        float: left; /* Mantenha a sidebar flutuando à esquerda */
+      }
+      .main-panel {
+        margin-left: 320px; /* Espaco para a largura da sidebar */
       }
     ")))
   ),
@@ -77,7 +81,7 @@ ui <- fluidPage(
     
     tabPanel("Dados", icon = icon("file-upload"),
              sidebarLayout(
-               sidebarPanel(class = "custom-sidebar",  # Aplique a classe aqui
+               sidebarPanel(class = "custom-sidebar",
                  radioButtons("data_source", "Fonte dos talhões:",
                               choices = c("Upload shapefile (.zip)" = "upload"),
                               selected = "upload"),
@@ -111,7 +115,7 @@ ui <- fluidPage(
                  sliderInput("distancia_minima", "Distância mínima (m):", min = 30, max = 100, value = 50, step = 10),
                  actionButton("confirmar", "Confirmar", class = "btn btn-danger")
                ),
-               mainPanel(
+               mainPanel(class = "main-panel", # Aplica a classe ao mainPanel
                  div(class = "sobre-texto",
                      h2("Sobre os arquivos"),
                      br(),
@@ -146,7 +150,7 @@ ui <- fluidPage(
                             h2("Gerar parcelas", style = paste0("color:", bracell_primary, ";")),
                             actionButton("gerar_parcelas", "Gerar Parcelas", class = "btn btn-danger")
                           ),
-                          mainPanel(
+                          mainPanel(class = "main-panel",
                             div(id = "progress-container", style = "width:100%; background-color:#f3f3f3; padding:3px;",
                                 div(id = "progress-bar", style = "width:0%; height:20px; text-align:center; line-height:20px; color:white;")
                             ),
