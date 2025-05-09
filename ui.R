@@ -75,20 +75,9 @@ ui <- tagList(
              sidebarLayout(
                sidebarPanel(
                  radioButtons("data_source", "Fonte dos talhões:",
-                              choices = c("Upload shapefile (.zip)" = "upload",
-                                          "Banco ArcSDE Oracle"    = "db"),
+                              choices = c("Upload shapefile (.zip)" = "upload"),
                               selected = "upload"),
-                 conditionalPanel(
-                   "input.data_source == 'db'",
-                   textInput("db_host",    "Host Oracle:",    value = "meu.host.oracle"),
-                   numericInput("db_port", "Porta:",           value = 1521),
-                   textInput("db_service","Service Name:",     value = "ORCL"),
-                   textInput("db_user",    "Usuário:",         value = "ALEX_SANTOS4"),
-                   passwordInput("db_pwd", "Senha:",           value = "KLqvSQBqES"),
-                   actionButton("db_connect", "Conectar ao Banco", class = "btn btn-secondary"),
-                   uiOutput("db_layer_selector"),
-                   hr()
-                 ),
+
                  
                  conditionalPanel(
                    "input.data_source == 'upload'",
