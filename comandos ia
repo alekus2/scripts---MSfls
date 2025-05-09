@@ -1,6 +1,9 @@
-> library(shiny); runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoParc/AutoParc.R')
-Erro: carregamento do pacote ou namespace falhou para ‘shiny’ in inDL(x, as.logical(local), as.logical(now), ...):
- impossível carregar objeto compartilhado 'C:/Users/alex_santos4/AppData/Local/R/win-library/4.4/httpuv/libs/x64/httpuv.dll':
-  LoadLibrary failure:  Não foi possível encontrar o procedimento especificado.
-Além disso: Mensagen de aviso:
-pacote ‘shiny’ foi compilado no R versão 4.4.3 
+Bom dia, Jean
+Tudo certo?
+
+Em anexo, esta outro teste que realizei juntamente com a @Leticia da Paschoa Manhaes, e corrigindo mais algumas coisas relacionadas ao processamento das parcelas.
+Se você puder, poderia fazer um comparativo entre as parcelas já plotadas destes talhões com os que o app fez? E me dar uma nota de 0 a 10 de quão certo ficou as parcelas.
+
+At.te
+Alex Aprendiz
+
