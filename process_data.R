@@ -1,3 +1,6 @@
+library(sf)
+library(dplyr)
+library(glue)
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,      
