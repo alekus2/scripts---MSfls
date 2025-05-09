@@ -220,3 +220,7 @@ ui <- tagList(
 
 
 shinyApp(ui = ui, server = server)
+
+> runApp('AutoAlocar.R')
+Aviso: Navigation containers expect a collection of `bslib::nav_panel()`/`shiny::tabPanel()`s and/or `bslib::nav_menu()`/`shiny::navbarMenu()`s. Consider using `header` or `footer` if you wish to place content above (or below) every panel's contents.
+
