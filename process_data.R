@@ -1,4 +1,3 @@
-
 library(sf)
 library(dplyr)
 library(glue)
@@ -20,6 +19,7 @@ process_data <- function(shape, parc_exist_path,
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = as.numeric(AREA_HA)
     )
+  print(head(shape_full))
   
   buf_dist <- -abs(distancia.minima)
   shapeb   <- shape_full %>%
