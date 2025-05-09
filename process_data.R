@@ -1,7 +1,3 @@
-library(sf)
-library(dplyr)
-library(glue)
-
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,      
@@ -19,7 +15,6 @@ process_data <- function(shape, parc_exist_path,
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = as.numeric(AREA_HA)
     )
-  print(head(shape_full))
   
   buf_dist <- -abs(distancia.minima)
   shapeb   <- shape_full %>%
@@ -38,15 +33,8 @@ process_data <- function(shape, parc_exist_path,
     # área total do talhão em hectares
     area_ha <- unique(talhao$AREA_HA)
     
-    # número exato de pontos que queremos no talhão inteiro
-    n_req <- max(1, floor(area_ha / intensidade_amostral))
-    
-    # se não couber nem 1 ponto, pula
-    if (n_req <= 0) {
-      message(glue("Talhão {idx}: área muito pequena, pulando."))
-      update_progress(round(i_idx/total_poly*100, 1))
-      next
-    }
+    # número exato de pontos que queremos (pode ser 1)
+    n_req <- max(1, ceiling(area_ha / intensidade_amostral))
     
     # grid inicial aproximado
     delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
@@ -55,7 +43,7 @@ process_data <- function(shape, parc_exist_path,
     
     # 4) Geração iterativa da grid até caber n_req -------------------------------
     pts_all <- NULL
-    for (iter in seq_len(20)) {
+    for (iter in seq_len(30)) {
       grid_pts <- st_make_grid(
         x        = talhao,
         cellsize = c(delta, delta),
@@ -65,20 +53,27 @@ process_data <- function(shape, parc_exist_path,
       inside   <- st_within(grid_pts, talhao, sparse = FALSE)
       pts_tmp  <- grid_pts[apply(inside, 1, any)]
       
-      if (length(pts_tmp) >= n_req) {
-        pts_all <- pts_tmp
-        break
+      if (length(pts_tmp) < n_req) {
+        delta <- delta * 0.9
+        next
       }
-      delta <- delta * 0.95
+      pts_all <- pts_tmp
+      break
     }
     
-    # se mesmo assim não coube, pula o talhão
+    # se não conseguiu gerar n_req, usa o que gerou ou centroid
     if (is.null(pts_all) || length(pts_all) < n_req) {
-      message(glue(
-        "Talhão {idx} só comporta {length(pts_all)} pontos (precisava de {n_req}). Pulando."
-      ))
-      update_progress(round(i_idx/total_poly*100, 1))
-      next
+      pts_all <- if (!is.null(pts_all) && length(pts_all) > 0) {
+        pts_all
+      } else {
+        st_centroid(talhao)
+      }
+      # garante pelo menos um
+      if (length(pts_all) == 0) pts_all <- st_centroid(talhao)
+      # se faltarem, duplica o primeiro
+      while (length(pts_all) < n_req) {
+        pts_all <- c(pts_all, pts_all[1])
+      }
     }
     
     # 5) Seleciona exatamente n_req pontos ordenados ------------------------------
@@ -116,7 +111,40 @@ process_data <- function(shape, parc_exist_path,
   # 8) Combina todos os pontos gerados --------------------------------------------
   all_pts <- do.call(rbind, result_points)
   
-  # 9) Numeração sequencial a partir de parcelas existentes -----------------------
+  # 9) Garante mínimo de 2 parcelas por talhão -----------------------------------
+  counts <- all_pts %>% 
+    st_drop_geometry() %>% 
+    count(Index, name = "n_pts")
+  
+  to_fix <- counts %>% filter(n_pts < 2)
+  if (nrow(to_fix) > 0) {
+    extras <- lapply(seq_len(nrow(to_fix)), function(i) {
+      idx      <- to_fix$Index[i]
+      need     <- 2 - to_fix$n_pts[i]
+      # ponto base: centroid do talhão original
+      base_pt  <- st_centroid(filter(shape_full, Index == idx))
+      # monta linhas extras
+      df0 <- data.frame(
+        Index      = rep(idx, need),
+        PROJETO    = rep(base_pt$ID_PROJETO, need),
+        TALHAO     = rep(base_pt$TALHAO,    need),
+        CICLO      = rep(base_pt$CICLO,     need),
+        ROTACAO    = rep(base_pt$ROTACAO,   need),
+        STATUS     = rep("ATIVA",           need),
+        FORMA      = rep(forma_parcela,     need),
+        TIPO_INSTA = rep(tipo_parcela,      need),
+        TIPO_ATUAL = rep(tipo_parcela,      need),
+        DATA       = rep(Sys.Date(),        need),
+        DATA_ATUAL = rep(Sys.Date(),        need),
+        COORD_X    = rep(st_coordinates(base_pt)[1], need),
+        COORD_Y    = rep(st_coordinates(base_pt)[2], need)
+      )
+      st_sf(df0, geometry = st_geometry(base_pt)[rep(1, need)])
+    })
+    all_pts <- bind_rows(all_pts, do.call(rbind, extras))
+  }
+  
+  # 10) Numeração sequencial a partir de parcelas existentes -----------------------
   parcelasinv <- parc_exist %>%
     st_drop_geometry() %>%
     group_by(PROJETO) %>%
