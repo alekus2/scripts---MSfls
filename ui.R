@@ -78,7 +78,6 @@ ui <- tagList(
                               choices = c("Upload shapefile (.zip)" = "upload"),
                               selected = "upload"),
 
-                 
                  conditionalPanel(
                    "input.data_source == 'upload'",
                    fileInput("shape", "Upload do Shapefile dos talhões (.zip)", accept = c(".zip"))
@@ -92,12 +91,6 @@ ui <- tagList(
                                   textInput("mudar_nome_arudek_rotacao",  "Rotação:", "ROTACAO")
                  ),
                  numericInput("intensidade_amostral", "Intensidade amostral (parcelas/ha):", value = 5),
-                 radioButtons("parcelas_existentes_lancar", "Deseja informar parcelas existentes?",
-                              choices = list("Sim" = 1, "Não" = 0), selected = 0),
-                 conditionalPanel(
-                   "input.parcelas_existentes_lancar == 1",
-                   fileInput("parc_exist", "Upload do Shapefile das parcelas existentes", accept = c(".zip"))
-                 ),
                  selectizeInput("forma_parcela", "Forma da parcela:", choices = c("CIRCULAR", "RETANGULAR")),
                  selectizeInput("tipo_parcela",  "Tipo da parcela:",   choices = c("S30", "S90", "IFQ6", "IFQ12", "IFC", "IPC")),
                  conditionalPanel(
@@ -113,7 +106,6 @@ ui <- tagList(
                      h2("Sobre os arquivos"),
                      br(),
                      div(tags$b("Shape dos talhões:"), " .zip contendo os arquivos do shapefile."),
-                     div(tags$b("Parcelas existentes:"), " .zip com o shapefile das parcelas existentes."),
                      br(),
                      p(style="color:red;
                               font-size:16px;
@@ -128,7 +120,6 @@ ui <- tagList(
                      "Altere os dados que deseja, clique em 'Confirmar'. Em seguida vá na aba 'Plotagem' e clique em 'Gerar Parcelas'.")
                      ),
                  verbatimTextOutput("shape_text"),
-                 verbatimTextOutput("parc_exist_text"),
                  verbatimTextOutput("confirmation")
                )
              )
@@ -215,7 +206,5 @@ ui <- tagList(
       });
     "))
 )
-
-
 
 shinyApp(ui = ui, server = server)
