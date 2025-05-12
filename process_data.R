@@ -112,7 +112,7 @@ process_data <- function(shape, parc_exist_path,
   
   all_pts <- all_pts %>%
     group_by(Index) %>%
-    mutate(PARCELAS = row_number()) %>%
+    mutate(NM_PARCELAS = row_number()) %>%  # Alterando o nome da coluna para NM_PARCELAS
     ungroup()
   
   all_pts
