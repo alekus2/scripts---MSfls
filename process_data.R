@@ -7,22 +7,22 @@ process_data <- function(shape, parc_exist_path,
                          distancia.minima,      
                          intensidade_amostral,  
                          update_progress) {
-
+  
   parc_exist <- st_read(parc_exist_path) %>% st_transform(31982)
-
+  
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(Index = paste0(ID_PROJETO, TALHAO),
            AREA_HA = as.numeric(AREA_HA))
-
+  
   shapeb <- shape_full %>%
     st_buffer(-abs(distancia.minima)) %>%
     filter(!st_is_empty(geometry))
-
+  
   result_points <- list()
   indices <- unique(shapeb$Index)
   total_poly <- length(indices)
-
+  
   for (i in seq_along(indices)) {
     idx <- indices[i]
     talhao <- filter(shapeb, Index == idx)
@@ -31,7 +31,7 @@ process_data <- function(shape, parc_exist_path,
     delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
     bb <- st_bbox(talhao)
     offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
-
+    
     pts_all <- NULL
     for (iter in seq_len(30)) {
       grid_pts <- st_make_grid(x = talhao, cellsize = c(delta, delta), offset = offset_xy, what = "centers")
@@ -44,17 +44,17 @@ process_data <- function(shape, parc_exist_path,
       pts_all <- pts_tmp
       break
     }
-
+    
     if (is.null(pts_all) || length(pts_all) < n_req) {
       pts_all <- if (!is.null(pts_all) && length(pts_all) > 0) pts_all else st_centroid(talhao)
       if (length(pts_all) == 0) pts_all <- st_centroid(talhao)
       while (length(pts_all) < n_req) pts_all <- c(pts_all, pts_all[1])
     }
-
+    
     cr <- st_coordinates(pts_all)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_all[ord][1:n_req]
-
+    
     coords <- st_coordinates(sel)
     pts_sf <- st_sf(
       data.frame(
@@ -74,13 +74,13 @@ process_data <- function(shape, parc_exist_path,
       ),
       geometry = sel
     )
-
+    
     result_points[[idx]] <- pts_sf
     update_progress(round(i/total_poly*100, 1))
   }
-
+  
   all_pts <- do.call(rbind, result_points)
-
+  
   counts <- all_pts %>% st_drop_geometry() %>% count(Index, name = "n_pts")
   to_fix <- filter(counts, n_pts < 2)
   if (nrow(to_fix) > 0) {
@@ -107,11 +107,11 @@ process_data <- function(shape, parc_exist_path,
     })
     all_pts <- bind_rows(all_pts, do.call(rbind, extras))
   }
-
+  
   all_pts <- all_pts %>%
     group_by(Index) %>%
     mutate(PARCELAS = row_number()) %>%
     ungroup()
-
+  
   all_pts
 }
