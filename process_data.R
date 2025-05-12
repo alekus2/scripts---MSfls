@@ -70,7 +70,8 @@ process_data <- function(shape, parc_exist_path,
         DATA       = rep(Sys.Date(),          n_req),
         DATA_ATUAL = rep(Sys.Date(),          n_req),
         COORD_X    = coords[,1],
-        COORD_Y    = coords[,2]
+        COORD_Y    = coords[,2],
+        AREA_HA    = rep(area_ha, n_req)  # Adicionando a coluna AREA_HA
       ),
       geometry = sel
     )
@@ -101,7 +102,8 @@ process_data <- function(shape, parc_exist_path,
         DATA       = rep(Sys.Date(),        need),
         DATA_ATUAL = rep(Sys.Date(),        need),
         COORD_X    = rep(st_coordinates(base_pt)[1], need),
-        COORD_Y    = rep(st_coordinates(base_pt)[2], need)
+        COORD_Y    = rep(st_coordinates(base_pt)[2], need),
+        AREA_HA    = rep(st_area(base_pt), need)  # Adicionando a coluna AREA_HA
       )
       st_sf(df0, geometry = st_geometry(base_pt)[rep(1, need)])
     })
