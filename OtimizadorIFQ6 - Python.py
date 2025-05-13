@@ -13,10 +13,8 @@ class OtimizadorIFQ6:
             "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT", "NM_CAP_DAP1",
             "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03"
         ]
-        
         lista_df = []
         equipes = {}
-
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -24,7 +22,6 @@ class OtimizadorIFQ6:
         mes_atual = datetime.now().month
         nome_mes = meses[mes_atual - 1]
         data_emissao = datetime.now().strftime("%Y%m%d")
-
         base_dir = os.path.dirname(paths[0])
         pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
         pasta_output = os.path.join(pasta_mes, 'output')
@@ -34,7 +31,6 @@ class OtimizadorIFQ6:
             if not os.path.exists(path):
                 print(f"Erro: Arquivo '{path}' não encontrado.")
                 continue
-
             nome_arquivo = os.path.basename(path).upper()
             if 'LEBATEC' in nome_arquivo:
                 nome_equipe_base = "lebatec"
@@ -48,19 +44,15 @@ class OtimizadorIFQ6:
                     if eqp in ['1', '2', '3']:
                         break
                 nome_equipe_base = ["lebatec", "bravore", "propria"][int(eqp) - 1]
-
             equipes[nome_equipe_base] = equipes.get(nome_equipe_base, 0) + 1
             nome_equipe = nome_equipe_base if equipes[nome_equipe_base] == 1 else f"{nome_equipe_base}_{equipes[nome_equipe_base]:02d}"
-
             try:
                 df = pd.read_excel(path, sheet_name=0)
             except Exception as e:
                 print(f"Erro ao ler a primeira aba do arquivo '{path}': {e}")
                 continue
-
             df.columns = [str(col).strip().upper() for col in df.columns]
             colunas_faltando = [col for col in nomes_colunas if col not in df.columns]
-
             if colunas_faltando:
                 print(f"Colunas da planilha: {df.columns}")
                 print(f"Erro: As colunas esperadas não foram encontradas no arquivo '{path}': {', '.join(colunas_faltando)}")
@@ -77,26 +69,21 @@ class OtimizadorIFQ6:
                 except Exception as e:
                     print(f"Erro ao ler a segunda aba do arquivo '{path}': {e}")
                     continue  
-
             df_filtrado = df[nomes_colunas].copy()
             df_filtrado['EQUIPE'] = nome_equipe
             lista_df.append(df_filtrado)
 
         if lista_df:
             df_final = pd.concat(lista_df, ignore_index=True)
-
             dup_columns = ['CD_PROJETO', 'CD_TALHAO', 'NM_PARCELA', 'NM_FILA', 'NM_COVA', 'NM_FUSTE', 'NM_ALTURA']
             df_final['check dup'] = df_final.duplicated(subset=dup_columns, keep=False).map({True: 'VERIFICAR', False: 'OK'})
-
             valid_letters = ('A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'K', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W')
             df_final['check cd'] = df_final.apply(
                 lambda row: 'OK' if row['CD_01'] in valid_letters and row['NM_FUSTE'] == 1 else
                             ('VERIFICAR' if row['CD_01'] == 'L' and row['NM_FUSTE'] == 1 else 'OK'),
                 axis=1
             )
-
             df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
-
             def is_sequential(group):
                 last_value = None
                 for _, row in group.iterrows():
@@ -114,23 +101,19 @@ class OtimizadorIFQ6:
                                 return False
                             last_value = row['NM_COVA']
                 return True
-
             bifurcacao_necessaria = False
             for fila, grupo in df_final.groupby('NM_FILA'):
                 if not is_sequential(grupo):
                     bifurcacao_necessaria = True
                     break
-
-            df_final['check SQC'] = 'OK'  
+            df_final['check SQC'] = 'OK'
             df_final['NM_COVA_ORIG'] = df_final['NM_COVA']
-
             df_final['group_id'] = (df_final['NM_FILA'] != df_final['NM_FILA'].shift()).cumsum()
 
             if bifurcacao_necessaria:
                 for group_id, grupo in df_final.groupby('group_id'):
                     indices = grupo.index.tolist()
                     nova_sequencia = list(range(1, len(indices) + 1))
-                    
                     for pos, idx in enumerate(indices):
                         if df_final.at[idx, 'CD_01'] == 'L':
                             original_atual = df_final.at[idx, 'NM_COVA_ORIG']
@@ -147,7 +130,6 @@ class OtimizadorIFQ6:
                                     nova_sequencia[pos] = nova_sequencia[pos + 1]
                                     df_final.at[idx, 'check SQC'] = 'VERIFICAR'
                                     continue
-                    
                     for pos, idx in enumerate(indices):
                         df_final.at[idx, 'NM_COVA'] = nova_sequencia[pos]
             else:
@@ -159,14 +141,12 @@ class OtimizadorIFQ6:
                             df_final.at[idx, 'check SQC'] = 'VERIFICAR'
 
             df_final.drop(columns=['NM_COVA_ORIG', 'group_id'], inplace=True)
-
             count_verificar = df_final['check SQC'].value_counts().get('VERIFICAR', 0)
             print(f"Quantidade de 'VERIFICAR': {count_verificar}")
 
             if count_verificar > 0:
                 resposta = input("Deseja verificar a planilha agora? (s/n): ")
                 if resposta.lower() == 's':
-                    # Cria o arquivo IFQ6
                     nome_base = f"IFQ6_{nome_mes}_{data_emissao}"
                     contador = 1
                     novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
@@ -176,12 +156,9 @@ class OtimizadorIFQ6:
                     df_final.to_excel(novo_arquivo_excel, index=False)
                     print(f"✅ Dados verificados e salvos em '{novo_arquivo_excel}'.")
                 else:
-                    # Cria o arquivo BASE_IFQ6
-                    df_final['ht média'] = df_final.groupby('NM_COVA')['NM_ALTURA'].transform(lambda x: x.mean())
-                    df_final = df_final.sort_values(by=['CD_TALHAO', 'NM_PARCELA', 'ht média'])
+                    df_final = df_final.sort_values(by=['CD_TALHAO', 'NM_PARCELA', 'NM_ALTURA'])
                     df_final['nm_cova_ordenado'] = df_final.groupby(['CD_TALHAO', 'NM_PARCELA']).cumcount() + 1
                     df_final = df_final.sort_index()
-                    
                     nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
                     contador = 1
                     novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
@@ -191,12 +168,9 @@ class OtimizadorIFQ6:
                     df_final.to_excel(novo_arquivo_excel, index=False)
                     print(f"✅ Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
             else:
-                # Cria o arquivo BASE_IFQ6 se não houver "VERIFICAR"
-                df_final['ht média'] = df_final.groupby('NM_COVA')['NM_ALTURA'].transform(lambda x: x.mean())
-                df_final = df_final.sort_values(by=['CD_TALHAO', 'NM_PARCELA', 'ht média'])
+                df_final = df_final.sort_values(by=['CD_TALHAO', 'NM_PARCELA', 'NM_ALTURA'])
                 df_final['nm_cova_ordenado'] = df_final.groupby(['CD_TALHAO', 'NM_PARCELA']).cumcount() + 1
                 df_final = df_final.sort_index()
-                
                 nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
                 contador = 1
                 novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
