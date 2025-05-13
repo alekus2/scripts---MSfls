@@ -160,6 +160,22 @@ class OtimizadorIFQ6:
 
             df_final.drop(columns=['NM_COVA_ORIG', 'group_id'], inplace=True)
 
+            # Contar "VERIFICAR"
+            count_verificar = df_final['check SQC'].value_counts().get('VERIFICAR', 0)
+            print(f"Quantidade de 'VERIFICAR': {count_verificar}")
+
+            if count_verificar > 0:
+                resposta = input("Deseja verificar a planilha agora? (s/n): ")
+                if resposta.lower() == 's':
+                    print("Iniciando verificação...")
+
+            # Adicionando colunas solicitadas
+            df_final['ht média'] = df_final.groupby('NM_COVA')['NM_ALTURA'].transform(lambda x: x.mean())
+            df_final['nm_cova_ordenado'] = df_final.groupby('CD_PROJETO').cumcount() + 1
+            df_final['dt_medição'] = df_final['DT_INICIAL']  # ou ajustar conforme necessário
+            df_final['equipe_2'] = "Nome da Equipe 2"  # ajuste como necessário
+            df_final['equipe_3'] = "Nome do Responsável"  # ajuste como necessário
+
             if len(equipes) == 1:
                 nome_base = f"IFQ6_{nome_mes}_{list(equipes.keys())[0]}_{data_emissao}"
             elif len(equipes) == 2:
