@@ -203,27 +203,57 @@ class OtimizadorIFQ6:
               df_final['DT_MEDIÇÃO1'] = df_final['DT_INICIAL']
               df_final['EQUIPE_2'] = df_final['CD_EQUIPE']
               df_final.drop(columns=['check dup','check cd','check SQC'], inplace=True)
-              #processamento parte 2.
-              #Agora nessa parte, o codigo deverá ler e copiar os dados do arquivo do excel "Cadastro SGF" para o sheet 0 e esse "Dados CST {nome_mes}" ficara no sheet 1 com o esses dados de processamento que fizemos agora.
-              #E dentro do sheet de cadastro SGF ele deverá criar uma coluna que chamada "Index" que concatena as colunas "Id Projeto" e "Talhão". Ex:Id Projeto(6160)+Talhão(001-01)=Index(6160001-01).
-              #Após isso ele ira criar outra planilha no sheet 2 onde o nome sera "C_tabela_resultados"  onde ele ira procurar dentro da coluna "Index" em Cadastro SGF a os dados da coluna "Área(ha)" correspondente ao cd_projeto+cd_talhao (assim como o index) do nm_cova_ordenado.
-              #Então a ordem das colunas em "C_tabela_resultados" seria:Área (ha),Chave_stand_1(copia de dados de chave_2),cd_projeto,cd_talhao,nm_parcela,nm_area_parcela(vai puxar de dados CST como pode ver na lista de colunas).
-              #Depois dessa ordem acima ele ira criar colunas com valor indo de 1 até N (maximo de nm ordenado. Ex: nm_ordenado vai de 1 até 59 entao ele cria colunas 1,2,3,4...etc ate 59.), e dentro dessas colunas vai a quantidade de ht média de cada projeto e talhao e parcela.
-              #EX:coluna 1: os valores que em todos os talhoes estao com nm_cova_ordenada 1, coluna 2: mesma coisa e assim por diante.
 
+              cadastro_path = paths[-1]
+              df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
+              df_cadastro['Index'] = df_cadastro['Id Projeto'].str.strip() + df_cadastro['Talhão'].str.strip()
+              df_final['Index'] = df_final['CD_PROJETO'].astype(str).str.strip() + df_final['CD_TALHAO'].astype(str).str.strip()
+              df_res = pd.merge(
+                  df_final,
+                  df_cadastro[['Index', 'Área(ha)']],
+                  on='Index',
+                  how='left'
+              )
+              df_res.rename(columns={
+                  'chave_2': 'Chave_stand_1',
+                  'NM_PARCELA': 'nm_parcela',
+                  'NM_AREA_PARCELA': 'nm_area_parcela'
+              }, inplace=True)
+              cols_iniciais = [
+                  'Área(ha)', 'Chave_stand_1',
+                  'CD_PROJETO', 'CD_TALHAO',
+                  'nm_parcela', 'nm_area_parcela'
+              ]
+              df_res = df_res[cols_iniciais + ['nm_cova_ordenado', 'Ht_média']]
+              df_pivot = df_res.pivot_table(
+                  index=cols_iniciais,
+                  columns='nm_cova_ordenado',
+                  values='Ht_média',
+                  aggfunc='first'
+              ).reset_index()
+              df_pivot.columns = [
+                  str(c) if isinstance(c, int) else c
+                  for c in df_pivot.columns
+              ]
+              num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=lambda x: int(x))
+              df_tabela_resultados = df_pivot[cols_iniciais + num_cols]
 
               nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
               contador = 1
-              novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
-              while os.path.exists(novo_arquivo_excel):
+              path_saida = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
+              while os.path.exists(path_saida):
                   contador += 1
-                  novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
-              df_final.to_excel(novo_arquivo_excel, index=False)
-              print(f"✅ Todos os dados foram unificados e salvos em '{novo_arquivo_excel}'.")
+                  path_saida = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
+
+              with pd.ExcelWriter(path_saida, engine='openpyxl') as writer:
+                  df_cadastro.to_excel(writer, sheet_name='Cadastro_SGF', index=False)
+                  df_final.to_excel(writer, sheet_name=f'Dados_CST_{nome_mes}', index=False)
+                  df_tabela_resultados.to_excel(writer, sheet_name='C_tabela_resultados', index=False)
+
+              print(f"✅ Tudo gravado em '{path_saida}'")
         else:
               print("❌ Nenhum arquivo foi processado com sucesso.")
 
-# Exemplo de uso
 otimizador = OtimizadorIFQ6()
 
 arquivos = [
@@ -232,15 +262,4 @@ arquivos = [
       "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
       "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
       "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-      "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-      "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
-      "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-      "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-      "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-      "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-      "/content/base_dados_IFQ6_propria_fev.xlsx",
-      "/Maio/output/Cadastro SGF_Maio_01.xlsx"      
-
-]
-
-otimizador.validacao(arquivos)
+      "/content/6371_SÃO_ROQUE_BTG - IFQ6 (
