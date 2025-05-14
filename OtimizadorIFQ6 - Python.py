@@ -16,6 +16,7 @@ class OtimizadorIFQ6:
         os.makedirs(pasta_output, exist_ok=True)
         cadastro_path = next((p for p in paths if "SGF" in os.path.basename(p).upper()), None)
 
+        # lê e processa todos os arquivos exceto o cadastro SGF
         for path in paths:
             if path == cadastro_path or not os.path.exists(path):
                 continue
@@ -133,31 +134,41 @@ class OtimizadorIFQ6:
         df_final["EQUIPE_2"] = df_final["CD_EQUIPE"]
         df_final.drop(columns=["check dup","check cd","check SQC"], inplace=True)
 
-        # processa parte 2
+        # --- processa parte 2 ---
         df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
-        df_cadastro["Talhão_z3"] = df_cadastro["Talhão"].astype(str).str[-3:].str.zfill(3)
-        df_cadastro["Index"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão_z3"]
+        # Index correto: Id Projeto + Talhão completo (ex: "001-01")
+        df_cadastro["Index"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão"].str.strip()
+        # cria coluna z3 só para merge de área
+        df_cadastro["Talhão_z3"] = df_cadastro["Talhão"].str[-3:].str.zfill(3)
+        df_cadastro["Index_z3"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão_z3"]
 
-        df_final["Index"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
+        # prepara Index_z3 em df_final
+        df_final["Index_z3"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
 
+        # detecta coluna de área no cadastro
         area_col = next((c for c in df_cadastro.columns if "ÁREA" in c.upper()), None)
 
+        # merge para puxar o valor de área
         df_res = pd.merge(
             df_final,
-            df_cadastro[["Index", area_col]],
-            on="Index",
+            df_cadastro[["Index_z3", area_col]],
+            left_on="Index_z3",
+            right_on="Index_z3",
             how="left"
         )
 
+        # renomeia e preenche área em branco
         df_res.rename(columns={area_col: "Área (ha)"}, inplace=True)
         df_res["Área (ha)"] = df_res["Área (ha)"].fillna("")
 
+        # renomeia as demais
         df_res.rename(columns={
             "Chave_stand_1":   "Chave_stand_1",
             "NM_PARCELA":      "nm_parcela",
             "NM_AREA_PARCELA": "nm_area_parcela"
         }, inplace=True)
 
+        # monta o pivot
         cols0 = ["Área (ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela"]
         df_res["Ht média"] = pd.to_numeric(df_res["Ht média"], errors="coerce").fillna(0)
         df_pivot = df_res.pivot_table(
@@ -172,7 +183,7 @@ class OtimizadorIFQ6:
         num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=lambda x: int(x))
         df_tabela = df_pivot[cols0 + num_cols]
 
-        # define out antes de gravar
+        # gera nome de saída e salva tudo
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
         cnt = 1
         out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
@@ -181,28 +192,24 @@ class OtimizadorIFQ6:
             out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
 
         with pd.ExcelWriter(out, engine="openpyxl") as w:
-            df_cadastro.drop(columns=["Talhão_z3"], inplace=True)
+            # sheet 0 com Index correto
+            df_cadastro.drop(columns=["Talhão_z3","Index_z3"], inplace=True)
             df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
+            # sheet 1 (Dados CST)
+            df_final.drop(columns=["Index_z3"], inplace=True)
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
+            # sheet 2
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
 
         print(f"✅ Tudo gravado em '{out}'")
 
 
+# exemplo de uso
 otimizador = OtimizadorIFQ6()
 arquivos = [
     "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
     "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
-    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
-    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-    "/content/base_dados_IFQ6_propria_fev.xlsx",
+    # … resto dos caminhos …
     "/content/Cadastro SGF (correto).xlsx"
 ]
 otimizador.validacao(arquivos)
