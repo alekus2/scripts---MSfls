@@ -101,38 +101,56 @@ class OtimizadorIFQ6:
                 if a["NM_COVA"]==b["NM_COVA"] and a["CD_01"]=="N" and b["CD_01"]=="L" and b["NM_FUSTE"]==2:
                     df_final.at[a.name,"check SQC"]="VERIFICAR"
         df_final.drop(columns=["NM_COVA_ORIG","group_id"],inplace=True)
-        df_final["Ht média"]=df_final["NM_ALTURA"].fillna(0)
-        df_final=df_final.sort_values(by=["CD_PROJETO","CD_TALHAO","NM_PARCELA","Ht média"])
-        df_final["NM_COVA_ORDENADO"]=df_final.groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"]).cumcount()+1
-        df_final["Chave_stand_1"]=df_final["CD_PROJETO"].astype(str)+"-"+df_final["CD_TALHAO"].astype(str)+"-"+df_final["NM_PARCELA"].astype(str)
-        df_final["DT_MEDIÇÃO1"]=df_final["DT_INICIAL"]
-        df_final["EQUIPE_2"]=df_final["CD_EQUIPE"]
+        count_ver = df_final["check SQC"].value_counts().get("VERIFICAR",0)
+        print(f"Quantidade de 'VERIFICAR': {count_ver}")
+        if count_ver > 0:
+            resposta = input("Deseja verificar a planilha agora? (s/n): ")
+            if resposta.lower() == 's':
+                nome_base = f"IFQ6_{nome_mes}_{data_emissao}"
+                cnt = 1
+                out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
+                while os.path.exists(out):
+                    cnt += 1
+                    out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
+                df_final.to_excel(out, index=False)
+                print(f"✅ Dados verificados e salvos em '{out}'.")
+                return
+        df_final["Ht média"] = df_final["NM_ALTURA"].fillna(0)
+        df_final = df_final.sort_values(by=["CD_PROJETO","CD_TALHAO","NM_PARCELA","Ht média"])
+        df_final["NM_COVA_ORDENADO"] = df_final.groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"]).cumcount()+1
+        df_final["Chave_stand_1"] = df_final["CD_PROJETO"].astype(str)+"-"+df_final["CD_TALHAO"].astype(str)+"-"+df_final["NM_PARCELA"].astype(str)
+        df_final["DT_MEDIÇÃO1"] = df_final["DT_INICIAL"]
+        df_final["EQUIPE_2"] = df_final["CD_EQUIPE"]
         df_final.drop(columns=["check dup","check cd","check SQC"],inplace=True)
-        df_cadastro=pd.read_excel(cadastro_path,sheet_name=0,dtype=str)
-        df_cadastro["Index"]=df_cadastro["Id Projeto"].str.strip()+df_cadastro["Talhão"].str.strip()
-        df_final["Index"]=df_final["CD_PROJETO"].astype(str).str.strip()+df_final["CD_TALHAO"].astype(str).str.strip()
-        df_res=pd.merge(df_final,df_cadastro[["Index","Área(ha)"]],on="Index",how="left")
-        df_res.rename(columns={"Chave_stand_1":"Chave_stand_1","NM_PARCELA":"nm_parcela","NM_AREA_PARCELA":"nm_area_parcela"},inplace=True)
-        cols0=["Área(ha)","Chave_stand_1","CD_PROJETO","CD_TALHAO","nm_parcela","nm_area_parcela"]
-        df_res=df_res[cols0+["NM_COVA_ORDENADO","Ht média"]]
-        df_pivot=df_res.pivot_table(index=cols0,columns="NM_COVA_ORDENADO",values="Ht média",aggfunc="first").reset_index()
-        df_pivot.columns=[str(c) if isinstance(c,int) else c for c in df_pivot.columns]
-        nums=sorted([c for c in df_pivot.columns if c.isdigit()],key=lambda x:int(x))
-        df_tabela=df_pivot[cols0+nums]
-        nome_base=f"BASE_IFQ6_{nome_mes}_{data_emissao}"
-        cnt=1
-        out=os.path.join(pasta_output,f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
+        df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
+        cols = df_cadastro.columns.tolist()
+        area_col = next((c for c in cols if 'AREA' in c.upper()), None)
+        if area_col != 'Área(ha)':
+            df_cadastro.rename(columns={area_col: 'Área(ha)'}, inplace=True)
+        df_cadastro["Index"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão"].str.strip()
+        df_final["Index"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
+        df_res = pd.merge(df_final, df_cadastro[["Index","Área(ha)"]], on="Index", how="left")
+        df_res.rename(columns={"nm_parcela":"nm_parcela","NM_AREA_PARCELA":"nm_area_parcela"}, inplace=True)
+        cols0 = ["Área(ha)","Chave_stand_1","CD_PROJETO","CD_TALHAO","nm_parcela","nm_area_parcela"]
+        df_res = df_res[cols0 + ["NM_COVA_ORDENADO","Ht média"]]
+        df_pivot = df_res.pivot_table(index=cols0, columns="NM_COVA_ORDENADO", values="Ht média", aggfunc="first").reset_index()
+        df_pivot.columns = [str(c) if isinstance(c,int) else c for c in df_pivot.columns]
+        nums = sorted([c for c in df_pivot.columns if c.isdigit()], key=lambda x:int(x))
+        df_tabela = df_pivot[cols0 + nums]
+        nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
+        cnt = 1
+        out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
         while os.path.exists(out):
-            cnt+=1
-            out=os.path.join(pasta_output,f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
-        with pd.ExcelWriter(out,engine="openpyxl") as w:
-            df_cadastro.to_excel(w,sheet_name="Cadastro_SGF",index=False)
-            df_final.to_excel(w,sheet_name=f"Dados_CST_{nome_mes}",index=False)
-            df_tabela.to_excel(w,sheet_name="C_tabela_resultados",index=False)
+            cnt += 1
+            out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
+        with pd.ExcelWriter(out, engine="openpyxl") as w:
+            df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
+            df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
+            df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
         print(f"✅ Tudo gravado em '{out}'")
 
-otimizador=OtimizadorIFQ6()
-arquivos=[
+otimizador = OtimizadorIFQ6()
+arquivos = [
     "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
     "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
     "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
@@ -148,19 +166,3 @@ arquivos=[
     "/content/Cadastro SGF_Maio_01.xlsx"
 ]
 otimizador.validacao(arquivos)
-
-KeyError                                  Traceback (most recent call last)
-<ipython-input-6-7975162a829c> in <cell line: 0>()
-    148     "/content/Cadastro SGF (correto).xlsx"
-    149 ]
---> 150 otimizador.validacao(arquivos)
-
-3 frames
-/usr/local/lib/python3.11/dist-packages/pandas/core/indexes/base.py in _raise_if_missing(self, key, indexer, axis_name)
-   6250 
-   6251             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
--> 6252             raise KeyError(f"{not_found} not in index")
-   6253 
-   6254     @overload
-
-KeyError: "['Área(ha)'] not in index"
