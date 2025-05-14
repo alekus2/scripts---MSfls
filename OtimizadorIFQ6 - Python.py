@@ -38,6 +38,8 @@ class OtimizadorIFQ6:
                 nome_equipe_base = "bravore"
             elif 'PROPRIA' in nome_arquivo:
                 nome_equipe_base = "propria"
+            # elif 'Cadastro SGF' or 'SGF' in nome_arquivo:
+            #     #colocar no sheet do cadastro
             else:
                 while True:
                     eqp = input("Selecione a equipe (1 - LEBATEC, 2 - BRAVORE, 3 - PROPRIA): ")
@@ -262,4 +264,25 @@ arquivos = [
       "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
       "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
       "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-      "/content/6371_SÃO_ROQUE_BTG - IFQ6 (
+      "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+      "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx",
+      "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+      "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+      "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+      "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+      "/content/base_dados_IFQ6_propria_fev.xlsx",
+      "/Cadastro SGF (correto).xlsx"  
+
+]
+
+otimizador.validacao(arquivos)
+
+ele deveria fazer isso:
+
+#processamento parte 2.
+#Agora nessa parte, o codigo deverá ler e copiar os dados do arquivo do excel "Cadastro SGF" para o sheet 0 e esse "Dados CST {nome_mes}" ficara no sheet 1 com o esses dados de processamento que fizemos agora.
+#E dentro do sheet de cadastro SGF ele deverá criar uma coluna que chamada "Index" que concatena as colunas "Id Projeto" e "Talhão". Ex:Id Projeto(6160)+Talhão(001-01)=Index(6160001-01).
+#Após isso ele ira criar outra planilha no sheet 2 onde o nome sera "C_tabela_resultados"  onde ele ira procurar dentro da coluna "Index" em Cadastro SGF a os dados da coluna "Área(ha)" correspondente ao cd_projeto+cd_talhao (assim como o index) do nm_cova_ordenado.
+#Então a ordem das colunas em "C_tabela_resultados" seria:Área (ha),Chave_stand_1(copia de dados de chave_2),cd_projeto,cd_talhao,nm_parcela,nm_area_parcela(vai puxar de dados CST como pode ver na lista de colunas).
+#Depois dessa ordem acima ele ira criar colunas com valor indo de 1 até N (maximo de nm ordenado. Ex: nm_ordenado vai de 1 até 59 entao ele cria colunas 1,2,3,4...etc ate 59.), e dentro dessas colunas vai a quantidade de ht média de cada projeto e talhao e parcela.
+#EX:coluna 1: os valores que em todos os talhoes estao com nm_cova_ordenada 1, coluna 2: mesma coisa e assim por diante.
