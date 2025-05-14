@@ -1,5 +1,3 @@
-        # … (código original até aqui)
-
         # processa parte 2
         df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
         cols_cad = df_cadastro.columns.tolist()
@@ -18,13 +16,21 @@
             how="left"
         )
 
-        # renomeia após o merge
+        # renomeia colunas para o padrão que vamos usar
         df_res.rename(columns={
-            area_col:         "Área(ha)",
-            "Chave_stand_1":  "Chave_stand_1",
-            "NM_PARCELA":     "nm_parcela",
-            "NM_AREA_PARCELA":"nm_area_parcela"
+            area_col:          "Área(ha)",
+            "Chave_stand_1":   "Chave_stand_1",
+            "NM_PARCELA":      "nm_parcela",
+            "NM_AREA_PARCELA": "nm_area_parcela",
+            "Ht média":        "Ht média"   # só pra garantir que existe
         }, inplace=True)
+
+        # garante que Ht média é número
+        df_res["Ht média"] = pd.to_numeric(df_res["Ht média"], errors="coerce").fillna(0)
+
+        # debug: veja se df_res tem dados
+        print("=== DEBUG df_res.head() ===")
+        print(df_res[["Área(ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela", "NM_COVA_ORDENADO", "Ht média"]].head())
 
         cols0 = ["Área(ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela"]
         df_res = df_res[cols0 + ["NM_COVA_ORDENADO", "Ht média"]]
@@ -33,7 +39,8 @@
             index=cols0,
             columns="NM_COVA_ORDENADO",
             values="Ht média",
-            aggfunc="first"
+            aggfunc="first",
+            fill_value=0
         ).reset_index()
 
         df_pivot.columns = [str(c) if isinstance(c, int) else c for c in df_pivot.columns]
