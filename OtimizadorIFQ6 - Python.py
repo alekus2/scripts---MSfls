@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 from datetime import datetime
@@ -127,6 +128,7 @@ class OtimizadorIFQ6:
         area_col = next((c for c in cols if 'AREA' in c.upper()), None)
         if area_col != 'Área(ha)':
             df_cadastro.rename(columns={area_col: 'Área(ha)'}, inplace=True)
+            print("Nome da coluna errada! Alterando.....")
         df_cadastro["Index"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão"].str.strip()
         df_final["Index"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
         df_res = pd.merge(df_final, df_cadastro[["Index","Área(ha)"]], on="Index", how="left")
@@ -163,6 +165,23 @@ arquivos = [
     "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
     "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
     "/content/base_dados_IFQ6_propria_fev.xlsx",
-    "/content/Cadastro SGF_Maio_01.xlsx"
+    "/content/Cadastro SGF (correto).xlsx"
 ]
 otimizador.validacao(arquivos)
+
+
+KeyError                                  Traceback (most recent call last)
+<ipython-input-8-97aca5ab1b1f> in <cell line: 0>()
+    167     "/content/Cadastro SGF (correto).xlsx"
+    168 ]
+--> 169 otimizador.validacao(arquivos)
+
+3 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/indexes/base.py in _raise_if_missing(self, key, indexer, axis_name)
+   6250 
+   6251             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
+-> 6252             raise KeyError(f"{not_found} not in index")
+   6253 
+   6254     @overload
+
+KeyError: "['Área(ha)'] not in index"
