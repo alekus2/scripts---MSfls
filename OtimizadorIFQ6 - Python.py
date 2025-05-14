@@ -203,6 +203,15 @@ class OtimizadorIFQ6:
               df_final['DT_MEDIÇÃO1'] = df_final['DT_INICIAL']
               df_final['EQUIPE_2'] = df_final['CD_EQUIPE']
               df_final.drop(columns=['check dup','check cd','check SQC'], inplace=True)
+              #processamento parte 2.
+              #Agora nessa parte, o codigo deverá ler e copiar os dados do arquivo do excel "Cadastro SGF" para o sheet 0 e esse "Dados CST {nome_mes}" ficara no sheet 1 com o esses dados de processamento que fizemos agora.
+              #E dentro do sheet de cadastro SGF ele deverá criar uma coluna que chamada "Index" que concatena as colunas "Id Projeto" e "Talhão". Ex:Id Projeto(6160)+Talhão(001-01)=Index(6160001-01).
+              #Após isso ele ira criar outra planilha no sheet 2 onde o nome sera "C_tabela_resultados"  onde ele ira procurar dentro da coluna "Index" em Cadastro SGF a os dados da coluna "Área(ha)" correspondente ao cd_projeto+cd_talhao (assim como o index) do nm_cova_ordenado.
+              #Então a ordem das colunas em "C_tabela_resultados" seria:Área (ha),Chave_stand_1(copia de dados de chave_2),cd_projeto,cd_talhao,nm_parcela,nm_area_parcela(vai puxar de dados CST como pode ver na lista de colunas).
+              #Depois dessa ordem acima ele ira criar colunas com valor indo de 1 até N (maximo de nm ordenado. Ex: nm_ordenado vai de 1 até 59 entao ele cria colunas 1,2,3,4...etc ate 59.), e dentro dessas colunas vai a quantidade de ht média de cada projeto e talhao e parcela.
+              #EX:coluna 1: os valores que em todos os talhoes estao com nm_cova_ordenada 1, coluna 2: mesma coisa e assim por diante.
+
+
               nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
               contador = 1
               novo_arquivo_excel = os.path.join(pasta_output, f"{nome_base}_{str(contador).zfill(2)}.xlsx")
@@ -229,7 +238,8 @@ arquivos = [
       "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
       "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
       "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-      "/content/base_dados_IFQ6_propria_fev.xlsx"
+      "/content/base_dados_IFQ6_propria_fev.xlsx",
+      "/Maio/output/Cadastro SGF_Maio_01.xlsx"      
 
 ]
 
