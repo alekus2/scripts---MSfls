@@ -148,3 +148,19 @@ arquivos=[
     "/content/Cadastro SGF_Maio_01.xlsx"
 ]
 otimizador.validacao(arquivos)
+
+KeyError                                  Traceback (most recent call last)
+<ipython-input-6-7975162a829c> in <cell line: 0>()
+    148     "/content/Cadastro SGF (correto).xlsx"
+    149 ]
+--> 150 otimizador.validacao(arquivos)
+
+3 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/indexes/base.py in _raise_if_missing(self, key, indexer, axis_name)
+   6250 
+   6251             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
+-> 6252             raise KeyError(f"{not_found} not in index")
+   6253 
+   6254     @overload
+
+KeyError: "['Área(ha)'] not in index"
