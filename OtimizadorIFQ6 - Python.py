@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 from datetime import datetime
@@ -16,7 +17,6 @@ class OtimizadorIFQ6:
         os.makedirs(pasta_output, exist_ok=True)
         cadastro_path = next((p for p in paths if "SGF" in os.path.basename(p).upper()), None)
 
-        # lê e processa todos os arquivos exceto o cadastro SGF
         for path in paths:
             if path == cadastro_path or not os.path.exists(path):
                 continue
@@ -136,19 +136,14 @@ class OtimizadorIFQ6:
 
         # --- processa parte 2 ---
         df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
-        # Index correto: Id Projeto + Talhão completo (ex: "001-01")
         df_cadastro["Index"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão"].str.strip()
-        # cria coluna z3 só para merge de área
         df_cadastro["Talhão_z3"] = df_cadastro["Talhão"].str[-3:].str.zfill(3)
         df_cadastro["Index_z3"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão_z3"]
 
-        # prepara Index_z3 em df_final
         df_final["Index_z3"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
 
-        # detecta coluna de área no cadastro
         area_col = next((c for c in df_cadastro.columns if "ÁREA" in c.upper()), None)
 
-        # merge para puxar o valor de área
         df_res = pd.merge(
             df_final,
             df_cadastro[["Index_z3", area_col]],
@@ -157,18 +152,15 @@ class OtimizadorIFQ6:
             how="left"
         )
 
-        # renomeia e preenche área em branco
         df_res.rename(columns={area_col: "Área (ha)"}, inplace=True)
         df_res["Área (ha)"] = df_res["Área (ha)"].fillna("")
 
-        # renomeia as demais
         df_res.rename(columns={
             "Chave_stand_1":   "Chave_stand_1",
             "NM_PARCELA":      "nm_parcela",
             "NM_AREA_PARCELA": "nm_area_parcela"
         }, inplace=True)
 
-        # monta o pivot
         cols0 = ["Área (ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela"]
         df_res["Ht média"] = pd.to_numeric(df_res["Ht média"], errors="coerce").fillna(0)
         df_pivot = df_res.pivot_table(
@@ -178,12 +170,22 @@ class OtimizadorIFQ6:
             aggfunc="first",
             fill_value=0
         ).reset_index()
+        
+        #O codigo deverá criar a coluna "n" e dentro dela terá os valores maximos alcançados em "nm_cova_ordenado" organizado por index de cada talhão.
+        #Ele tambem deverá criar outra coluna com os valores de "n/2" dividido por 2.
+        #Depois ele irá criar a coluna "Mediana" com os valores da linha atual daquelas colunas que vai de 1 até N dentro do talhão e fazer a mediana deles.
+        #Ai apos isso ele ira pegar os valores da linha atual daquelas colunas que vai de 1 até N dentro do talhão e colocara dentro da coluna "∑Ht".
+        #E depois criar essa coluna aqui:∑Ht(<=Med)
+        #E fazer o seguinte processo. Ele verifica se a coluna "n" é par ou ímpar e faz o calculo da mediana onde verifica se numero de elementos "n" é par ele faz a soma dos elementos das colunas de 1 até N e se for ímpar e divide por 2.
+        #faça assim como este codigo no excel, mas sem a coluna que verifica se é impar ou par o codigo que deverá fazer isso.
+        #=SE(PROCV(BU2;Ímpar_Par!$A$2:$B$109;2;0)="Par";SOMASES(I2:BT2;I2:BT2;"<="&BW2;$I$1:$BT$1;"<="&BV2);SOMASE($I$1:$BT$1;"<="&BV2;I2:BT2)+(BW2/2))
+        #após crie mais uma coluna chamada "PV50" onde ele vai pegar os valores de "∑Ht" e "∑Ht(<=Med)" e dividilos entre si e transformar em porcentagem.
+
 
         df_pivot.columns = [str(c) if isinstance(c, int) else c for c in df_pivot.columns]
         num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=lambda x: int(x))
         df_tabela = df_pivot[cols0 + num_cols]
 
-        # gera nome de saída e salva tudo
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
         cnt = 1
         out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
@@ -192,13 +194,10 @@ class OtimizadorIFQ6:
             out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
 
         with pd.ExcelWriter(out, engine="openpyxl") as w:
-            # sheet 0 com Index correto
             df_cadastro.drop(columns=["Talhão_z3","Index_z3"], inplace=True)
             df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
-            # sheet 1 (Dados CST)
             df_final.drop(columns=["Index_z3"], inplace=True)
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
-            # sheet 2
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
 
         print(f"✅ Tudo gravado em '{out}'")
@@ -209,7 +208,16 @@ otimizador = OtimizadorIFQ6()
 arquivos = [
     "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
     "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-    # … resto dos caminhos …
+    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4) - Copia.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+    "/content/base_dados_IFQ6_propria_fev.xlsx",
     "/content/Cadastro SGF (correto).xlsx"
 ]
 otimizador.validacao(arquivos)
