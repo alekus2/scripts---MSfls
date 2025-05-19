@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 import numpy as np
@@ -217,7 +218,7 @@ class OtimizadorIFQ6:
             right_on=["CD_PROJETO","CD_TALHAO","NM_PARCELA"],
             how="left"
         )
-        classes_ate_E = ["A","B","C","D","E"]
+        classes_ate_E = ["A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E"] #de "A" ATÉ "E" eu falo desse jeito ai nao da forma literal, era so pra vc ter pegado todos os codigos dessas colunas ai ó e fazer as contas matematicas conforme uma formula de excel mas nao de forma literal tambem claro.
         falhas = ["M","H","F","L","S"]
 
         df_tabela["Stand (tree/ha)"] = (
@@ -230,7 +231,7 @@ class OtimizadorIFQ6:
         df_tabela["%_Sobrevivência"] = (
             (survival_num / survival_den * 100)
             .round(2)
-            .map(lambda x: f"{x:.2f}%".replace(".",","))
+            .map(lambda x: f"{x:.1f}%".replace(".",","))
         )
 
         df_tabela["Pits/ha"] = (
@@ -264,3 +265,40 @@ class OtimizadorIFQ6:
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
 
         print(f"✅ Tudo gravado em '{out}'")
+
+
+otimizador = OtimizadorIFQ6()
+arquivos = [
+    "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+    "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4) - Copia.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+    "/content/base_dados_IFQ6_propria_fev.xlsx",
+    "/content/Cadastro SGF (correto).xlsx"
+]
+otimizador.validacao(arquivos)
+
+
+---------------------------------------------------------------------------
+KeyError                                  Traceback (most recent call last)
+<ipython-input-10-2d9e36172630> in <cell line: 0>()
+    283     "/content/Cadastro SGF (correto).xlsx"
+    284 ]
+--> 285 otimizador.validacao(arquivos)
+
+3 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/indexes/base.py in _raise_if_missing(self, key, indexer, axis_name)
+   6250 
+   6251             not_found = list(ensure_index(key)[missing_mask.nonzero()[0]].unique())
+-> 6252             raise KeyError(f"{not_found} not in index")
+   6253 
+   6254     @overload
+
+KeyError: "['A', 'D', 'G', 'J', 'S', 'E'] not in index"
