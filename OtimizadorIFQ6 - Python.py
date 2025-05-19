@@ -1,4 +1,3 @@
-
 import pandas as pd
 import os
 import numpy as np
@@ -238,6 +237,18 @@ class OtimizadorIFQ6:
         df_tabela = pd.concat([df_tabela, metrics], axis=1)
 
         df_tabela["PV50"] = df_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".", ","))
+
+
+        #o codigo irá criar as colunas de "A" até "E" dentro dessa lista abaixo e contar toda vez que tiver um codigo desse em "CD_01".
+        #deve ser assim "A","B","D","F","G","I","J","L","M","O","Q","K","T","V","S","E".
+        #tem q contar com base em "CD_01" e sempre que não tiver nenhum codigo desse em "dados cst" ele tem q manter em 0 o contador do codigo.
+        #deverá criar outra coluna chamada "Stand (tree/ha)" na frente dessas q citei em que irá somar de "A" até "E" os valores da linha atual e subtrair com as colunas "M","H","F","L" e "S"
+        #a próxima coluna a ser criada vai ser a "%_Sobrevivência" em que deverá somar de "A" até "E" e subtrair com os valores da linha atual com as colunas "F","I","M","H","S" dividido pela soma de "A" até "E" dividido por valor de "L" e o resultado deverá ser em porcentagem.
+        #a próxima coluna vai ser a "Pits/ha" em que valor de "n" dividido por "L" * 10000 dividido por "nm_area_parcela".
+        #a próxima coluna deve se chamar "CST" em que "CD_TALHAO" e "NM_PARCELA" separados por "-"
+        #a proxima coluna será "Pits por sob" em que "Stand(tree/ha)" dividido por "%_Sobrevivência".
+        #e por ultimo a coluna se chamará "Check pits" em que será com os valores de "Pits por sob" subtraido com "Pits/ha"
+        
 
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
         cnt = 1
