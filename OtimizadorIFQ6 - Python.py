@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 from datetime import datetime
+import math
 
 class OtimizadorIFQ6:
     def validacao(self, paths):
@@ -26,9 +27,6 @@ class OtimizadorIFQ6:
 
         cadastro_path = next((p for p in paths if "SGF" in os.path.basename(p).upper()), None)
 
-
-
-
         for path in paths:
             if path == cadastro_path or not os.path.exists(path):
                 continue
@@ -45,7 +43,6 @@ class OtimizadorIFQ6:
                     if escolha in ["1","2","3"]:
                         break
                 base = ["lebatec","bravore","propria"][int(escolha)-1]
-
             equipes[base] = equipes.get(base, 0) + 1
             equipe = base if equipes[base] == 1 else f"{base}_{equipes[base]:02d}"
 
@@ -53,7 +50,6 @@ class OtimizadorIFQ6:
                 df = pd.read_excel(path, sheet_name=0)
             except:
                 continue
-
             df.columns = [str(c).strip().upper() for c in df.columns]
             falt = [c for c in nomes_colunas if c not in df.columns]
             if falt:
@@ -203,108 +199,54 @@ class OtimizadorIFQ6:
             aggfunc="first",
             fill_value=0
         ).reset_index()
-
         df_pivot.columns = [str(c) if isinstance(c, int) else c for c in df_pivot.columns]
         num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=lambda x: int(x))
         df_tabela = df_pivot[cols0 + num_cols]
 
-        def _calc_row(row):
-            valores = [row[c] for c in num_cols]
-            nonzeros = [v for v in valores if v > 0]
-
-            n = len(nonzeros)
-            half = n // 2
-            med = np.median(nonzeros) if nonzeros else 0.0
-            soma_total = sum(nonzeros)
-
-            soma_le = 0.0
-            if n > 0:
-                meio_int = n // 2
-                if n % 2 == 0:
-                    soma_le = sum(v for v in nonzeros[:meio_int] if v <= med)
-                else:
-                    soma_le = sum(nonzeros[:meio_int]) + med / 2.0
-
-            pv50 = (soma_le / soma_total * 100.0) if soma_total else 0.0
-
-            return pd.Series({
-                "n": n,
-                "n/2": half,
-                "Mediana": med,
-                "∑Ht": soma_total,
-                "∑Ht(<=Med)": soma_le,
-                "PV50": pv50
-            })
-
-        metrics = df_tabela.apply(_calc_row, axis=1)
-        df_tabela = pd.concat([df_tabela, metrics], axis=1)
-
-        df_tabela["PV50"] = df_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".", ","))
-
-        codes_to_count = ["A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E"]
-        dfs_flags = []
-        for code in codes_to_count:
-            tmp = df_final.copy()
-            tmp[f"flag_{code}"] = (tmp["CD_01"] == code).astype(int)
-            tmp = (
-                tmp
-                .sort_values(["CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_COVA_ORDENADO"])
-                .groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"])
-                .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-                .reset_index(drop=True)
-            )
-            dfs_flags.append(
-                tmp[["CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_COVA_ORDENADO", f"cum_{code}"]]
-            )
-        df_all_flags = dfs_flags[0]
-        for dfc in dfs_flags[1:]:
-            df_all_flags = df_all_flags.merge(
-                dfc,
-                on=["CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_COVA_ORDENADO"],
-                how="left"
-            )
-        flags_pivot = (
-            df_all_flags
-            .pivot_table(
-                index=["CD_PROJETO","CD_TALHAO","NM_PARCELA"],
-                columns="NM_COVA_ORDENADO",
-                values=[f"cum_{c}" for c in codes_to_count],
-                fill_value=0
-            )
+        # Novo bloco: counts e métricas finais
+        counts = (
+            df_final
+            .groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"])["CD_01"]
+            .value_counts()
+            .unstack(fill_value=0)
+            .reset_index()
         )
-        flags_pivot.columns = [
-            f"{col[0].replace('cum_','')}_{col[1]}"
-            for col in flags_pivot.columns
-        ]
-        flags_pivot = flags_pivot.reset_index()
-        flags_pivot.rename(columns={"NM_PARCELA":"nm_parcela"}, inplace=True)
-        key_cols = ["CD_PROJETO","CD_TALHAO","nm_parcela"]
         df_tabela = df_tabela.merge(
-            flags_pivot,
-            on=key_cols,
+            counts,
+            left_on=["CD_PROJETO","CD_TALHAO","nm_parcela"],
+            right_on=["CD_PROJETO","CD_TALHAO","NM_PARCELA"],
             how="left"
         )
-        for code in codes_to_count:
-            code_cols = [c for c in df_tabela.columns if c.startswith(f"{code}_")]
-            df_tabela[code] = df_tabela[code_cols].max(axis=1)
-            df_tabela.drop(columns=code_cols, inplace=True)
-        sobreviventes = ["A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E"]
-        falhas        = ["M","H","F","L","S"]
-        df_tabela["Stand (tree/ha)"] = (
-            df_tabela[sobreviventes].sum(axis=1)
-          - df_tabela[falhas].sum(axis=1)
-        ) * 10000 / df_tabela["nm_area_parcela"]
+        classes_ate_E = ["A","B","C","D","E"]
+        falhas = ["M","H","F","L","S"]
 
-        num = df_tabela[sobreviventes].sum(axis=1) - df_tabela[["F","I","M","H","S"]].sum(axis=1)
-        den = df_tabela[sobreviventes].sum(axis=1)
+        df_tabela["Stand (tree/ha)"] = (
+            df_tabela[classes_ate_E].sum(axis=1)
+            - df_tabela[falhas].sum(axis=1)
+        ) * 10000 / df_tabela["nm_area_parcela"].astype(float)
+
+        survival_num = (df_tabela[classes_ate_E].sum(axis=1) - df_tabela[falhas].sum(axis=1))
+        survival_den = df_tabela[classes_ate_E].sum(axis=1)
         df_tabela["%_Sobrevivência"] = (
-            (num / den * 100)
+            (survival_num / survival_den * 100)
+            .round(2)
             .map(lambda x: f"{x:.2f}%".replace(".",","))
         )
-        df_tabela["Pits/ha"] = df_tabela["n"] / df_tabela["L"] * 10000 / df_tabela["nm_area_parcela"]
+
+        df_tabela["Pits/ha"] = (
+            df_tabela["n"]
+            / df_tabela.get("L", 0).replace(0, np.nan)
+            * 10000
+            / df_tabela["nm_area_parcela"].astype(float)
+        ).fillna(0)
+
         df_tabela["CST"] = df_tabela["CD_TALHAO"].astype(str) + "-" + df_tabela["nm_parcela"].astype(str)
-        pct = df_tabela["%_Sobrevivência"].str.replace("%","").str.replace(",",".").astype(float)
-        df_tabela["Pits por sob"] = df_tabela["Stand (tree/ha)"] / pct
+
+        pct_num = df_tabela["%_Sobrevivência"].str.replace("%","").str.replace(",",".").astype(float)
+        df_tabela["Pits por sob"] = (
+            df_tabela["Stand (tree/ha)"] / (pct_num/100)
+        ).apply(lambda x: math.ceil(x))
+
         df_tabela["Check pits"] = df_tabela["Pits por sob"] - df_tabela["Pits/ha"]
 
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
@@ -322,84 +264,3 @@ class OtimizadorIFQ6:
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
 
         print(f"✅ Tudo gravado em '{out}'")
-
-otimizador = OtimizadorIFQ6()
-arquivos = [
-    "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
-    "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
-    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
-    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
-    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
-    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
-    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
-    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4) - Copia.xlsx",
-    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
-    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
-    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
-    "/content/base_dados_IFQ6_propria_fev.xlsx",
-    "/content/Cadastro SGF (correto).xlsx"
-]
-otimizador.validacao(arquivos)
-
-
-
-teve varios erros mas o principal deles foi o da coluna "Pits/ha" onde ele deveria pegar o valor da coluna "n" e dividir por da coluna "L"  e o resultado disso ser multiplicado por 10000 eo resultado disso dividido pelo valor da coluna "nm_area_parcela" e claro q isso tudo tem q ser da linha atual.
-Não quero que o codigo junte tudo e faça a soma q nem ele fez uma vez.
-Outra coisa eu tinha pedido para o codigo fazer com que "CST" fosse "CD_talhao" e "nm_parcela" separados por um traço mas o codigo fez com que essa coluna fizesse uma formula no excel muito aleatorio oq n deveria ser, so deveria juntar os dois valores das colunas e separar com um "-".
-e tambem em "Pits por sob" o codigo deveria so fazer a conta matematica de "Stand(tree/ha)" dividido por "%_Sobrevivencia" um exemplo em um stand de 1126 e um %_sobrevivencia de 93,8% ficaria entao "Pits por sob" com 1201 entendeu? meio q arredondando pra cima.
-quero que voce ajuste o codigo para que ele fique do jeito q falei sem alterar muito da sua estrutura. So oq for necessario e tb qro q vc refaça toda essa parte de "codes_to_count" até "df_tabela[check_pits]" para ficar melhor a estrutura.
-e me mande o codigo completo sem comentarios no script.
-
-
-
-
-
-
-
-
-output:
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
-Quantidade de 'VERIFICAR': 0
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-<ipython-input-8-3916559b0fb6>:253: DeprecationWarning: DataFrameGroupBy.apply operated on the grouping columns. This behavior is deprecated, and in a future version of pandas the grouping columns will be excluded from the operation. Either pass `include_groups=False` to exclude the groupings or explicitly select the grouping columns after groupby to silence this warning.
-  .apply(lambda g: g.assign(**{f"cum_{code}": g[f"flag_{code}"].cumsum()}))
-✅ Tudo gravado em '/Maio/output/BASE_IFQ6_Maio_20250519_03.xlsx'
