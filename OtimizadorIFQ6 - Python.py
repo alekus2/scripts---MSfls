@@ -159,18 +159,28 @@ class OtimizadorIFQ6:
         df_cadastro["Index_z3"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão_z3"]
         df_final["Index_z3"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
 
-        area_col = next(c for c in df_cadastro.columns if "ÁREA" in c.upper())
+        area_col = next((c for c in df_cadastro.columns if "ÁREA" in c.upper()), None)
         df_res = pd.merge(
             df_final,
             df_cadastro[["Index_z3", area_col]],
             on="Index_z3",
             how="left"
         )
-        df_res.rename(columns={area_col: "Área (ha)", "NM_PARCELA": "nm_parcela", "NM_AREA_PARCELA": "nm_area_parcela"}, inplace=True)
+        df_res.rename(columns={area_col: "Área (ha)"}, inplace=True)
         df_res["Área (ha)"] = df_res["Área (ha)"].fillna("")
 
-        cols0 = ["Área (ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela"]
+        df_res.rename(columns={
+            "Chave_stand_1":   "Chave_stand_1",
+            "NM_PARCELA":      "nm_parcela",
+            "NM_AREA_PARCELA": "nm_area_parcela"
+        }, inplace=True)
+
+        cols0 = [
+            "Área (ha)", "Chave_stand_1", "CD_PROJETO",
+            "CD_TALHAO", "nm_parcela", "nm_area_parcela"
+        ]
         df_res["Ht média"] = pd.to_numeric(df_res["Ht média"], errors="coerce").fillna(0)
+
         df_pivot = df_res.pivot_table(
             index=cols0,
             columns="NM_COVA_ORDENADO",
@@ -178,10 +188,43 @@ class OtimizadorIFQ6:
             aggfunc="first",
             fill_value=0
         ).reset_index()
+
         df_pivot.columns = [str(c) if isinstance(c, int) else c for c in df_pivot.columns]
         num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=lambda x: int(x))
         df_tabela = df_pivot[cols0 + num_cols]
 
+        def _calc_row(row):
+            valores = [row[c] for c in num_cols]
+            nonzeros = [v for v in valores if v > 0]
+
+            n = len(nonzeros)
+            half = n // 2
+            med = np.median(nonzeros) if nonzeros else 0.0
+            soma_total = sum(nonzeros)
+
+            soma_le = 0.0
+            if n > 0:
+                meio_int = n // 2
+                if n % 2 == 0:
+                    soma_le = sum(v for v in nonzeros[:meio_int] if v <= med)
+                else:
+                    soma_le = sum(nonzeros[:meio_int]) + med / 2.0
+
+            pv50 = (soma_le / soma_total * 100.0) if soma_total else 0.0
+
+            return pd.Series({
+                "n": n,
+                "n/2": half,
+                "Mediana": med,
+                "∑Ht": soma_total,
+                "∑Ht(<=Med)": soma_le,
+                "PV50": pv50
+            })
+
+        metrics = df_tabela.apply(_calc_row, axis=1)
+        df_tabela = pd.concat([df_tabela, metrics], axis=1)
+
+        df_tabela["PV50"] = df_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".", ","))
         counts = (
             df_final
             .groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"])["CD_01"]
@@ -210,9 +253,9 @@ class OtimizadorIFQ6:
         )
 
         df_tabela["Pits/ha"] = (
-            df_tabela["n"]
-            / df_tabela["L"].replace(0, np.nan)
-            * 10000
+            (df_tabela["n"]
+            - df_tabela["L"].replace(0, np.nan)
+            * 10000)
             / df_tabela["nm_area_parcela"].astype(float)
         ).fillna(0)
 
@@ -237,3 +280,24 @@ class OtimizadorIFQ6:
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
 
         print(f"✅ Tudo gravado em '{out}'")
+
+otimizador = OtimizadorIFQ6()
+arquivos = [
+    "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+    "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4) - Copia.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+    "/content/base_dados_IFQ6_propria_fev.xlsx",
+    "/content/Cadastro SGF (correto).xlsx"
+]
+otimizador.validacao(arquivos)
+
+
+agr q notei q o pits/ha deveria ser "n" - "L" E NAO dividido por "L" mas eu alterei msm assim n mudou o pits continuou como 0 assim como pode ver na imagem. Nas primeiras linhas uma delas era de exemplo 47 de "n" e 0 de "L" então ficaria 47 vezes 10000 que daria 470000 oque dividido pela nm_parcela_area ser 400 daria 1175 em que no final em check pits ficaria 0 ja q seria igual ao valor de stand.
