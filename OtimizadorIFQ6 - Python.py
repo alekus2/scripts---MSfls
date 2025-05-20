@@ -1,16 +1,27 @@
----------------------------------------------------------------------------
-TypeError                                 Traceback (most recent call last)
-<ipython-input-4-30bc0bb3c746> in <cell line: 0>()
-    318     "/content/Cadastro SGF (correto).xlsx"
-    319 ]
---> 320 otimizador.validacao(arquivos)
+# Criação da tabela D_Tabela_Resultados_Ht3 com valores de NM_COVA_ORDENADO ao cubo
+        df_D_tabela = df_tabela.copy()
 
-1 frames
-/usr/local/lib/python3.11/dist-packages/pandas/core/tools/numeric.py in to_numeric(arg, errors, downcast, dtype_backend)
-    204         values = np.array([arg], dtype="O")
-    205     elif getattr(arg, "ndim", 1) > 1:
---> 206         raise TypeError("arg must be a list, tuple, 1-d array, or Series")
-    207     else:
-    208         values = arg
+        # Elevar ao cubo apenas as colunas que correspondem a NM_COVA_ORDENADO
+        cols_cova_ordenado = [col for col in df_D_tabela.columns if col.isdigit()]  # supõe que colunas numéricas são as que têm nome de número
+        for col in cols_cova_ordenado:
+            df_D_tabela[col] = df_D_tabela[col] ** 3
 
-TypeError: arg must be a list, tuple, 1-d array, or Series
+        # Calcular as métricas para D_Tabela_Resultados_Ht3
+        metrics_D = df_D_tabela.apply(_calc_row, axis=1)
+        df_D_tabela = pd.concat([df_D_tabela, metrics_D], axis=1)
+
+        # Verifique se a coluna PV50 foi criada
+        print("Colunas do DataFrame D_Tabela:", df_D_tabela.columns)
+
+        # Garantir que a coluna PV50 é numérica, caso exista
+        if "PV50" in df_D_tabela.columns:
+            df_D_tabela["PV50"] = pd.to_numeric(df_D_tabela["PV50"], errors='coerce')
+
+            # Aplicar formatação
+            df_D_tabela["PV50"] = df_D_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".", ",") if pd.notnull(x) else "0,00%")
+        else:
+            print("A coluna PV50 não foi encontrada em D_Tabela.")
+
+        # Adicionar D_Tabela_Resultados_Ht3 ao arquivo Excel
+        with pd.ExcelWriter(out, engine="openpyxl", mode='a') as w:  # mode='a' para adicionar novas abas
+            df_D_tabela.to_excel(w, sheet_name="D_Tabela_Resultados_Ht3", index=False)
