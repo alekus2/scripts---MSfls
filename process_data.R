@@ -1,4 +1,3 @@
-
 library(sf)
 library(dplyr)
 library(glue)
@@ -58,15 +57,18 @@ process_data <- function(shape, parc_exist_path,
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
     }
     
+    # CORREÇÃO AQUI: garantir que pts_all seja geometria sfc_POINT
     if (is.null(pts_all) || length(pts_all) < n_req) {
       fallback_geom <- st_geometry(talhao)[[1]]
       if (is.null(fallback_geom)) next
-      pts_all <- st_centroid(fallback_geom)
+      pts_all <- st_sfc(st_centroid(fallback_geom), crs = st_crs(shape_full))
+      # repetir o ponto se necessário para alcançar n_req
       while (length(pts_all) < n_req) {
         pts_all <- c(pts_all, pts_all[1])
       }
     }
     
+    # Garantir que pts_all é sfc e pode ser usado com st_coordinates()
     cr  <- st_coordinates(pts_all)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_all[ord][1:n_req]
