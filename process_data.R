@@ -4,11 +4,18 @@ library(glue)
 
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
-                         distancia.minima,      
+                         distancia.minima,
+                         distancia_parcelas,
+                         forma_parcela,
                          intensidade_amostral,  
                          update_progress) {
   
   parc_exist <- st_read(parc_exist_path) %>% st_transform(31982)
+  
+  #quero usar esse distancia_parcelas para definir a distancia entre os pontos em que os pontos ainda assim ficaram ordenados com base no grid mas os pontos tem q cobrir toda a area do talhao ( de forma que ira depender da forma da parcela se é circular então uma circunferencia imaginaria será posta a prova para verificar se os pontos se encontram em algum momento.)
+  #se a forma for quadrada ele cria um quadrado imaginario com o tamanho da distancia_parcelas para cobrir todo talhao se baseando no grid.
+  #quero que o codigo pense numa maneira de se não couber todos os pontos que deveriam ele ir diminuindo a distância entre as parcelas de -1 em -1 até couber todos os pontos necessários para o talhao baseando em sua areaa(ha).
+  
   
   shape_full <- shape %>%
     st_transform(31982) %>%
@@ -71,7 +78,7 @@ process_data <- function(shape, parc_exist_path,
         DATA_ATUAL = rep(Sys.Date(),          n_req),
         COORD_X    = coords[,1],
         COORD_Y    = coords[,2],
-        AREA_HA    = rep(area_ha, n_req)  # Adicionando a coluna AREA_HA
+        AREA_HA    = rep(area_ha, n_req)  
       ),
       geometry = sel
     )
@@ -103,7 +110,7 @@ process_data <- function(shape, parc_exist_path,
         DATA_ATUAL = rep(Sys.Date(),        need),
         COORD_X    = rep(st_coordinates(base_pt)[1], need),
         COORD_Y    = rep(st_coordinates(base_pt)[2], need),
-        AREA_HA    = rep(st_area(base_pt), need)  # Adicionando a coluna AREA_HA
+        AREA_HA    = rep(st_area(base_pt), need)  
       )
       st_sf(df0, geometry = st_geometry(base_pt)[rep(1, need)])
     })
@@ -112,7 +119,7 @@ process_data <- function(shape, parc_exist_path,
   
   all_pts <- all_pts %>%
     group_by(Index) %>%
-    mutate(NM_PARCELAS = row_number()) %>%  # Alterando o nome da coluna para NM_PARCELAS
+    mutate(PARCELA = row_number()) %>% 
     ungroup()
   
   all_pts
