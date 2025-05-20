@@ -270,9 +270,12 @@ class OtimizadorIFQ6:
 
         df_tabela["Pits por sob"] = (
             df_tabela["Stand (tree/ha)"] / pct
-        ).apply(math.ceil)
+        )
 
         df_tabela["Check pits"] = df_tabela["Pits por sob"] - df_tabela["Pits/ha"]
+        #o codigo deve criar uma nova tabela com as mesmas colunas de "C_tabela_resultados" mas com os valores de 1 até o maximo de nm_cova_ordenado em que os valores dessas colunas tenham o valor ao cubo. Então preciso q vc só copie essa seção acima de "C_tabela_resultados" mas com os valores de nm_cova_ordenado ao cubo e com o nome de "D_Tabela_Resultados_Ht3".
+
+        
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
         cnt = 1
         out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
