@@ -1,8 +1,6 @@
-
 library(sf)
 library(dplyr)
 library(glue)
-
 
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
@@ -31,6 +29,8 @@ process_data <- function(shape, parc_exist_path,
   for (i in seq_along(indices)) {
     idx     <- indices[i]
     talhao  <- filter(shapeb, Index == idx)
+    if (nrow(talhao) == 0) next
+    
     area_ha <- unique(talhao$AREA_HA)
     n_req   <- max(1, ceiling(area_ha / intensidade_amostral))
     delta   <- distancia_parcelas
@@ -58,8 +58,12 @@ process_data <- function(shape, parc_exist_path,
     }
     
     if (is.null(pts_all) || length(pts_all) < n_req) {
-      pts_all <- if (!is.null(pts_all) && length(pts_all) > 0) pts_all else st_centroid(talhao)
-      while (length(pts_all) < n_req) pts_all <- c(pts_all, pts_all[1])
+      fallback_geom <- st_geometry(talhao)[[1]]
+      if (is.null(fallback_geom)) next
+      pts_all <- st_centroid(fallback_geom)
+      while (length(pts_all) < n_req) {
+        pts_all <- c(pts_all, pts_all[1])
+      }
     }
     
     cr  <- st_coordinates(pts_all)
@@ -93,21 +97,28 @@ process_data <- function(shape, parc_exist_path,
   
   all_pts <- do.call(rbind, result_points)
   
+  # Verifica necessidade de adicionar pontos faltantes
   counts <- all_pts %>% st_drop_geometry() %>% count(Index, name = "n_pts")
   to_fix <- filter(counts, n_pts < 2)
   if (nrow(to_fix) > 0) {
     extras <- lapply(seq_len(nrow(to_fix)), function(i) {
-      idx  <- to_fix$Index[i]
+      idx <- to_fix$Index[i]
+      shape_row <- filter(shape_full, Index == idx)
+      if (nrow(shape_row) == 0) return(NULL)
+      
+      base_geom <- st_geometry(shape_row)
+      if (length(base_geom) == 0 || is.null(base_geom[[1]])) return(NULL)
+      
+      base_pt <- st_centroid(base_geom[[1]])
       need <- 2 - to_fix$n_pts[i]
-      base_geom <- st_geometry(filter(shape_full, Index == idx))[[1]]
-      base_pt   <- st_centroid(base_geom)
-      area_ha   <- unique(filter(shape_full, Index == idx)$AREA_HA)
+      area_ha <- shape_row$AREA_HA[1]
+      
       df0 <- data.frame(
         Index      = rep(idx, need),
-        PROJETO    = rep(shape_full$ID_PROJETO[1], need),
-        TALHAO     = rep(shape_full$TALHAO[1],    need),
-        CICLO      = rep(shape_full$CICLO[1],     need),
-        ROTACAO    = rep(shape_full$ROTACAO[1],   need),
+        PROJETO    = rep(shape_row$ID_PROJETO[1], need),
+        TALHAO     = rep(shape_row$TALHAO[1],    need),
+        CICLO      = rep(shape_row$CICLO[1],     need),
+        ROTACAO    = rep(shape_row$ROTACAO[1],   need),
         STATUS     = rep("ATIVA",           need),
         FORMA      = rep(forma_parcela,     need),
         TIPO_INSTA = rep(tipo_parcela,      need),
@@ -120,7 +131,7 @@ process_data <- function(shape, parc_exist_path,
       )
       st_sf(df0, geometry = st_sfc(rep(base_pt, need), crs = st_crs(shape_full)))
     })
-    all_pts <- bind_rows(all_pts, do.call(rbind, extras))
+    all_pts <- bind_rows(all_pts, do.call(rbind, extras[!sapply(extras, is.null)]))
   }
   
   all_pts %>%
@@ -128,171 +139,3 @@ process_data <- function(shape, parc_exist_path,
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
-
-Listening on http://127.0.0.1:7134
-Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso: st_centroid assumes attributes are constant over geometries
-Aviso: Error in st_sf: no simple features geometry column present
-  84: stop
-  83: st_sf
-  82: process_data [src/process_data.R#70]
-  81: observe [src/server.R#74]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
