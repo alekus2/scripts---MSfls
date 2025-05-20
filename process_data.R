@@ -1,7 +1,3 @@
-library(sf)
-library(dplyr)
-library(glue)
-
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
@@ -27,24 +23,35 @@ process_data <- function(shape, parc_exist_path,
   total_poly   <- length(indices)
   
   for (i in seq_along(indices)) {
-    idx     <- indices[i]
-    talhao  <- filter(shapeb, Index == idx)
+    idx    <- indices[i]
+    talhao <- filter(shapeb, Index == idx)
     if (nrow(talhao) == 0) next
+    
+    # Confirma que talhão tem geometria válida e não vazia
+    if (any(st_is_empty(talhao)) || any(!st_is_valid(talhao))) {
+      message(glue("Talhão {idx} vazio ou inválido após buffer, pulando..."))
+      next
+    }
     
     area_ha <- unique(talhao$AREA_HA)
     n_req   <- max(1, ceiling(area_ha / intensidade_amostral))
     
-    delta   <- distancia_parcelas
-    bb      <- st_bbox(talhao)
+    delta <- distancia_parcelas
+    bb <- st_bbox(talhao)
     
-    # Preparação para forma circular
+    # Se bbox inválido (por ex. zeros ou Inf) pula talhão
+    if (any(is.infinite(bb)) || any(is.na(bb))) {
+      message(glue("BBox inválido para talhão {idx}, pulando..."))
+      next
+    }
+    
     if (forma_parcela == "circular") {
       centro <- st_centroid(talhao)
-      raio <- sqrt(area_ha * 10000 / pi)  # raio em metros
+      raio <- sqrt(area_ha * 10000 / pi)
     }
     
     pts_all <- NULL
-    min_delta <- 10  # limite mínimo de espaçamento
+    min_delta <- 10
     
     while (delta >= min_delta) {
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
@@ -56,7 +63,15 @@ process_data <- function(shape, parc_exist_path,
         what     = "centers"
       )
       
+      # Proteção se grade vazia
       if (length(grid_pts) == 0) {
+        delta <- delta - 1
+        next
+      }
+      
+      # Verifica se todos elementos são geometria sfg
+      if (!all(sapply(grid_pts, function(g) inherits(g, "sfg")))) {
+        message(glue("Grade com geometria inválida no talhão {idx}, pulando iteração."))
         delta <- delta - 1
         next
       }
@@ -84,18 +99,19 @@ process_data <- function(shape, parc_exist_path,
       delta <- delta - 1
     }
     
-    # fallback caso não consiga pontos suficientes
     if (is.null(pts_all) || length(pts_all) < n_req) {
       fallback_geom <- st_geometry(talhao)[[1]]
-      if (is.null(fallback_geom)) next
+      if (is.null(fallback_geom)) {
+        message(glue("Fallback falhou para talhão {idx} - geometria nula"))
+        next
+      }
       pts_all <- st_centroid(fallback_geom)
       while (length(pts_all) < n_req) {
         pts_all <- c(pts_all, pts_all[1])
       }
     }
     
-    # Ordenar e selecionar os pontos necessários
-    cr  <- st_coordinates(pts_all)
+    cr <- st_coordinates(pts_all)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_all[ord][1:n_req]
     
@@ -127,9 +143,14 @@ process_data <- function(shape, parc_exist_path,
   
   all_pts <- do.call(rbind, result_points)
   
-  # Garante no mínimo 2 pontos por talhão (fallback)
+  # Correção: checar se all_pts não está vazio antes de operar
+  if (nrow(all_pts) == 0) {
+    stop("Nenhum ponto gerado após o processamento dos talhões.")
+  }
+  
   counts <- all_pts %>% st_drop_geometry() %>% count(Index, name = "n_pts")
   to_fix <- filter(counts, n_pts < 2)
+  
   if (nrow(to_fix) > 0) {
     extras <- lapply(seq_len(nrow(to_fix)), function(i) {
       idx <- to_fix$Index[i]
@@ -169,61 +190,3 @@ process_data <- function(shape, parc_exist_path,
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
-
-      Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso: Error in : object(s) should be of class 'sfg'
