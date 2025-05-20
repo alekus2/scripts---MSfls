@@ -6,20 +6,14 @@ process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
                          distancia_parcelas,
-                         forma_parcela,
                          intensidade_amostral,  
                          update_progress) {
   
   parc_exist <- st_read(parc_exist_path) %>% st_transform(31982)
   
-  #quero usar esse distancia_parcelas para definir a distancia entre os pontos em que os pontos ainda assim ficaram ordenados com base no grid mas os pontos tem q cobrir toda a area do talhao ( de forma que ira depender da forma da parcela se é circular então uma circunferencia imaginaria será posta a prova para verificar se os pontos se encontram em algum momento.)
-  #se a forma for quadrada ele cria um quadrado imaginario com o tamanho da distancia_parcelas para cobrir todo talhao se baseando no grid.
-  #quero que o codigo pense numa maneira de se não couber todos os pontos que deveriam ele ir diminuindo a distância entre as parcelas de -1 em -1 até couber todos os pontos necessários para o talhao baseando em sua areaa(ha).
-  
-  
   shape_full <- shape %>%
     st_transform(31982) %>%
-    mutate(Index = paste0(ID_PROJETO, TALHAO),
+    mutate(Index   = paste0(ID_PROJETO, TALHAO),
            AREA_HA = as.numeric(AREA_HA))
   
   shapeb <- shape_full %>%
@@ -27,38 +21,42 @@ process_data <- function(shape, parc_exist_path,
     filter(!st_is_empty(geometry))
   
   result_points <- list()
-  indices <- unique(shapeb$Index)
-  total_poly <- length(indices)
+  indices      <- unique(shapeb$Index)
+  total_poly   <- length(indices)
   
   for (i in seq_along(indices)) {
-    idx <- indices[i]
-    talhao <- filter(shapeb, Index == idx)
+    idx     <- indices[i]
+    talhao  <- filter(shapeb, Index == idx)
     area_ha <- unique(talhao$AREA_HA)
-    n_req <- max(1, ceiling(area_ha / intensidade_amostral))
-    delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
-    bb <- st_bbox(talhao)
+    n_req   <- max(1, ceiling(area_ha / intensidade_amostral))
+    delta   <- distancia_parcelas
+    bb      <- st_bbox(talhao)
     offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
     
     pts_all <- NULL
-    for (iter in seq_len(30)) {
-      grid_pts <- st_make_grid(x = talhao, cellsize = c(delta, delta), offset = offset_xy, what = "centers")
-      inside <- st_within(grid_pts, talhao, sparse = FALSE)
+    while (delta >= 1) {
+      grid_pts <- st_make_grid(
+        x        = talhao,
+        cellsize = c(delta, delta),
+        offset   = offset_xy,
+        what     = "centers"
+      )
+      inside  <- st_within(grid_pts, talhao, sparse = FALSE)
       pts_tmp <- grid_pts[apply(inside, 1, any)]
-      if (length(pts_tmp) < n_req) {
-        delta <- delta * 0.9
-        next
+      if (length(pts_tmp) >= n_req) {
+        pts_all <- pts_tmp
+        break
       }
-      pts_all <- pts_tmp
-      break
+      delta     <- delta - 1
+      offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
     }
     
     if (is.null(pts_all) || length(pts_all) < n_req) {
       pts_all <- if (!is.null(pts_all) && length(pts_all) > 0) pts_all else st_centroid(talhao)
-      if (length(pts_all) == 0) pts_all <- st_centroid(talhao)
       while (length(pts_all) < n_req) pts_all <- c(pts_all, pts_all[1])
     }
     
-    cr <- st_coordinates(pts_all)
+    cr  <- st_coordinates(pts_all)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_all[ord][1:n_req]
     
@@ -78,7 +76,7 @@ process_data <- function(shape, parc_exist_path,
         DATA_ATUAL = rep(Sys.Date(),          n_req),
         COORD_X    = coords[,1],
         COORD_Y    = coords[,2],
-        AREA_HA    = rep(area_ha, n_req)  
+        AREA_HA    = rep(area_ha,             n_req)
       ),
       geometry = sel
     )
@@ -93,7 +91,7 @@ process_data <- function(shape, parc_exist_path,
   to_fix <- filter(counts, n_pts < 2)
   if (nrow(to_fix) > 0) {
     extras <- lapply(seq_len(nrow(to_fix)), function(i) {
-      idx <- to_fix$Index[i]
+      idx  <- to_fix$Index[i]
       need <- 2 - to_fix$n_pts[i]
       base_pt <- st_centroid(filter(shape_full, Index == idx))
       df0 <- data.frame(
@@ -110,17 +108,15 @@ process_data <- function(shape, parc_exist_path,
         DATA_ATUAL = rep(Sys.Date(),        need),
         COORD_X    = rep(st_coordinates(base_pt)[1], need),
         COORD_Y    = rep(st_coordinates(base_pt)[2], need),
-        AREA_HA    = rep(st_area(base_pt), need)  
+        AREA_HA    = rep(as.numeric(st_area(base_pt)), need)
       )
       st_sf(df0, geometry = st_geometry(base_pt)[rep(1, need)])
     })
     all_pts <- bind_rows(all_pts, do.call(rbind, extras))
   }
   
-  all_pts <- all_pts %>%
+  all_pts %>%
     group_by(Index) %>%
-    mutate(PARCELA = row_number()) %>% 
+    mutate(PARCELA = row_number()) %>%
     ungroup()
-  
-  all_pts
 }
