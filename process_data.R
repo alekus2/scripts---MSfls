@@ -1,20 +1,3 @@
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em min(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em min(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para min; retornando Inf
-Aviso em max(cc[[1]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso em max(cc[[2]], na.rm = TRUE) :
-  nenhum argumento não faltante para max; retornando -Inf
-Aviso: Error in : object(s) should be of class 'sfg'
-  89: <Anonymous>
-  88: stop
-  87: sfc_unique_sfg_dims_and_types
-  86: st_sfc
-  84: FUN [src/process_data.R#132]
-  83: lapply
-  82: process_data [src/process_data.R#104]
-  81: observe [src/server.R#74]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
+  quero usar esse distancia_parcelas para definir a distancia entre os pontos em que os pontos ainda assim ficaram ordenados com base no grid mas os pontos tem q cobrir toda a area do talhao ( de forma que ira depender da forma da parcela se é circular então uma circunferencia imaginaria será posta a prova para verificar se os pontos se encontram em algum momento.)
+  se a forma for quadrada ele cria um quadrado imaginario com o tamanho da distancia_parcelas para cobrir todo talhao se baseando no grid.
+  quero que o codigo pense numa maneira de se não couber todos os pontos que deveriam ele ir diminuindo a distância entre as parcelas de forma que seja de 1 em 1 até couber todas parcelas necessarias e dentro do grid e claro que ocupando todo talhão.
