@@ -1,3 +1,9 @@
+
+library(sf)
+library(dplyr)
+library(glue)
+
+
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
@@ -32,7 +38,7 @@ process_data <- function(shape, parc_exist_path,
     offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
     
     pts_all <- NULL
-    while (delta >= 1) {
+    while (delta >= 50) {
       grid_pts <- st_make_grid(
         x        = talhao,
         cellsize = c(delta, delta),
@@ -122,3 +128,171 @@ process_data <- function(shape, parc_exist_path,
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
+
+Listening on http://127.0.0.1:7134
+Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' using driver `ESRI Shapefile'
+Simple feature collection with 1 feature and 20 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
+Geodetic CRS:  SIRGAS 2000
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso: st_centroid assumes attributes are constant over geometries
+Aviso: Error in st_sf: no simple features geometry column present
+  84: stop
+  83: st_sf
+  82: process_data [src/process_data.R#70]
+  81: observe [src/server.R#74]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
