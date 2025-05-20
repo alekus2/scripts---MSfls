@@ -1,3 +1,4 @@
+
 library(shiny)
 library(sf)
 library(DBI)
@@ -8,7 +9,7 @@ library(ggplot2)
 library(zip)
 
 server <- function(input, output, session) {
-
+  
   observeEvent(input$confirmar, {
     output$shape_text <- renderText({
       if (input$data_source == "upload") {
@@ -19,10 +20,13 @@ server <- function(input, output, session) {
     output$confirmation <- renderText({
       paste("Forma:", input$forma_parcela,
             "| Tipo:", input$tipo_parcela,
-            "| Distância mínima:", input$distancia_minima)
+            "| Distância mínima:", input$distancia_minima,
+            "| Distância entre parcelas:", input$distancia_parcelas,
+            )
+           
     })
   })
-
+  
   shape <- reactive({
     req(input$data_source, input$shape)
     tmpdir <- file.path(tempdir(), tools::file_path_sans_ext(basename(input$shape$name)))
@@ -51,13 +55,13 @@ server <- function(input, output, session) {
         Index      = paste0(ID_PROJETO, TALHAO)
       )
   })
-
+  
   parc_exist_path <- reactive({
     "data/parc.shp"
   })
-
+  
   values <- reactiveValues(result_points = NULL)
-
+  
   observeEvent(input$gerar_parcelas, {
     progress <- Progress$new(session, min = 0, max = 100)
     on.exit(progress$close())
@@ -65,47 +69,32 @@ server <- function(input, output, session) {
       shape(),
       parc_exist_path(),
       input$forma_parcela, input$tipo_parcela,
-      input$distancia_minima, input$intensidade_amostral,
+      input$distancia_minima,input$distancia_parcelas, 
+      input$forma_parcela, input$intensidade_amostral,
       function(p) progress$set(value = p, message = paste0(p, "% concluído"))
     )
     values$result_points <- result
     showNotification("Parcelas geradas com sucesso!", type = "message", duration = 10)
   })
-
+  
   output$index_filter <- renderUI({
     req(values$result_points)
     selectInput("selected_index", "Selecione o talhão:", choices = unique(values$result_points$Index))
   })
-
-  observeEvent(input$gerar_novamente, {
-    req(values$result_points, input$selected_index)
-    sel      <- input$selected_index
-    new_base <- filter(values$result_points, Index != sel)
-    result2  <- process_data(
-      shape() %>% filter(Index == sel),
-      parc_exist_path(),
-      input$forma_parcela, input$tipo_parcela,
-      input$distancia_minima, input$intensidade_amostral,
-      function(p) NULL
-    )
-    values$result_points <- bind_rows(new_base, result2)
-    showNotification("Parcelas regeneradas com sucesso!", type = "message", duration = 10)
-  })
-
   observeEvent(input$proximo, {
     idxs <- unique(values$result_points$Index)
     ni   <- which(idxs == input$selected_index) + 1
     if (ni > length(idxs)) ni <- 1
     updateSelectInput(session, "selected_index", selected = idxs[ni])
   })
-
+  
   observeEvent(input$anterior, {
     idxs <- unique(values$result_points$Index)
     pi   <- which(idxs == input$selected_index) - 1
     if (pi < 1) pi <- length(idxs)
     updateSelectInput(session, "selected_index", selected = idxs[pi])
   })
-
+  
   output$download_result <- downloadHandler(
     filename = function() {
       paste0("parcelas_", input$tipo_parcela, "_", format(Sys.time(), "%d-%m-%y_%H.%M"), ".zip")
@@ -124,7 +113,7 @@ server <- function(input, output, session) {
     },
     contentType = "application/zip"
   )
-
+  
   output$plot <- renderPlot({
     req(values$result_points, input$selected_index)
     shp_sel <- shape() %>% filter(Index == input$selected_index)
@@ -140,5 +129,5 @@ server <- function(input, output, session) {
       theme_minimal() +
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))
   })
-
+  
 }
