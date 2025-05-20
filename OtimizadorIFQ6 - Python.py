@@ -2,6 +2,7 @@ import pandas as pd
 import os
 import numpy as np
 from datetime import datetime
+import math
 
 class OtimizadorIFQ6:
     def validacao(self, paths):
@@ -13,7 +14,7 @@ class OtimizadorIFQ6:
             "NM_CAP_DAP1","NM_DAP2","NM_DAP","NM_ALTURA","CD_01","CD_02","CD_03"
         ]
 
-        # prepara pastas e datas
+        lista_df, equipes = [], {}
         meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
         mes_atual = datetime.now().month
@@ -24,11 +25,8 @@ class OtimizadorIFQ6:
         pasta_output = os.path.join(pasta_mes, "output")
         os.makedirs(pasta_output, exist_ok=True)
 
-        # caminho do cadastro
         cadastro_path = next((p for p in paths if "SGF" in os.path.basename(p).upper()), None)
 
-        # lê todos os IFQ6, atribui equipe e concatena
-        lista_df, equipes = [], {}
         for path in paths:
             if path == cadastro_path or not os.path.exists(path):
                 continue
@@ -40,14 +38,14 @@ class OtimizadorIFQ6:
             elif "PROPRIA" in nome_arquivo:
                 base = "propria"
             else:
-                escolha = ""
-                while escolha not in ["1","2","3"]:
+                while True:
                     escolha = input("Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):")
+                    if escolha in ["1","2","3"]:
+                        break
                 base = ["lebatec","bravore","propria"][int(escolha)-1]
 
             equipes[base] = equipes.get(base, 0) + 1
             equipe = base if equipes[base] == 1 else f"{base}_{equipes[base]:02d}"
-
             try:
                 df = pd.read_excel(path, sheet_name=0)
             except:
@@ -63,16 +61,12 @@ class OtimizadorIFQ6:
                         continue
                 except:
                     continue
-
             dff = df[nomes_colunas].copy()
             dff["EQUIPE"] = equipe
             lista_df.append(dff)
-
         if not lista_df:
             print("❌ Nenhum arquivo processado.")
             return
-
-        # concatena e faz validações iniciais
         df_final = pd.concat(lista_df, ignore_index=True)
         dup_cols = ['CD_PROJETO','CD_TALHAO','NM_PARCELA','NM_FILA','NM_COVA','NM_FUSTE','NM_ALTURA']
         df_final["check dup"] = df_final.duplicated(subset=dup_cols, keep=False).map({True:"VERIFICAR",False:"OK"})
@@ -83,7 +77,6 @@ class OtimizadorIFQ6:
         )
         df_final["CD_TALHAO"] = df_final["CD_TALHAO"].astype(str).str[-3:].str.zfill(3)
 
-        # sequenciamento SQC
         def seq(g):
             last = None
             for _, r in g.iterrows():
@@ -109,9 +102,9 @@ class OtimizadorIFQ6:
                 for i, idx in enumerate(idxs):
                     if df_final.at[idx, "CD_01"] == "L":
                         ori = df_final.at[idx, "NM_COVA_ORIG"]
-                        if i>0 and ori == df_final.at[idxs[i-1], "NM_COVA_ORIG"]:
+                        if i > 0 and ori == df_final.at[idxs[i-1], "NM_COVA_ORIG"]:
                             seqs[i] = seqs[i-1]
-                        elif i<len(idxs)-1 and ori == df_final.at[idxs[i+1], "NM_COVA_ORIG"]:
+                        elif i < len(idxs)-1 and ori == df_final.at[idxs[i+1], "NM_COVA_ORIG"]:
                             seqs[i] = seqs[i+1]
                             df_final.at[idx, "check SQC"] = "VERIFICAR"
                 for i, idx in enumerate(idxs):
@@ -120,30 +113,28 @@ class OtimizadorIFQ6:
             for i in range(1, len(df_final)):
                 a, b = df_final.iloc[i], df_final.iloc[i-1]
                 if (a["NM_COVA"] == b["NM_COVA"] and
-                    a["CD_01"]=="N" and b["CD_01"]=="L" and
-                    b["NM_FUSTE"]==2):
+                    a["CD_01"] == "N" and b["CD_01"] == "L" and
+                    b["NM_FUSTE"] == 2):
                     df_final.at[a.name, "check SQC"] = "VERIFICAR"
 
         df_final.drop(columns=["NM_COVA_ORIG","group_id"], inplace=True)
-
-        # se houver VERIFICAR, salva e retorna
         count_ver = df_final["check SQC"].value_counts().get("VERIFICAR", 0)
+        print(f"Quantidade de 'VERIFICAR': {count_ver}")
         if count_ver > 0:
-            print(f"Quantidade de 'VERIFICAR': {count_ver}")
-            if input("Deseja verificar agora? (s/n): ").lower() == 's':
+            resposta = input("Deseja verificar a planilha agora? (s/n): ")
+            if resposta.lower() == 's':
                 nome_base = f"IFQ6_{nome_mes}_{data_emissao}"
-                cnt=1
-                out = os.path.join(pasta_output, f"{nome_base}_{cnt:02d}.xlsx")
+                cnt = 1
+                out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
                 while os.path.exists(out):
-                    cnt+=1
-                    out = os.path.join(pasta_output, f"{nome_base}_{cnt:02d}.xlsx")
+                    cnt += 1
+                    out = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
                 df_final.to_excel(out, index=False)
-                print(f"✅ Dados verificados salvos em {out}")
+                print(f"✅ Dados verificados e salvos em '{out}'.")
                 return
 
-        # continua montagem de resultados
         df_final["Ht média"] = df_final["NM_ALTURA"].fillna(0)
-        df_final = df_final.sort_values(["CD_PROJETO","CD_TALHAO","NM_PARCELA","Ht média"])
+        df_final = df_final.sort_values(by=["CD_PROJETO","CD_TALHAO","NM_PARCELA","Ht média"])
         df_final["NM_COVA_ORDENADO"] = df_final.groupby(
             ["CD_PROJETO","CD_TALHAO","NM_PARCELA"]
         ).cumcount() + 1
@@ -157,35 +148,31 @@ class OtimizadorIFQ6:
         df_final["EQUIPE_2"] = df_final["CD_EQUIPE"]
         df_final.drop(columns=["check dup","check cd","check SQC"], inplace=True)
 
-        # lê cadastro
-        df_cadastro = pd.read_excel(cadastro_path, dtype=str)
-        df_cadastro["Talhão_z3"] = df_cadastro["Talhão"].astype(str).str[-3:].str.zfill(3)
+        df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
+        df_cadastro["Index"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão"].str.strip()
+        df_cadastro["Talhão_z3"] = df_cadastro["Talhão"].str[-3:].str.zfill(3)
         df_cadastro["Index_z3"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão_z3"]
         df_final["Index_z3"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
 
-        area_col = next(c for c in df_cadastro.columns if "ÁREA" in c.upper())
+        area_col = next((c for c in df_cadastro.columns if "ÁREA" in c.upper()), None)
         df_res = pd.merge(
             df_final,
             df_cadastro[["Index_z3", area_col]],
-            on="Index_z3", how="left"
+            on="Index_z3",
+            how="left"
         )
-        df_res.rename(columns={area_col:"Área (ha)"}, inplace=True)
+        df_res.rename(columns={area_col: "Área (ha)"}, inplace=True)
         df_res["Área (ha)"] = df_res["Área (ha)"].fillna("")
-        df_res.rename(columns={"NM_PARCELA":"nm_parcela","NM_AREA_PARCELA":"nm_area_parcela"}, inplace=True)
+        df_res.rename(columns={
+            "Chave_stand_1":   "Chave_stand_1",
+            "NM_PARCELA":      "nm_parcela",
+            "NM_AREA_PARCELA": "nm_area_parcela"
+        }, inplace=True)
 
-        # ————— define out ANTES de gravar C e D —————
-        nome_base = f"IFQ6_{nome_mes}_{data_emissao}"
-        cnt = 1
-        out = os.path.join(pasta_output, f"{nome_base}_{cnt:02d}.xlsx")
-        while os.path.exists(out):
-            cnt += 1
-            out = os.path.join(pasta_output, f"{nome_base}_{cnt:02d}.xlsx")
-
-        # ————— bloco unificado de C e D —————
-        cols0 = ["Área (ha)","Chave_stand_1","CD_PROJETO","CD_TALHAO","nm_parcela","nm_area_parcela"]
+        # ——— A PARTIR DAQUI: BLOCO UNIFICADO DE C E D ———
+        cols0 = ["Área (ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela"]
         df_res["Ht média"] = pd.to_numeric(df_res["Ht média"], errors="coerce").fillna(0)
 
-        # pivot
         df_pivot = df_res.pivot_table(
             index=cols0,
             columns="NM_COVA_ORDENADO",
@@ -193,10 +180,9 @@ class OtimizadorIFQ6:
             aggfunc="first",
             fill_value=0
         ).reset_index()
-        df_pivot.columns = [str(c) if isinstance(c,int) else c for c in df_pivot.columns]
+        df_pivot.columns = [str(c) if isinstance(c, int) else c for c in df_pivot.columns]
         num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=int)
 
-        # função métrica
         def calc_metrics(row, covas):
             vals = [row[c] for c in covas]
             last = max([i for i,v in enumerate(vals) if v>0], default=-1)
@@ -204,27 +190,30 @@ class OtimizadorIFQ6:
             n = len(vals)
             med = np.median(vals) if n>0 else 0.0
             tot = sum(vals)
-            orden = sorted(vals)
+            ordered = sorted(vals)
             meio = n//2
             if n%2==0:
-                le = sum(v for v in orden[:meio] if v<=med)
+                le = sum(v for v in ordered[:meio] if v<=med)
             else:
-                le = sum(orden[:meio]) + med/2.0
-            pv50 = (le/tot*100) if tot else 0.0
-            return pd.Series({"n":n,"n/2":meio,"Mediana":med,"∑Ht":tot,"∑Ht(<=Med)":le,"PV50":pv50})
+                le = sum(ordered[:meio]) + med/2.0
+            pv50 = (le/tot*100) if tot else 0.1
+            return pd.Series({"n":n, "n/2":meio, "Mediana":med, "∑Ht":tot, "∑Ht(<=Med)":le, "PV50":pv50})
 
-        # monta C
-        df_tabela = df_pivot[cols0+num_cols].copy()
+        # — C_tabela_resultados —
+        df_tabela = df_pivot[cols0 + num_cols].copy()
         metrics_C = df_tabela.apply(calc_metrics, axis=1, covas=num_cols)
         df_tabela = pd.concat([df_tabela, metrics_C], axis=1)
-        df_tabela["PV50"] = df_tabela["PV50"].map(lambda x:f"{x:.2f}%".replace(".",","))
+        df_tabela["PV50"] = df_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".",","))
 
         codes = ["A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E"]
         falhas = ["M","H","F","L","S"]
         counts = (
-            df_final.groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"])["CD_01"]
-            .value_counts().unstack(fill_value=0)
-            .reindex(columns=codes, fill_value=0).reset_index()
+            df_final
+            .groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"])["CD_01"]
+            .value_counts()
+            .unstack(fill_value=0)
+            .reindex(columns=codes, fill_value=0)
+            .reset_index()
         )
         df_tabela = df_tabela.merge(
             counts,
@@ -240,39 +229,51 @@ class OtimizadorIFQ6:
         tot = df_tabela[codes].sum(axis=1)
         valid = tot - df_tabela[falhas].sum(axis=1)
         df_tabela["%_Sobrevivência"] = (
-            (valid/tot*100).round(1).map(lambda x:f"{x:.1f}%".replace(".",","))
+            (valid/tot*100).round(1).map(lambda x: f"{x:.1f}%".replace(".",","))
         )
 
         df_tabela["Pits/ha"] = (
-            (df_tabela["n"] - df_tabela["L"])*10000
+            (df_tabela["n"] - df_tabela["L"]) * 10000
             / df_tabela["nm_area_parcela"].astype(float)
         ).fillna(0)
 
-        df_tabela["CST"] = df_tabela["CD_TALHAO"].astype(str)+"-"+df_tabela["nm_parcela"].astype(str)
+        df_tabela["CST"] = df_tabela["CD_TALHAO"].astype(str) + "-" + df_tabela["nm_parcela"].astype(str)
+
         pct = df_tabela["%_Sobrevivência"].str.rstrip("%").str.replace(",",".").astype(float)/100
-        df_tabela["Pits por sob"] = df_tabela["Stand (tree/ha)"]/pct
-        df_tabela["Check pits"] = df_tabela["Pits por sob"] - df_tabela["Pits/ha"]
+        df_tabela["Pits por sob"] = df_tabela["Stand (tree/ha)"] / pct
+        df_tabela["Check pits"] = df_tabela["Pits por sob"] - df_tabela["Pits/ha"] #como posso fazer para que os valores se estiverem acima de 0.5 arredonda para cima senão arredondar para baixo. e se o valor for par ele só deixar em inteiro tipo 1250,231123 transformar para 1250.
 
-        # grava C
-        with pd.ExcelWriter(out, engine="openpyxl", mode='a') as w:
+        nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
+        cnt = 1
+        out2 = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
+        while os.path.exists(out2):
+            cnt += 1
+            out2 = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
+
+        with pd.ExcelWriter(out2, engine="openpyxl") as w:
+            df_cadastro.drop(columns=["Talhão_z3","Index_z3"], inplace=True)
+            df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
+            df_final.drop(columns=["Index_z3"], inplace=True)
+            df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
-
-        # monta D
-        df_D = df_tabela.copy()
-        for c in num_cols:
-            df_D[c] = df_D[c]**3
-        metrics_D = df_D.apply(calc_metrics, axis=1, covas=num_cols)
-        df_D = pd.concat([df_D.drop(columns=["n","n/2","Mediana","∑Ht","∑Ht(<=Med)","PV50"]), metrics_D], axis=1)
-        df_D["PV50"] = df_D["PV50"].map(lambda x:f"{x:.2f}%".replace(".",","))
-
-        # reusa métricas stand/pits
-        df_D = df_D.merge(
-            df_tabela[["CST","Stand (tree/ha)","%_Sobrevivência","Pits/ha","Pits por sob","Check pits"]],
-            on="CST", how="left"
-        )
-
-        # grava D
-        with pd.ExcelWriter(out, engine="openpyxl", mode='a') as w:
             df_D.to_excel(w, sheet_name="D_Tabela_Resultados_Ht3", index=False)
 
-        print(f"✅ Abas C e D gravadas em '{out}'")
+        print(f"✅ Tudo gravado em '{out2}'")
+
+otimizador = OtimizadorIFQ6()
+arquivos = [
+    "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+    "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4) - Copia.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+    "/content/base_dados_IFQ6_propria_fev.xlsx",
+    "/content/Cadastro SGF (correto).xlsx"
+]
+otimizador.validacao(arquivos)
