@@ -169,3 +169,61 @@ process_data <- function(shape, parc_exist_path,
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
+
+      Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso: Error in : object(s) should be of class 'sfg'
