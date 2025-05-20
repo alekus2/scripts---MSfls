@@ -1,5 +1,3 @@
-# server.R
-
 library(shiny)
 library(sf)
 library(DBI)
@@ -9,12 +7,8 @@ library(dplyr)
 library(ggplot2)
 library(zip)
 
-# carregue aqui a sua função process_data (ou fonte de um arquivo R separado)
-# se você a salvou em R/utils.R, por exemplo:
-source("R/utils.R")
-
 server <- function(input, output, session) {
-
+  
   observeEvent(input$confirmar, {
     output$shape_text <- renderText({
       if (input$data_source == "upload") {
@@ -31,7 +25,7 @@ server <- function(input, output, session) {
       )
     })
   })
-
+  
   shape <- reactive({
     req(input$data_source, input$shape)
     tmpdir <- file.path(
@@ -67,13 +61,13 @@ server <- function(input, output, session) {
         Index      = paste0(ID_PROJETO, TALHAO)
       )
   })
-
+  
   parc_exist_path <- reactive({
     "data/parc.shp"
   })
-
+  
   values <- reactiveValues(result_points = NULL)
-
+  
   observeEvent(input$gerar_parcelas, {
     progress <- Progress$new(session, min = 0, max = 100)
     on.exit(progress$close())
@@ -84,13 +78,13 @@ server <- function(input, output, session) {
       input$tipo_parcela,
       input$distancia_minima,
       input$distancia_parcelas,
-      input$intensidade_amostral,     # corrige aqui: intensidade em vez de forma
+      input$intensidade_amostral,     
       function(p) progress$set(value = p, message = paste0(p, "% concluído"))
     )
     values$result_points <- result
     showNotification("Parcelas geradas com sucesso!", type = "message", duration = 10)
   })
-
+  
   output$index_filter <- renderUI({
     req(values$result_points)
     selectInput(
@@ -98,7 +92,7 @@ server <- function(input, output, session) {
       choices = unique(values$result_points$Index)
     )
   })
-
+  
   observeEvent(input$proximo, {
     req(values$result_points, input$selected_index)
     idxs <- unique(values$result_points$Index)
@@ -106,7 +100,7 @@ server <- function(input, output, session) {
     if (ni > length(idxs)) ni <- 1
     updateSelectInput(session, "selected_index", selected = idxs[ni])
   })
-
+  
   observeEvent(input$anterior, {
     req(values$result_points, input$selected_index)
     idxs <- unique(values$result_points$Index)
@@ -114,7 +108,7 @@ server <- function(input, output, session) {
     if (pi < 1) pi <- length(idxs)
     updateSelectInput(session, "selected_index", selected = idxs[pi])
   })
-
+  
   output$download_result <- downloadHandler(
     filename = function() {
       paste0(
@@ -143,7 +137,7 @@ server <- function(input, output, session) {
     },
     contentType = "application/zip"
   )
-
+  
   output$plot <- renderPlot({
     req(values$result_points, input$selected_index)
     shp_sel <- shape() %>% filter(Index == input$selected_index)
@@ -164,3 +158,20 @@ server <- function(input, output, session) {
       theme(plot.title = element_text(hjust = 0.5, face = "bold"))
   })
 }
+
+
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso: Error in apply: dim(X) deve ter um comprimento positivo
+  86: stop
+  85: apply
+  82: process_data [src/process_data.R#46]
+  81: observe [src/server.R#74]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
