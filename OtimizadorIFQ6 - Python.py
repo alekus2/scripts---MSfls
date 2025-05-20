@@ -1,17 +1,17 @@
-# Criação da tabela D_Tabela_Resultados_Ht3 com valores de NM_COVA_ORDENADO ao cubo
-        df_D_tabela = df_tabela.copy()
+ValueError                                Traceback (most recent call last)
+<ipython-input-3-cb7765040dfe> in <cell line: 0>()
+    316     "/content/Cadastro SGF (correto).xlsx"
+    317 ]
+--> 318 otimizador.validacao(arquivos)
 
-        # Elevar ao cubo apenas as colunas que correspondem a NM_COVA_ORDENADO
-        cols_cova_ordenado = [col for col in df_D_tabela.columns if col.isdigit()]  # supõe que colunas numéricas são as que têm nome de número
-        for col in cols_cova_ordenado:
-            df_D_tabela[col] = df_D_tabela[col] ** 3
+9 frames
+lib.pyx in pandas._libs.lib.map_infer()
 
-        # Calcular as métricas para D_Tabela_Resultados_Ht3
-        metrics_D = df_D_tabela.apply(_calc_row, axis=1)
-        df_D_tabela = pd.concat([df_D_tabela, metrics_D], axis=1)
+<ipython-input-3-cb7765040dfe> in <lambda>(x)
+    281         metrics_D = df_D_tabela.apply(_calc_row, axis=1)
+    282         df_D_tabela = pd.concat([df_D_tabela, metrics_D], axis=1)
+--> 283         df_D_tabela["PV50"] = df_D_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".", ","))
+    284         with pd.ExcelWriter(out, engine="openpyxl", mode='a') as w:
+    285             df_D_tabela.to_excel(w, sheet_name="D_Tabela_Resultados_Ht3", index=False)
 
-        df_D_tabela["PV50"] = df_D_tabela["PV50"].map(lambda x: f"{x:.2f}%".replace(".", ","))
-        
-        # Adicionar D_Tabela_Resultados_Ht3 ao arquivo Excel
-        with pd.ExcelWriter(out, engine="openpyxl", mode='a') as w:  # mode='a' para adicionar novas abas
-            df_D_tabela.to_excel(w, sheet_name="D_Tabela_Resultados_Ht3", index=False)
+ValueError: Unknown format code 'f' for object of type 'str'
