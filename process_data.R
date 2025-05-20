@@ -1,7 +1,3 @@
-library(sf)
-library(dplyr)
-library(glue)
-
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
@@ -9,16 +5,18 @@ process_data <- function(shape, parc_exist_path,
                          intensidade_amostral,  
                          update_progress) {
   
-  parc_exist <- st_read(parc_exist_path) %>% st_transform(31982)
+  parc_exist <- suppressMessages(st_read(parc_exist_path)) %>% st_transform(31982)
   
   shape_full <- shape %>%
     st_transform(31982) %>%
-    mutate(Index   = paste0(ID_PROJETO, TALHAO),
-           AREA_HA = as.numeric(AREA_HA))
+    mutate(
+      Index   = paste0(ID_PROJETO, TALHAO),
+      AREA_HA = if ("AREA_HA" %in% names(.)) as.numeric(AREA_HA) else as.numeric(st_area(.) / 10000)
+    )
   
   shapeb <- shape_full %>%
     st_buffer(-abs(distancia.minima)) %>%
-    filter(!st_is_empty(geometry))
+    filter(!st_is_empty(geometry) & st_is_valid(geometry))
   
   result_points <- list()
   indices      <- unique(shapeb$Index)
@@ -41,11 +39,13 @@ process_data <- function(shape, parc_exist_path,
         offset   = offset_xy,
         what     = "centers"
       )
-      inside  <- st_within(grid_pts, talhao, sparse = FALSE)
-      pts_tmp <- grid_pts[apply(inside, 1, any)]
-      if (length(pts_tmp) >= n_req) {
-        pts_all <- pts_tmp
-        break
+      if (length(grid_pts) > 0) {
+        inside  <- st_within(grid_pts, talhao, sparse = FALSE)
+        pts_tmp <- grid_pts[which(rowSums(inside) > 0)]
+        if (length(pts_tmp) >= n_req) {
+          pts_all <- pts_tmp
+          break
+        }
       }
       delta     <- delta - 1
       offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
@@ -93,13 +93,15 @@ process_data <- function(shape, parc_exist_path,
     extras <- lapply(seq_len(nrow(to_fix)), function(i) {
       idx  <- to_fix$Index[i]
       need <- 2 - to_fix$n_pts[i]
-      base_pt <- st_centroid(filter(shape_full, Index == idx))
+      base_geom <- st_geometry(filter(shape_full, Index == idx))[[1]]
+      base_pt   <- st_centroid(base_geom)
+      area_ha   <- unique(filter(shape_full, Index == idx)$AREA_HA)
       df0 <- data.frame(
         Index      = rep(idx, need),
-        PROJETO    = rep(base_pt$ID_PROJETO, need),
-        TALHAO     = rep(base_pt$TALHAO,    need),
-        CICLO      = rep(base_pt$CICLO,     need),
-        ROTACAO    = rep(base_pt$ROTACAO,   need),
+        PROJETO    = rep(shape_full$ID_PROJETO[1], need),
+        TALHAO     = rep(shape_full$TALHAO[1],    need),
+        CICLO      = rep(shape_full$CICLO[1],     need),
+        ROTACAO    = rep(shape_full$ROTACAO[1],   need),
         STATUS     = rep("ATIVA",           need),
         FORMA      = rep(forma_parcela,     need),
         TIPO_INSTA = rep(tipo_parcela,      need),
@@ -108,9 +110,9 @@ process_data <- function(shape, parc_exist_path,
         DATA_ATUAL = rep(Sys.Date(),        need),
         COORD_X    = rep(st_coordinates(base_pt)[1], need),
         COORD_Y    = rep(st_coordinates(base_pt)[2], need),
-        AREA_HA    = rep(as.numeric(st_area(base_pt)), need)
+        AREA_HA    = rep(area_ha,           need)
       )
-      st_sf(df0, geometry = st_geometry(base_pt)[rep(1, need)])
+      st_sf(df0, geometry = st_sfc(rep(base_pt, need), crs = st_crs(shape_full)))
     })
     all_pts <- bind_rows(all_pts, do.call(rbind, extras))
   }
