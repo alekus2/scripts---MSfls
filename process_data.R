@@ -28,27 +28,45 @@ process_data <- function(shape, parc_exist_path,
     idx <- indices[i]
     talhao <- filter(shapeb, Index == idx)
     area_ha <- unique(talhao$AREA_HA)
-    n_req <- max(1, ceiling(area_ha / intensidade_amostral))
-    delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
+    n_req <- max(2, ceiling(area_ha / intensidade_amostral))
+    delta_base <- sqrt(as.numeric(st_area(talhao)) / n_req)
+    delta <- delta_base
     bb <- st_bbox(talhao)
     offset_xy <- c(bb$xmin + delta/2, bb$ymin + delta/2)
 
-    pts_all <- NULL
-    for (iter in seq_len(30)) {
-      grid_pts <- st_make_grid(x = talhao, cellsize = c(delta, delta), offset = offset_xy, what = "centers")
+    found <- FALSE
+    for (iter in seq_len(100)) {
+      grid_pts <- st_make_grid(talhao, cellsize = c(delta, delta), offset = offset_xy, what = "centers")
       inside <- st_within(grid_pts, talhao, sparse = FALSE)
       pts_tmp <- grid_pts[apply(inside, 1, any)]
-      if (length(pts_tmp) < n_req) {
-        delta <- delta * 0.9
-        next
+      if (length(pts_tmp) == n_req) {
+        pts_all <- pts_tmp
+        found <- TRUE
+        break
+      } else if (length(pts_tmp) > n_req) {
+        delta <- delta + 1
+      } else {
+        break
       }
-      pts_all <- pts_tmp
-      break
     }
 
-    if (is.null(pts_all) || length(pts_all) < n_req) {
-      pts_all <- if (!is.null(pts_all) && length(pts_all) > 0) pts_all else st_centroid(talhao)
-      if (length(pts_all) == 0) pts_all <- st_centroid(talhao)
+    if (!found) {
+      delta <- delta - 1
+      for (iter in seq_len(100)) {
+        grid_pts <- st_make_grid(talhao, cellsize = c(delta, delta), offset = offset_xy, what = "centers")
+        inside <- st_within(grid_pts, talhao, sparse = FALSE)
+        pts_tmp <- grid_pts[apply(inside, 1, any)]
+        if (length(pts_tmp) >= n_req) {
+          pts_all <- pts_tmp
+          break
+        }
+        delta <- delta - 1
+        if (delta <= 1) break
+      }
+    }
+
+    if (!exists("pts_all")) {
+      pts_all <- st_centroid(talhao)
       while (length(pts_all) < n_req) pts_all <- c(pts_all, pts_all[1])
     }
 
@@ -72,44 +90,16 @@ process_data <- function(shape, parc_exist_path,
         DATA_ATUAL = rep(Sys.Date(),          n_req),
         COORD_X    = coords[,1],
         COORD_Y    = coords[,2],
-        AREA_HA    = rep(area_ha, n_req)  
+        AREA_HA    = rep(area_ha, n_req)
       ),
       geometry = sel
     )
 
     result_points[[idx]] <- pts_sf
-    update_progress(round(i/total_poly*100, 1))
+    update_progress(round(i / total_poly * 100, 1))
   }
 
   all_pts <- do.call(rbind, result_points)
-
-  counts <- all_pts %>% st_drop_geometry() %>% count(Index, name = "n_pts")
-  to_fix <- filter(counts, n_pts < 2)
-  if (nrow(to_fix) > 0) {
-    extras <- lapply(seq_len(nrow(to_fix)), function(i) {
-      idx <- to_fix$Index[i]
-      need <- 2 - to_fix$n_pts[i]
-      base_pt <- st_centroid(filter(shape_full, Index == idx))
-      df0 <- data.frame(
-        Index      = rep(idx, need),
-        PROJETO    = rep(base_pt$ID_PROJETO, need),
-        TALHAO     = rep(base_pt$TALHAO,    need),
-        CICLO      = rep(base_pt$CICLO,     need),
-        ROTACAO    = rep(base_pt$ROTACAO,   need),
-        STATUS     = rep("ATIVA",           need),
-        FORMA      = rep(forma_parcela,     need),
-        TIPO_INSTA = rep(tipo_parcela,      need),
-        TIPO_ATUAL = rep(tipo_parcela,      need),
-        DATA       = rep(Sys.Date(),        need),
-        DATA_ATUAL = rep(Sys.Date(),        need),
-        COORD_X    = rep(st_coordinates(base_pt)[1], need),
-        COORD_Y    = rep(st_coordinates(base_pt)[2], need),
-        AREA_HA    = rep(st_area(base_pt), need)  
-      )
-      st_sf(df0, geometry = st_geometry(base_pt)[rep(1, need)])
-    })
-    all_pts <- bind_rows(all_pts, do.call(rbind, extras))
-  }
 
   all_pts <- all_pts %>%
     group_by(Index) %>%
@@ -118,6 +108,3 @@ process_data <- function(shape, parc_exist_path,
 
   all_pts
 }
-
-quero que o codigo ache numa maneira de se não couber todos os pontos que deveriam ele ir diminuindo a distância entre as parcelas de 1 em 1 até couber todos os pontos necessários para o talhao baseando em sua area(ha).
-Mas a quantidade de pontos a serem alocados nao podem passar da quantidade minima que sera da conta matematica de area(ha) / intensidade amostral assim se baseando somente em cobrir a area do talhao toda respeitando a distancia entre os pontos e o grid de se manter no centro.
