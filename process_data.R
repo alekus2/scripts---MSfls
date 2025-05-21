@@ -7,8 +7,7 @@ process_data <- function(shape, parc_exist_path,
                          distancia_parcelas_init,
                          intensidade_amostral,  
                          update_progress) {
-  parc_exist <- suppressMessages(st_read(parc_exist_path)) %>% 
-    st_transform(31982)
+  parc_exist <- suppressMessages(st_read(parc_exist_path)) %>% st_transform(31982)
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
@@ -34,11 +33,7 @@ process_data <- function(shape, parc_exist_path,
     bb <- st_bbox(talhao)
     if (any(is.infinite(bb)) || any(is.na(bb))) next
     while (delta >= min_delta) {
-      grid_all <- st_make_grid(
-        x        = st_as_sfc(bb),
-        cellsize = c(delta, delta),
-        what     = "centers"
-      )
+      grid_all <- st_make_grid(x = st_as_sfc(bb), cellsize = c(delta, delta), what = "centers")
       if (length(grid_all) == 0) {
         delta <- delta - 1
         next
@@ -65,18 +60,8 @@ process_data <- function(shape, parc_exist_path,
       delta <- delta - 1
     }
     if (is.null(pts_sel) || length(pts_sel) < n_req) {
-      bb <- st_bbox(talhao)
-      cand <- st_sfc(
-        st_point(c(bb$xmin + distancia.minima, bb$ymin + distancia.minima)),
-        st_point(c(bb$xmax - distancia.minima, bb$ymax - distancia.minima)),
-        crs = st_crs(shape_full)
-      )
-      ok <- st_within(cand, talhao, sparse = FALSE)[,1]
-      pts_sel <- cand[ok]
-      if (length(pts_sel) < 2) {
-        cen <- st_centroid(talhao)
-        pts_sel <- st_sfc(rep(cen, 2), crs = st_crs(shape_full))
-      }
+      base_pt <- st_centroid(st_geometry(talhao)[[1]])
+      pts_sel <- st_sfc(rep(base_pt, n_req), crs = st_crs(shape_full))
     }
     cr  <- st_coordinates(pts_sel)
     ord <- order(cr[,1], cr[,2])
