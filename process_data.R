@@ -1,11 +1,14 @@
+library(sf)
+library(dplyr)
+library(purrr)
+
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
                          distancia_parcelas_init,
                          intensidade_amostral,  
                          update_progress) {
-  
-  # 1. Leitura e projeção
+
   parc_exist <- suppressMessages(st_read(parc_exist_path)) %>% 
     st_transform(31982)
   shape_full <- shape %>%
@@ -13,11 +16,10 @@ process_data <- function(shape, parc_exist_path,
     mutate(
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = if ("AREA_HA" %in% names(.)) 
-                  as.numeric(AREA_HA) 
-                else as.numeric(st_area(.) / 10000)
+        as.numeric(AREA_HA) 
+      else as.numeric(st_area(.) / 10000)
     )
-  
-  # 2. Buffer interno
+
   shapeb <- shape_full %>%
     st_buffer(-abs(distancia.minima)) %>%
     filter(!st_is_empty(geometry) & st_is_valid(geometry))
@@ -30,26 +32,20 @@ process_data <- function(shape, parc_exist_path,
     idx     <- indices[i]
     talhao  <- shapeb[shapeb$Index == idx, ]
     if (nrow(talhao) == 0) next
-    
-    # confirma geometria válida
+
     if (any(st_is_empty(talhao)) || any(!st_is_valid(talhao))) next
     
     area_ha <- talhao$AREA_HA[1]
-    # número de pontos desejados
     n_req   <- max(1, ceiling(area_ha / intensidade_amostral))
-    
-    # inicia delta a partir do valor inicial
+
     delta    <- distancia_parcelas_init
-    min_delta <- 1    # limite inferior do passo
+    min_delta <- 1    
     pts_sel <- NULL
-    
-    # obtém bbox numérico
+
     bb <- st_bbox(talhao)
     if (any(is.infinite(bb)) || any(is.na(bb))) next
-    
-    # laço decrescente sobre delta  
+
     while (delta >= min_delta) {
-      # gera grid sobre o bbox, depois filtra dentro da geometria
       grid_all <- st_make_grid(
         x        = st_as_sfc(bb), 
         cellsize = c(delta, delta),
@@ -59,10 +55,8 @@ process_data <- function(shape, parc_exist_path,
         delta <- delta - 1
         next
       }
-      # garante que é sfc_POINT
       grid_all <- st_cast(grid_all, "POINT")
-      
-      # mantém só pontos dentro do polígono (ou círculo + polígono)
+
       if (forma_parcela == "circular") {
         centro <- st_centroid(talhao)
         raio   <- sqrt(area_ha * 10000 / pi)
@@ -84,19 +78,16 @@ process_data <- function(shape, parc_exist_path,
       }
       delta <- delta - 1
     }
-    
-    # fallback: 1 ponto no centróide se nada coube
+
     if (is.null(pts_sel) || length(pts_sel) < n_req) {
       base_pt <- st_centroid(st_geometry(talhao)[[1]])
       pts_sel <- st_sfc(rep(base_pt, n_req), crs = st_crs(shape_full))
     }
-    
-    # ordena por X, depois Y, e seleciona os primeiros n_req
+
     cr   <- st_coordinates(pts_sel)
     ord  <- order(cr[,1], cr[,2])
     sel  <- pts_sel[ord][seq_len(n_req)]
-    
-    # monta o sf resultante
+
     df <- tibble(
       Index      = idx,
       PROJETO    = talhao$ID_PROJETO[1],
@@ -118,14 +109,12 @@ process_data <- function(shape, parc_exist_path,
     
     update_progress(round(i/total_poly * 100, 1))
   }
-  
-  # concatena tudo
+
   all_pts <- bind_rows(result_pts)
   if (nrow(all_pts) == 0) {
     stop("Nenhum ponto gerado após o processamento dos talhões.")
   }
-  
-  # garante pelo menos 2 pontos por talhão
+
   counts <- all_pts %>% st_drop_geometry() %>% count(Index, name = "n_pts")
   to_fix <- counts %>% filter(n_pts < 2)
   
@@ -158,14 +147,16 @@ process_data <- function(shape, parc_exist_path,
     )
     all_pts <- bind_rows(all_pts, extras)
   }
-  
-  # numera as parcelas
+
   all_pts %>%
     group_by(Index) %>%
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
 
+
+> runApp('F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/AutoAlocador/AutoAlocar.R')
+Aviso: pacote ‘purrr’ foi compilado no R versão 4.4.3
 
 Listening on http://127.0.0.1:4799
 Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' using driver `ESRI Shapefile'
@@ -174,8 +165,23 @@ Geometry type: POINT
 Dimension:     XY
 Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
 Geodetic CRS:  SIRGAS 2000
-Aviso: Error in map2_df: não foi possível encontrar a função "map2_df"
-  82: process_data [src/process_data.R#119]
+Aviso: Error in map2: i In index: 1.
+Caused by error:
+! object(s) should be of class 'sfg'
+  98: <Anonymous>
+  97: signalCondition
+  96: signal_abort
+  95: rlang::abort
+  94: cli::cli_abort
+  93: <Anonymous>
+  92: stop
+  91: sfc_unique_sfg_dims_and_types
+  90: st_sfc
+  89: .f [src/process_data.R#144]
+  85: map2_
+  84: map2
+  83: map2_df
+  82: process_data [src/process_data.R#122]
   81: observe [src/server.R#74]
   80: <observer:observeEvent(input$gerar_parcelas)>
    1: runApp
