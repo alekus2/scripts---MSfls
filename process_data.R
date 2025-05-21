@@ -1,3 +1,4 @@
+
 library(sf)
 library(dplyr)
 
@@ -16,7 +17,7 @@ process_data <- function(shape, parc_exist_path,
     mutate(
       Index = paste0(ID_PROJETO, TALHAO),
       AREA_HA = if ("AREA_HA" %in% names(.)) 
-        as.numeric(AREA_HA) 
+        as.numeric(AREA_HA)
       else as.numeric(st_area(.) / 10000)
     )
   
@@ -33,10 +34,13 @@ process_data <- function(shape, parc_exist_path,
     talhao <- shapeb[shapeb$Index == idx, ]
     if (nrow(talhao) == 0) next
     if (any(st_is_empty(talhao)) || any(!st_is_valid(talhao))) next
-    
+    index <- talhao$Index
     area_ha <- talhao$AREA_HA[1]
     n_req <- max(2, ceiling(area_ha / intensidade_amostral))
     
+    print(f"Talhão: {index} Número de parcelas recomendadas segundo o codigo: {n_req}")
+    
+        
     delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
     delta_step <- 1
     max_iter <- 50
