@@ -27,43 +27,43 @@ process_data <- function(shape, parc_exist_path,
     if (any(st_is_empty(talhao)) || any(!st_is_valid(talhao))) next
     area_ha <- talhao$AREA_HA[1]
     n_req   <- max(2, ceiling(area_ha / intensidade_amostral))
-    delta    <- distancia_parcelas_init
-    min_delta <- 1
+    delta <- distancia_parcelas_init
+    max_delta <- 500
     pts_sel <- NULL
     bb <- st_bbox(talhao)
     if (any(is.infinite(bb)) || any(is.na(bb))) next
-    while (delta >= min_delta) {
+    repeat {
       grid_all <- st_make_grid(x = st_as_sfc(bb), cellsize = c(delta, delta), what = "centers")
       if (length(grid_all) == 0) {
-        delta <- delta - 1
+        delta <- delta + 1
+        if (delta > max_delta) break
         next
       }
       grid_all <- st_cast(grid_all, "POINT")
-      if (forma_parcela == "circular") {
-        centro <- st_centroid(talhao)
-        raio   <- sqrt(area_ha * 10000 / pi)
-        coords <- st_coordinates(grid_all)
-        c0     <- st_coordinates(centro)
-        d2     <- (coords[,1] - c0[1])^2 + (coords[,2] - c0[2])^2
-        inside_circle <- d2 <= raio^2
-        inside_poly   <- st_within(grid_all, talhao, sparse = FALSE)[,1]
-        keep_idx <- which(inside_circle & inside_poly)
-      } else {
-        inside_poly <- st_within(grid_all, talhao, sparse = FALSE)[,1]
-        keep_idx <- which(inside_poly)
-      }
+      inside_poly <- st_within(grid_all, talhao, sparse = FALSE)[,1]
+      keep_idx <- which(inside_poly)
       pts_tmp <- grid_all[keep_idx]
-      if (length(pts_tmp) >= n_req) {
+      if (length(pts_tmp) == n_req) {
         pts_sel <- pts_tmp
         break
       }
+      if (length(pts_tmp) > n_req) {
+        crd <- st_coordinates(pts_tmp)
+        ord <- order(crd[,1], crd[,2])
+        pts_sel <- pts_tmp[ord][seq_len(n_req)]
+        break
+      }
       delta <- delta - 1
+      if (delta < 1) {
+        delta <- delta + 2
+        if (delta > max_delta) break
+      }
     }
     if (is.null(pts_sel) || length(pts_sel) < n_req) {
       base_pt <- st_centroid(st_geometry(talhao)[[1]])
       pts_sel <- st_sfc(rep(base_pt, n_req), crs = st_crs(shape_full))
     }
-    cr  <- st_coordinates(pts_sel)
+    cr <- st_coordinates(pts_sel)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_sel[ord][seq_len(n_req)]
     df <- tibble(
