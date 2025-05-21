@@ -1,160 +1,106 @@
-library(shiny)
+library(glue)
 library(sf)
-library(DBI)
-library(odbc)
-library(stringr)
 library(dplyr)
-library(ggplot2)
-library(zip)
 
-server <- function(input, output, session) {
+process_data <- function(shape, parc_exist_path,
+                         forma_parcela, tipo_parcela,
+                         distancia.minima,
+                         distancia_parcelas,
+                         intensidade_amostral,
+                         update_progress) {
   
-  observeEvent(input$confirmar, {
-    output$shape_text <- renderText({
-      if (input$data_source == "upload") {
-        req(input$shape)
-        paste("Upload realizado shapefile:", input$shape$name)
+  parc_exist <- suppressMessages(st_read(parc_exist_path)) %>% 
+    st_transform(31982)
+  
+  shape_full <- shape %>%
+    st_transform(31982) %>%
+    mutate(
+      Index = paste0(ID_PROJETO, TALHAO),
+      AREA_HA = if ("AREA_HA" %in% names(.)) 
+        as.numeric(AREA_HA)
+      else as.numeric(st_area(.) / 10000)
+    )
+  
+  shapeb <- shape_full %>%
+    st_buffer(-abs(distancia.minima)) %>%
+    filter(!st_is_empty(geometry) & st_is_valid(geometry))
+  
+  indices <- unique(shapeb$Index)
+  total_poly <- length(indices)
+  result_pts <- vector("list", total_poly)
+  
+  for (i in seq_along(indices)) {
+    idx <- indices[i]
+    talhao <- shapeb[shapeb$Index == idx, ]
+    if (nrow(talhao) == 0) next
+    if (any(st_is_empty(talhao)) || any(!st_is_valid(talhao))) next
+    index <- talhao$Index
+    area_ha <- talhao$AREA_HA[1]
+    n_req <- max(2, ceiling(area_ha / intensidade_amostral))
+    delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
+    delta_step <- 1
+    
+    print(glue("Talhão: {index} | Número de parcelas recomendadas: {n_req} | Numero sequencial da parcela: {pts_all} | Valor da distancia entre as parcelas do talhao atual(equivale para todos os pontos: | Intensidade amostral: {intensidade_amostral} | Área do talhão: {area_ha}"))
+    
+    max_iter <- 50
+    iter <- 0
+    pts_sel <- NULL
+    
+    while (iter < max_iter) {
+      bb <- st_bbox(talhao)
+      offset <- c(bb$xmin + delta / 2, bb$ymin + delta / 2)
+      
+      grid_all <- st_make_grid(talhao, cellsize = c(delta, delta), offset = offset, what = "centers")
+      grid_all <- st_cast(grid_all, "POINT")
+      inside_poly <- st_within(grid_all, talhao, sparse = FALSE)[,1]
+      pts_tmp <- grid_all[inside_poly]
+      
+      if (length(pts_tmp) == n_req) {
+        pts_sel <- pts_tmp
+        break
+      } else if (length(pts_tmp) < n_req) {
+        delta <- delta * 0.9
+      } else {
+        delta <- delta * 1.1
       }
-    })
-    output$confirmation <- renderText({
-      paste(
-        "Forma:",              input$forma_parcela,
-        "| Tipo:",             input$tipo_parcela,
-        "| Distância mínima:", input$distancia_minima,
-        "| Distância entre parcelas:", input$distancia_parcelas
-      )
-    })
-  })
-  
-  shape <- reactive({
-    req(input$data_source, input$shape)
-    tmpdir <- file.path(
-      tempdir(),
-      tools::file_path_sans_ext(basename(input$shape$name))
-    )
-    unlink(tmpdir, recursive = TRUE, force = TRUE)
-    dir.create(tmpdir, showWarnings = FALSE)
-    unzip(input$shape$datapath, exdir = tmpdir)
-    shp_files <- list.files(
-      tmpdir, pattern = "\\.shp$", recursive = TRUE, full.names = TRUE
-    )
-    req(length(shp_files) >= 1)
-    shp <- st_read(shp_files[1], quiet = TRUE)
-    validate(
-      need(inherits(shp, "sf") && nrow(shp) > 0, "Erro na leitura do shapefile")
-    )
-    if (!is.null(input$shape_input_pergunta_arudek) &&
-        input$shape_input_pergunta_arudek == 0) {
-      shp <- shp %>%
-        rename(
-          ID_PROJETO = !!sym(input$mudar_nome_arudek_projeto),
-          TALHAO     = !!sym(input$mudar_nome_arudek_talhao),
-          CICLO      = !!sym(input$mudar_nome_arudek_ciclo),
-          ROTACAO    = !!sym(input$mudar_nome_arudek_rotacao)
-        )
+      
+      iter <- iter + 1
     }
-    shp %>%
-      st_transform(31982) %>%
-      mutate(
-        ID_PROJETO = str_pad(ID_PROJETO, 4, pad = "0"),
-        TALHAO     = str_pad(TALHAO,     3, pad = "0"),
-        Index      = paste0(ID_PROJETO, TALHAO)
-      )
-  })
-  
-  parc_exist_path <- reactive({
-    "data/parc.shp"
-  })
-  
-  values <- reactiveValues(result_points = NULL)
-  
-  observeEvent(input$gerar_parcelas, {
-    progress <- Progress$new(session, min = 0, max = 100)
-    on.exit(progress$close())
-    result <- process_data(
-      shape(),
-      parc_exist_path(),
-      input$forma_parcela,
-      input$tipo_parcela,
-      input$distancia_minima,
-      input$distancia_parcelas,
-      input$intensidade_amostral,     
-      function(p) progress$set(value = p, message = paste0(p, "% concluído"))
+    
+    if (is.null(pts_sel) || length(pts_sel) != n_req) {
+      next
+    }
+    
+    cr <- st_coordinates(pts_sel)
+    ord <- order(cr[,1], cr[,2])
+    sel <- pts_sel[ord][seq_len(n_req)]
+    
+    df <- tibble(
+      Index      = idx,
+      PROJETO    = talhao$ID_PROJETO[1],
+      TALHAO     = talhao$TALHAO[1],
+      CICLO      = talhao$CICLO[1],
+      ROTACAO    = talhao$ROTACAO[1],
+      STATUS     = "ATIVA",
+      FORMA      = forma_parcela,
+      TIPO_INSTA = tipo_parcela,
+      TIPO_ATUAL = tipo_parcela,
+      DATA       = Sys.Date(),
+      DATA_ATUAL = Sys.Date(),
+      COORD_X    = st_coordinates(sel)[,1],
+      COORD_Y    = st_coordinates(sel)[,2],
+      AREA_HA    = area_ha
     )
-    values$result_points <- result
-    showNotification("Parcelas geradas com sucesso!", type = "message", duration = 10)
-  })
+    
+    pts_sf <- st_sf(df, geometry = sel, crs = st_crs(shape_full))
+    result_pts[[i]] <- pts_sf
+    update_progress(round(i/total_poly * 100, 1))
+  }
   
-  output$index_filter <- renderUI({
-    req(values$result_points)
-    selectInput(
-      "selected_index", "Selecione o talhão:",
-      choices = unique(values$result_points$Index)
-    )
-  })
+  all_pts <- bind_rows(result_pts)
   
-  observeEvent(input$proximo, {
-    req(values$result_points, input$selected_index)
-    idxs <- unique(values$result_points$Index)
-    ni   <- which(idxs == input$selected_index) + 1
-    if (ni > length(idxs)) ni <- 1
-    updateSelectInput(session, "selected_index", selected = idxs[ni])
-  })
-  
-  observeEvent(input$anterior, {
-    req(values$result_points, input$selected_index)
-    idxs <- unique(values$result_points$Index)
-    pi   <- which(idxs == input$selected_index) - 1
-    if (pi < 1) pi <- length(idxs)
-    updateSelectInput(session, "selected_index", selected = idxs[pi])
-  })
-  
-  output$download_result <- downloadHandler(
-    filename = function() {
-      paste0(
-        "parcelas_", input$tipo_parcela, "_",
-        format(Sys.time(), "%d-%m-%y_%H.%M"), ".zip"
-      )
-    },
-    content = function(file) {
-      req(values$result_points)
-      ts      <- format(Sys.time(), "%d-%m-%y_%H.%M")
-      dir_shp <- file.path(tempdir(), paste0("parcelas_", input$tipo_parcela, "_", ts))
-      unlink(dir_shp, recursive = TRUE, force = TRUE)
-      dir.create(dir_shp, showWarnings = FALSE)
-      shp_base <- paste0("parcelas_", input$tipo_parcela, "_", ts)
-      shp_path <- file.path(dir_shp, paste0(shp_base, ".shp"))
-      st_write(
-        values$result_points, dsn = shp_path,
-        driver = "ESRI Shapefile", delete_dsn = TRUE
-      )
-      files_to_zip <- list.files(
-        dir_shp,
-        pattern = paste0("^", shp_base, "\\.(shp|shx|dbf|prj|cpg|qpj)$"),
-        full.names = TRUE
-      )
-      zip::zipr(zipfile = file, files = files_to_zip, root = dir_shp)
-    },
-    contentType = "application/zip"
-  )
-  
-  output$plot <- renderPlot({
-    req(values$result_points, input$selected_index)
-    shp_sel <- shape() %>% filter(Index == input$selected_index)
-    req(nrow(shp_sel) > 0)
-    pts_sel <- values$result_points %>% filter(Index == input$selected_index)
-    area_ha <- #tem que ser a mesma da coluna area_ha do talhão assim como no process_data.
-    num_rec <- max(2, ceiling(area_ha / as.numeric(input$intensidade_amostral)))
-    ggplot() +
-      geom_sf(data = shp_sel, fill = NA, color = "#007E69", size = 1) +
-      geom_sf(data = pts_sel, size = 2) +
-      ggtitle(
-        paste0(
-          "Número de parcelas recomendadas: ", (num_rec - 1),
-          " (Área: ", round(area_ha, 2), " ha)"
-        )
-      ) +
-      theme_minimal() +
-      theme(plot.title = element_text(hjust = 0.5, face = "bold"))
-  })
+  all_pts %>%
+    group_by(Index) %>%
+    mutate(PARCELA = row_number()) %>%
+    ungroup()
 }
