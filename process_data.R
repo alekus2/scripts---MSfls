@@ -38,7 +38,7 @@ process_data <- function(shape, parc_exist_path,
     area_ha <- talhao$AREA_HA[1]
     n_req <- max(2, ceiling(area_ha / intensidade_amostral))
     
-    print(f"Talhão: {index} Número de parcelas recomendadas segundo o codigo: {n_req}")
+    print(f"Talhão: {index} Número de parcelas recomendadas segundo o codigo: {n_req} a intensidade amostral: {intensidade_amostral} e a area do talhao {area_ha}")
     
         
     delta <- sqrt(as.numeric(st_area(talhao)) / n_req)
