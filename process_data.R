@@ -190,3 +190,42 @@ process_data <- function(shape, parc_exist_path,
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
+
+quero que meu codigo calcule o grid com base na distancia entre os pontos. Onde o codigo deverá usar toda area do talhão e usando o buffer tambem para não criar pontos nas bordas e conforme for criando os pontos ir diminuindo de 1 em 1 até couber todos os pontos recomendados q será com base na area(ha) / pela intensidade amostral
+mas meu codigo apresenta esse erro abaixo:
+                      
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em min(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em min(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para min; retornando Inf
+Aviso em max(cc[[1]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso em max(cc[[2]], na.rm = TRUE) :
+  nenhum argumento não faltante para max; retornando -Inf
+Aviso: Error in : object(s) should be of class 'sfg'
+  89: <Anonymous>
+  88: stop
+  87: sfc_unique_sfg_dims_and_types
+  86: st_sfc
+  84: FUN [src/process_data.R#174]
+  83: lapply
+  82: process_data [src/process_data.R#146]
+  81: observe [src/server.R#74]
+  80: <observer:observeEvent(input$gerar_parcelas)>
+   1: runApp
+
+então quero que voce ache uma maneira de meu app funcionar corretamente. Pois essa é apenas uma parte dele.
