@@ -1,3 +1,4 @@
+
 library(glue)
 library(sf)
 library(dplyr)
@@ -17,8 +18,8 @@ process_data <- function(shape, parc_exist_path,
     mutate(
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = if ("AREA_HA" %in% names(.)) 
-                  as.numeric(AREA_HA)
-                else as.numeric(st_area(.) / 10000)
+        as.numeric(AREA_HA)
+      else as.numeric(st_area(.) / 10000)
     )
   
   shapeb <- shape_full %>%
@@ -33,17 +34,14 @@ process_data <- function(shape, parc_exist_path,
     idx    <- indices[i]
     talhao <- shapeb[shapeb$Index == idx, ]
     if (nrow(talhao) == 0) next
-    
-    # parâmetros do talhão
+
     area_ha <- talhao$AREA_HA[1]
     n_req   <- max(2, ceiling(area_ha / intensidade_amostral))
-    
-    # calcula delta ideal e limites
+
     delta_max <- sqrt(as.numeric(st_area(talhao)) / n_req)
     delta_min <- max(distancia_parcelas, 30)  # o piso de fato
     delta     <- delta_max
-    
-    # se o ideal já for mais apertado que o mínimo, não cabe
+
     if (delta_max < delta_min) {
       message(glue(
         "Talhão {idx}: delta ideal ({round(delta_max,1)} m) < mínimo permitido ({round(delta_min,1)} m) — ",
@@ -55,8 +53,7 @@ process_data <- function(shape, parc_exist_path,
       "Talhão: {idx} | n_req: {n_req} | delta_inicial: {round(delta,2)} m | ",
       "mín = {round(delta_min,1)} m"
     ))
-    
-    # iteração para ajustar delta dentro de [delta_min, delta_max]
+
     max_iter  <- 100
     iter      <- 0
     best_diff <- Inf
@@ -65,7 +62,6 @@ process_data <- function(shape, parc_exist_path,
     pts_sel   <- NULL
     
     while (iter < max_iter) {
-      # gera grid de centros
       bb       <- st_bbox(talhao)
       offset_x <- runif(1, 0, delta)
       offset_y <- runif(1, 0, delta)
@@ -82,28 +78,24 @@ process_data <- function(shape, parc_exist_path,
       pts_tmp  <- grid_all[inside]
       n_pts    <- length(pts_tmp)
       diff     <- abs(n_pts - n_req)
-      
-      # guarda melhor solução
+
       if (diff < best_diff) {
         best_diff  <- diff
         best_pts   <- pts_tmp
         best_delta <- delta
       }
-      
-      # se exato, acabou
+
       if (n_pts == n_req) {
         pts_sel <- pts_tmp
         break
       }
-      
-      # ajusta delta, sem sair de [delta_min, delta_max]
+
       if (n_pts < n_req) {
         delta_novo <- max(delta * 0.95, delta_min)
       } else {
         delta_novo <- min(delta * 1.05, delta_max)
       }
-      
-      # se bateu no piso ou teto e não mudou => não converge
+
       if (delta_novo == delta) {
         break
       }
@@ -111,8 +103,7 @@ process_data <- function(shape, parc_exist_path,
       delta <- delta_novo
       iter  <- iter + 1
     }
-    
-    # só aceita menos pontos SE chegou efetivamente ao piso
+
     if (is.null(pts_sel)) {
       if (delta == delta_min && best_diff <= 1) {
         pts_sel <- best_pts
@@ -126,13 +117,11 @@ process_data <- function(shape, parc_exist_path,
         next
       }
     }
-    
-    # ordena e seleciona exatamente n_req
+
     cr  <- st_coordinates(pts_sel)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_sel[ord][seq_len(n_req)]
-    
-    # monta tibble e sf
+
     df <- tibble(
       Index      = idx,
       PROJETO    = talhao$ID_PROJETO[1],
