@@ -1,4 +1,3 @@
-
 library(glue)
 library(sf)
 library(dplyr)
@@ -6,7 +5,7 @@ library(dplyr)
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
-                         distancia_parcelas,
+                         distancia_parcelas,    # aqui é o máximo permitido
                          intensidade_amostral,
                          update_progress) {
   
@@ -18,8 +17,8 @@ process_data <- function(shape, parc_exist_path,
     mutate(
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = if ("AREA_HA" %in% names(.)) 
-        as.numeric(AREA_HA)
-      else as.numeric(st_area(.) / 10000)
+                  as.numeric(AREA_HA)
+                else as.numeric(st_area(.) / 10000)
     )
   
   shapeb <- shape_full %>%
@@ -33,27 +32,30 @@ process_data <- function(shape, parc_exist_path,
   for (i in seq_along(indices)) {
     idx    <- indices[i]
     talhao <- shapeb[shapeb$Index == idx, ]
-    if (nrow(talhao) == 0) next
-
+    if (nrow(talhao)==0) next
+    
+    # número de pontos requisitados
     area_ha <- talhao$AREA_HA[1]
     n_req   <- max(2, ceiling(area_ha / intensidade_amostral))
-
-    delta_max <- sqrt(as.numeric(st_area(talhao)) / n_req)
-    delta_min <- max(distancia_parcelas, 30)  # o piso de fato
-    delta     <- delta_max
-
-    if (delta_max < delta_min) {
-      message(glue(
-        "Talhão {idx}: delta ideal ({round(delta_max,1)} m) < mínimo permitido ({round(delta_min,1)} m) — ",
-        "impossível alocar {n_req} parcelas"))
+    
+    # delta ideal e limites explícitos
+    delta_ideal <- sqrt(as.numeric(st_area(talhao)) / n_req)
+    delta_min   <- 30
+    delta_max   <- distancia_parcelas
+    # se o ideal for maior que o máximo, comece no máximo
+    delta       <- min(delta_ideal, delta_max)
+    
+    # se mesmo com delta=30 não couber, já pule
+    if (delta_min * sqrt(n_req) > sqrt(as.numeric(st_area(talhao)))) {
+      message(glue("Talhão {idx}: área muito pequena para {n_req} parcelas com 30 m"))
       next
     }
     
     print(glue(
-      "Talhão: {idx} | n_req: {n_req} | delta_inicial: {round(delta,2)} m | ",
-      "mín = {round(delta_min,1)} m"
+      "Talhão {idx}: n_req={n_req} | delta_ideal={round(delta_ideal,1)} ",
+      "| iniciar em {round(delta,1)} (min=30, max={delta_max})"
     ))
-
+    
     max_iter  <- 100
     iter      <- 0
     best_diff <- Inf
@@ -78,50 +80,56 @@ process_data <- function(shape, parc_exist_path,
       pts_tmp  <- grid_all[inside]
       n_pts    <- length(pts_tmp)
       diff     <- abs(n_pts - n_req)
-
+      
+      # salva melhor
       if (diff < best_diff) {
         best_diff  <- diff
         best_pts   <- pts_tmp
         best_delta <- delta
       }
-
+      
       if (n_pts == n_req) {
         pts_sel <- pts_tmp
         break
       }
-
+      
+      # ajusta delta dentro de [delta_min, delta_max]
       if (n_pts < n_req) {
+        # poucos pontos → precisa densificar → diminuir delta
         delta_novo <- max(delta * 0.95, delta_min)
       } else {
+        # muitos pontos → espaçar mais → aumentar delta
         delta_novo <- min(delta * 1.05, delta_max)
       }
-
-      if (delta_novo == delta) {
-        break
-      }
+      
+      # se não mudou, estamos num limite (min ou max)
+      if (delta_novo == delta) break
       
       delta <- delta_novo
       iter  <- iter + 1
     }
-
+    
+    # Pós-processamento: só aceitamos menos pontos se estivermos num limite
     if (is.null(pts_sel)) {
-      if (delta == delta_min && best_diff <= 1) {
+      if ((delta == delta_min || delta == delta_max) && best_diff <= 1) {
         pts_sel <- best_pts
         delta   <- best_delta
         message(glue(
-          "Talhão {idx}: atingiu piso delta = {round(delta_min,1)} m; ",
+          "Talhão {idx}: atingiu limite delta={round(delta,1)} m; ",
           "aceitando {length(pts_sel)} pontos (±1)"))
       } else {
         message(glue(
-          "Talhão {idx}: não couberam {n_req} parcelas com delta ≥ {round(delta_min,1)} m"))
+          "Talhão {idx}: não couberam {n_req} parcelas ",
+          "com 30 m ≤ delta ≤ {delta_max} m"))
         next
       }
     }
-
+    
+    # ordena e seleciona exatos n_req
     cr  <- st_coordinates(pts_sel)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_sel[ord][seq_len(n_req)]
-
+    
     df <- tibble(
       Index      = idx,
       PROJETO    = talhao$ID_PROJETO[1],
@@ -142,7 +150,7 @@ process_data <- function(shape, parc_exist_path,
     pts_sf <- st_sf(df, geometry = sel, crs = st_crs(shape_full))
     result_pts[[i]] <- pts_sf
     
-    update_progress(round(i / total_poly * 100, 1))
+    update_progress(round(i/total_poly*100,1))
   }
   
   bind_rows(result_pts) %>%
