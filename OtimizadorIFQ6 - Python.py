@@ -1,4 +1,3 @@
-
 import pandas as pd
 import os
 import numpy as np
@@ -269,7 +268,7 @@ class OtimizadorIFQ6:
             pv50 = (le/tot*100) if tot else 0.1
             return pd.Series({"n":n, "n/2":meio, "Mediana":med, "∑Ht":tot, "∑Ht(<=Med)":le, "PV50":pv50})
 
-        df_D_resultados = df_pivot[cols0 + num_cols ** 3].copy()
+        df_D_resultados = df_pivot[cols0 + num_cols].copy()
         metrics_C = df_D_resultados.apply(calc_metrics, axis=1, covas=num_cols)
         df_D_resultados = pd.concat([df_D_resultados, metrics_C], axis=1)
         df_D_resultados["PV50"] = df_D_resultados["PV50"].map(lambda x: f"{x:.2f}%".replace(".",","))
@@ -300,7 +299,8 @@ class OtimizadorIFQ6:
         df_D_resultados["%_Sobrevivência"] = (
             (valid/tot*100).round(1).map(lambda x: f"{x:.1f}%".replace(".",","))
         )
-        df_D_resultados["Média Ht"]= next((for i in df_final["Index"] if df_D_resultados["CD_PROJETO"] + df_D_resultados["CD_TALHAO"] == df_final["Index"] df_final["Ht_média"].np.median ))
+        
+        df_D_resultados["Média Ht"] = df_final.groupby(["CD_PROJETO","CD_TALHAO"])["Ht média"].median().values
         df_D_resultados["Pits/ha"] = (
             (df_D_resultados["n"] - df_D_resultados["L"]) * 10000
             / df_D_resultados["nm_area_parcela"].astype(float)
@@ -312,9 +312,11 @@ class OtimizadorIFQ6:
         df_D_resultados["Pits por sob"] = (df_D_resultados["Stand (tree/ha)"] / pct).apply(math.ceil)
         df_D_resultados["CHECK covas"] = df_D_resultados["Stand (tree/ha)"] / df_D_resultados["%_Sobrevivência"]
         df_D_resultados["CHECK pits"] = df_D_resultados["Pits por sob"] - df_D_resultados["Pits/ha"]
-        df_D_resultados["CHECK impares/pares"] = if df_D_resultados["n"] % 2 ==0 "Par" else "impar"
-        df_D_resultados["%_K"] = df_D_resultados["K"] / (df_D_resultados["n"] - df_D_resultados["L"]) #em porcentagem
-        df_D_resultados["%_L"] = (df_D_resultados["H"] + df_D_resultados["I"]) / (df_D_resultados["n"] - df_D_resultados["L"]) #em porcentagem
+        df_D_resultados["CHECK impares/pares"] = df_D_resultados["n"].apply(lambda x: "Par" if x % 2 == 0 else "Impar")
+        
+        # Cálculo de porcentagens
+        df_D_resultados["%_K"] = (df_D_resultados["K"] / (df_D_resultados["n"] - df_D_resultados["L"])).map(lambda x: f"{x:.2%}".replace(".",","))
+        df_D_resultados["%_L"] = ((df_D_resultados["H"] + df_D_resultados["I"]) / (df_D_resultados["n"] - df_D_resultados["L"])).map(lambda x: f"{x:.2%}".replace(".",","))
 
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
         cnt = 1
@@ -329,7 +331,7 @@ class OtimizadorIFQ6:
             df_final.drop(columns=["Index_z3"], inplace=True)
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
-            df_D_resultados.to_excel(w,sheet_name="D_tabela_resultados_Ht3", index=False)
+            df_D_resultados.to_excel(w, sheet_name="D_tabela_resultados_Ht3", index=False)
         print(f"✅ Tudo gravado em '{out2}'")
 
 otimizador = OtimizadorIFQ6()
