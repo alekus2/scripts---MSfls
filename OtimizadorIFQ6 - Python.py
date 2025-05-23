@@ -1,18 +1,21 @@
-# --- antes: df_D_resultados["Média Ht"] = ... .values  (retiramos essa linha) ---
+---------------------------------------------------------------------------
+TypeError                                 Traceback (most recent call last)
+/usr/local/lib/python3.11/dist-packages/pandas/core/ops/array_ops.py in _na_arithmetic_op(left, right, op, is_cmp)
+    217     try:
+--> 218         result = func(left, right)
+    219     except TypeError:
 
-# 1) calcula a mediana de Ht média por projeto+talhão
-medianas = (
-    df_final
-    .groupby(["CD_PROJETO","CD_TALHAO"])["Ht média"]
-    .median()
-    .reset_index(name="Média Ht")
-)
+11 frames
+TypeError: unsupported operand type(s) for /: 'float' and 'str'
 
-# 2) faz merge para associar a mediana a cada linha de df_D_resultados
-df_D_resultados = df_D_resultados.merge(
-    medianas,
-    on=["CD_PROJETO","CD_TALHAO"],
-    how="left"
-)
+During handling of the above exception, another exception occurred:
 
-# (agora df_D_resultados já tem a coluna "Média Ht" corretamente alinhada)
+TypeError                                 Traceback (most recent call last)
+/usr/local/lib/python3.11/dist-packages/pandas/core/ops/array_ops.py in _masked_arith_op(x, y, op)
+    161         # See GH#5284, GH#5035, GH#19448 for historical reference
+    162         if mask.any():
+--> 163             result[mask] = op(xrav[mask], yrav[mask])
+    164 
+    165     else:
+
+TypeError: unsupported operand type(s) for /: 'float' and 'str
