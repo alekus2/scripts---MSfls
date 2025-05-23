@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 import numpy as np
@@ -241,6 +242,80 @@ class OtimizadorIFQ6:
         df_tabela["Pits por sob"] = (df_tabela["Stand (tree/ha)"] / pct).apply(math.ceil)
         df_tabela["Check pits"] = df_tabela["Pits por sob"] - df_tabela["Pits/ha"]
 
+        df_D_resultados = df_tabela.copy()
+        df_pivot = df_res.pivot_table(
+            index=cols0,
+            columns="NM_COVA_ORDENADO",
+            values="Ht média",
+            aggfunc="first",
+            fill_value=0
+        ).reset_index()
+        df_pivot.columns = [str(c) if isinstance(c, int) else c for c in df_pivot.columns]
+        num_cols = sorted([c for c in df_pivot.columns if c.isdigit()], key=int)
+
+        def calc_metrics(row, covas):
+            vals = [row[c] for c in covas]
+            last = max([i for i,v in enumerate(vals) if v>0], default=-1)
+            vals = vals[:last+1] if last>=0 else []
+            n = len(vals)
+            med = np.median(vals) if n>0 else 0.0
+            tot = sum(vals)
+            ordered = sorted(vals)
+            meio = n//2
+            if n%2==0:
+                le = sum(v for v in ordered[:meio] if v<=med)
+            else:
+                le = sum(ordered[:meio]) + med/2.0
+            pv50 = (le/tot*100) if tot else 0.1
+            return pd.Series({"n":n, "n/2":meio, "Mediana":med, "∑Ht":tot, "∑Ht(<=Med)":le, "PV50":pv50})
+
+        df_D_resultados = df_pivot[cols0 + num_cols ** 3].copy()
+        metrics_C = df_D_resultados.apply(calc_metrics, axis=1, covas=num_cols)
+        df_D_resultados = pd.concat([df_D_resultados, metrics_C], axis=1)
+        df_D_resultados["PV50"] = df_D_resultados["PV50"].map(lambda x: f"{x:.2f}%".replace(".",","))
+
+        codes = ["A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E"]
+        falhas = ["M","H","F","L","S"]
+        counts = (
+            df_final
+            .groupby(["CD_PROJETO","CD_TALHAO","NM_PARCELA"])["CD_01"]
+            .value_counts()
+            .unstack(fill_value=0)
+            .reindex(columns=codes, fill_value=0)
+            .reset_index()
+        )
+        df_D_resultados = df_D_resultados.merge(
+            counts,
+            left_on=["CD_PROJETO","CD_TALHAO","nm_parcela"],
+            right_on=["CD_PROJETO","CD_TALHAO","NM_PARCELA"],
+            how="left"
+        ).fillna(0)
+
+        df_D_resultados["Stand (tree/ha)"] = (
+            df_D_resultados[codes].sum(axis=1) - df_D_resultados[falhas].sum(axis=1)
+        ) * 10000 / df_D_resultados["nm_area_parcela"].astype(float)
+
+        tot = df_D_resultados[codes].sum(axis=1)
+        valid = tot - df_D_resultados[falhas].sum(axis=1)
+        df_D_resultados["%_Sobrevivência"] = (
+            (valid/tot*100).round(1).map(lambda x: f"{x:.1f}%".replace(".",","))
+        )
+        df_D_resultados["Média Ht"]= next((for i in df_final["Index"] if df_D_resultados["CD_PROJETO"] + df_D_resultados["CD_TALHAO"] == df_final["Index"] df_final["Ht_média"].np.median ))
+        df_D_resultados["Pits/ha"] = (
+            (df_D_resultados["n"] - df_D_resultados["L"]) * 10000
+            / df_D_resultados["nm_area_parcela"].astype(float)
+        ).fillna(0)
+
+        df_D_resultados["CST"] = df_D_resultados["CD_TALHAO"].astype(str) + "-" + df_D_resultados["nm_parcela"].astype(str)
+
+        pct = df_D_resultados["%_Sobrevivência"].str.rstrip("%").str.replace(",",".").astype(float)/100
+        df_D_resultados["Pits por sob"] = (df_D_resultados["Stand (tree/ha)"] / pct).apply(math.ceil)
+        df_D_resultados["CHECK covas"] = df_D_resultados["Stand (tree/ha)"] / df_D_resultados["%_Sobrevivência"]
+        df_D_resultados["CHECK pits"] = df_D_resultados["Pits por sob"] - df_D_resultados["Pits/ha"]
+        df_D_resultados["CHECK impares/pares"] = if df_D_resultados["n"] % 2 ==0 "Par" else "impar"
+        df_D_resultados["%_K"] = df_D_resultados["K"] / (df_D_resultados["n"] - df_D_resultados["L"]) #em porcentagem
+        df_D_resultados["%_L"] = (df_D_resultados["H"] + df_D_resultados["I"]) / (df_D_resultados["n"] - df_D_resultados["L"]) #em porcentagem
+
         nome_base = f"BASE_IFQ6_{nome_mes}_{data_emissao}"
         cnt = 1
         out2 = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
@@ -254,6 +329,7 @@ class OtimizadorIFQ6:
             df_final.drop(columns=["Index_z3"], inplace=True)
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
+            df_D_resultados.to_excel(w,sheet_name="D_tabela_resultados_Ht3", index=False)
         print(f"✅ Tudo gravado em '{out2}'")
 
 otimizador = OtimizadorIFQ6()
