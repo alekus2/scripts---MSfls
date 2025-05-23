@@ -351,3 +351,28 @@ arquivos = [
     "/content/Cadastro SGF (correto).xlsx"
 ]
 otimizador.validacao(arquivos)
+
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Quantidade de 'VERIFICAR': 0
+---------------------------------------------------------------------------
+ValueError                                Traceback (most recent call last)
+<ipython-input-1-40a1a01a4ea3> in <cell line: 0>()
+    350     "/content/Cadastro SGF (correto).xlsx"
+    351 ]
+--> 352 otimizador.validacao(arquivos)
+
+4 frames
+/usr/local/lib/python3.11/dist-packages/pandas/core/common.py in require_length_match(data, index)
+    571     """
+    572     if len(data) != len(index):
+--> 573         raise ValueError(
+    574             "Length of values "
+    575             f"({len(data)}) "
+
+ValueError: Length of values (58) does not match length of index (320)
