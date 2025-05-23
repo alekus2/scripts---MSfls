@@ -8,22 +8,19 @@ process_data <- function(shape, parc_exist_path,
                          distancia_parcelas,
                          intensidade_amostral,
                          update_progress) {
-  
-  # lê parcelas existentes e projeta
+
   parc_exist <- suppressMessages(st_read(parc_exist_path)) %>% 
     st_transform(31982)
-  
-  # prepara shape e calcula área em ha
+
   shape_full <- shape %>%
     st_transform(31982) %>%
     mutate(
       Index   = paste0(ID_PROJETO, TALHAO),
       AREA_HA = if ("AREA_HA" %in% names(.)) 
-                  as.numeric(AREA_HA)
-                else as.numeric(st_area(.) / 10000)
+        as.numeric(AREA_HA)
+      else as.numeric(st_area(.) / 10000)
     )
-  
-  # aplica buffer interno
+
   shapeb <- shape_full %>%
     st_buffer(-abs(distancia.minima)) %>%
     filter(!st_is_empty(geometry) & st_is_valid(geometry))
@@ -37,30 +34,26 @@ process_data <- function(shape, parc_exist_path,
     talhao <- shapeb[shapeb$Index == idx, ]
     if (nrow(talhao) == 0) next
     if (any(st_is_empty(talhao)) || any(!st_is_valid(talhao))) next
-    
-    # parâmetros do talhão
+
     area_ha <- talhao$AREA_HA[1]
     n_req   <- max(2, ceiling(area_ha / intensidade_amostral))
-    
-    # delta inicial (ideal) e limites
+
     delta_max <- sqrt(as.numeric(st_area(talhao)) / n_req)
     delta     <- delta_max
-    delta_min <- max(distancia_parcelas, 30)  # piso mínimo entre parcelas
+    delta_min <- max(distancia_parcelas, 30)  
     
     print(glue(
       "Talhão: {idx} | n_req: {n_req} | delta_inicial: {round(delta,2)} m | ",
       "INT_amostral: {intensidade_amostral} | Área: {round(area_ha,2)} ha"
     ))
-    
-    # prepara iteração
+
     max_iter  <- 100
     iter      <- 0
     best_diff <- Inf
     best_pts  <- NULL
     best_delta<- delta
     pts_sel   <- NULL
-    
-    # loop para ajustar delta dentro de [delta_min, delta_max]
+
     while (iter < max_iter) {
       # cria grid de centros
       bb       <- st_bbox(talhao)
@@ -79,28 +72,24 @@ process_data <- function(shape, parc_exist_path,
       pts_tmp  <- grid_all[inside]
       n_pts    <- length(pts_tmp)
       diff     <- abs(n_pts - n_req)
-      
-      # guarda melhor até agora
+
       if (diff < best_diff) {
         best_diff  <- diff
         best_pts   <- pts_tmp
         best_delta <- delta
       }
-      
-      # se encontrou exatamente
+
       if (n_pts == n_req) {
         pts_sel <- pts_tmp
         break
       }
-      
-      # ajusta delta mas respeita os limites
+
       if (n_pts < n_req) {
         delta_novo <- max(delta * 0.95, delta_min)
       } else {
         delta_novo <- min(delta * 1.05, delta_max)
       }
-      
-      # se bateu no limite e não mudou, sai—impossível convergir
+
       if (delta_novo == delta) {
         message(glue(
           "Talhão {idx}: não é possível encaixar {n_req} parcelas ",
@@ -112,8 +101,7 @@ process_data <- function(shape, parc_exist_path,
       delta <- delta_novo
       iter  <- iter + 1
     }
-    
-    # pós‐processamento: aceita melhor solução ou descarta
+
     if (is.null(pts_sel)) {
       if (best_diff <= 1) {
         pts_sel <- best_pts
@@ -130,13 +118,11 @@ process_data <- function(shape, parc_exist_path,
         next
       }
     }
-    
-    # ordena e seleciona exatamente n_req pontos
+
     cr  <- st_coordinates(pts_sel)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_sel[ord][seq_len(n_req)]
-    
-    # monta data.frame e sf
+
     df <- tibble(
       Index      = idx,
       PROJETO    = talhao$ID_PROJETO[1],
@@ -156,12 +142,10 @@ process_data <- function(shape, parc_exist_path,
     
     pts_sf <- st_sf(df, geometry = sel, crs = st_crs(shape_full))
     result_pts[[i]] <- pts_sf
-    
-    # atualiza barra de progresso
+
     update_progress(round(i / total_poly * 100, 1))
   }
-  
-  # retorna tudo agrupado e numerado
+
   bind_rows(result_pts) %>%
     group_by(Index) %>%
     mutate(PARCELA = row_number()) %>%
