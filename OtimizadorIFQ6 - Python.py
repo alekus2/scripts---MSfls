@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 import numpy as np
@@ -198,9 +199,11 @@ class OtimizadorIFQ6:
         valid = tot - df_tabela[falhas].sum(axis=1)
         surv = np.divide(valid, tot, out=np.zeros_like(valid,dtype=float), where=tot!=0)
         df_tabela["%_Sobrevivência_decimal"] = surv
+        df_tabela["Pits por sob"] = df_tabela["Stand (tree/ha)"] / df_tabela["%_Sobrevivência_decimal"]
         df_tabela["%_Sobrevivência"] = (np.round(surv*100,1).astype(str).str.replace(r"\.",",",regex=True)+"%")
+        df_tabela.drop(columns=["%_Sobrevivência_decimal"], inplace=True)
+        df_tabela["Check pits"] = df_tabela["Pits por sob"] - df_tabela["Pits/ha"]
 
-        # df_D_resultados com alturas ao cubo e sobrevivência segura
         df_D = df_res.pivot_table(index=cols0, columns="NM_COVA_ORDENADO", values="Ht média",
                                   aggfunc="first", fill_value=0).reset_index()
         df_D.columns = [str(c) if isinstance(c,int) else c for c in df_D.columns]
@@ -218,10 +221,13 @@ class OtimizadorIFQ6:
         surv_D = np.divide(valid_D, tot_D, out=np.zeros_like(valid_D,dtype=float), where=tot_D!=0)
         df_D_resultados["%_Sobrevivência_decimal"] = surv_D
         df_D_resultados["%_Sobrevivência"] = (np.round(surv_D*100,1).astype(str).str.replace(r"\.",",",regex=True)+"%")
-        df_D_resultados["Pits por sob"] = df_D_resultados["Stand (tree/ha)"] / df_D_resultados["%_Sobrevivência_decimal"]
-        df_D_resultados["CHECK pits"] = df_D_resultados["Pits por sob"] - df_D_resultados["Pits/ha"]
         df_D_resultados["CHECK covas"] = df_D_resultados["Stand (tree/ha)"] / df_D_resultados["%_Sobrevivência_decimal"]
+        df_D_resultados["CHECK pits"] = df_D_resultados["CHECK covas"] - df_D_resultados["Pits/ha"]
         df_D_resultados["CHECK impares/pares"] = df_D_resultados["n"].apply(lambda x: "Par" if x%2==0 else "Impar")
+        df_D_resultados["Material Genético"]= #deverá ser procurado dentro da coluna "Mat.Genético" usando cd projeto + cd talhao adicionar em df_D_resultados vindo de cadastro SGF
+        df_D_resultados["Data Medição"] = #deverá ser procurado dentro da coluna "Dt Medição" e usando cd projeto + cd talhao adicionar em df_D_resultados vindo de dados cst
+        df_D_resultados["Equipe"]= #mesma coisa que "Data medição" mas procurando a coluna "Equipe_02" adicionando em df_D_resultados vindo de dados cst 
+   
         df_D_resultados["%_K"] = (df_D_resultados["K"] / (df_D_resultados["n"] - df_D_resultados["L"])).map(lambda x: f"{x:.1%}".replace(".",","))
         df_D_resultados["%_L"] = ((df_D_resultados["H"] + df_D_resultados["I"]) / (df_D_resultados["n"] - df_D_resultados["L"])).map(lambda x: f"{x:.1%}".replace(".",","))
 
@@ -233,7 +239,6 @@ class OtimizadorIFQ6:
         while os.path.exists(out2):
             cnt += 1
             out2 = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
-
         with pd.ExcelWriter(out2, engine="openpyxl") as w:
             df_cadastro.drop(columns=["Talhão_z3","Index_z3"], inplace=True)
             df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
@@ -241,10 +246,8 @@ class OtimizadorIFQ6:
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
             df_D_resultados.to_excel(w, sheet_name="D_tabela_resultados_Ht3", index=False)
-
         print(f"✅ Tudo gravado em '{out2}'")
 
-# instância e chamada
 otimizador = OtimizadorIFQ6()
 arquivos = [
     "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
