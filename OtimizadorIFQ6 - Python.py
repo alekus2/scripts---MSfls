@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 import numpy as np
@@ -288,7 +289,28 @@ class OtimizadorIFQ6:
             df_cadastro.drop(columns=["Talhão_z3","Index_z3"], inplace=True)
             df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
             df_final.drop(columns=["Index_z3"], inplace=True)
+            df_D_resultados.drop(columns=["%_Sobrevivência_decimal"])
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
             df_D_resultados.to_excel(w, sheet_name="D_tabela_resultados_Ht3", index=False)
         print(f"✅ Tudo gravado em '{out2}'")
+
+otimizador = OtimizadorIFQ6()
+arquivos = [
+    "/content/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+    "/content/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+    "/content/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+    "/content/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+    "/content/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+    "/content/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+    "/content/6439_TREZE_DE_JULHO_RRP - IFQ6 (4) - Copia.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+    "/content/IFQ6_MS_Florestal_Bravore_24032025.xlsx",
+    "/content/base_dados_IFQ6_propria_fev.xlsx",
+    "/content/Cadastro SGF (correto).xlsx"
+]
+otimizador.validacao(arquivos)
+
+duas funções sumiram foi a de dropar as colunas de %_Sobrevivencia_decimal e de contar a quantidade de arquivos com msm nome e ir aumentando
