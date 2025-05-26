@@ -5,7 +5,7 @@ library(dplyr)
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
-                         distancia_parcelas,    
+                         distancia_parcelas,    # agora não será usada para limitar delta
                          intensidade_amostral,
                          update_progress) {
   
@@ -39,9 +39,8 @@ process_data <- function(shape, parc_exist_path,
 
     delta_ideal <- sqrt(as.numeric(st_area(talhao)) / n_req)
     delta_min   <- 30
-    delta_max   <- distancia_parcelas
-    delta       <- min(delta_ideal, delta_max)
-
+    delta       <- max(delta_ideal, delta_min)  # delta no mínimo delta_min (30m)
+    
     if (delta_min * sqrt(n_req) > sqrt(as.numeric(st_area(talhao)))) {
       message(glue("Talhão {idx}: área muito pequena para {n_req} parcelas com distância menor que 30 m."))
       next
@@ -49,7 +48,7 @@ process_data <- function(shape, parc_exist_path,
     
     print(glue(
       "Talhão {idx}: n_req={n_req} | delta_ideal={round(delta_ideal,1)} ",
-      "| iniciar em {round(delta,1)} (min=30, max={delta_max})"
+      "| iniciar em {round(delta,1)} (min=30)"
     ))
     
     max_iter  <- 100
@@ -89,29 +88,27 @@ process_data <- function(shape, parc_exist_path,
       }
 
       if (n_pts < n_req) {
-        delta_novo <- max(delta * 0.95, delta_min)
+        delta <- max(delta * 0.95, delta_min)
       } else {
-        delta_novo <- min(delta * 1.05, delta_max)
+        delta <- delta * 1.05  # sem limite máximo agora
       }
-      if (delta_novo == delta) break
       
-      delta <- delta_novo
-      iter  <- iter + 1
+      iter <- iter + 1
     }
+    
     if (is.null(pts_sel)) {
-      if ((delta == delta_min || delta == delta_max) && best_diff <= 1) {
+      if (best_diff <= 1) {
         pts_sel <- best_pts
         delta   <- best_delta
         message(glue(
-          "Talhão {idx}: atingiu limite delta={round(delta,1)} m; ",
-          "aceitando {length(pts_sel)} pontos (±1)"))
+          "Talhão {idx}: aceitando {length(pts_sel)} pontos (±1) com delta={round(delta,1)} m"))
       } else {
         message(glue(
-          "Talhão {idx}: não couberam {n_req} parcelas ",
-          "com 30 m ≤ delta ≤ {delta_max} m"))
+          "Talhão {idx}: não couberam {n_req} parcelas com delta ≥ {delta_min} m"))
         next
       }
     }
+    
     cr  <- st_coordinates(pts_sel)
     ord <- order(cr[,1], cr[,2])
     sel <- pts_sel[ord][seq_len(n_req)]
@@ -144,103 +141,3 @@ process_data <- function(shape, parc_exist_path,
     mutate(PARCELA = row_number()) %>%
     ungroup()
 }
-Listening on http://127.0.0.1:5480
-Reading layer `parc' from data source `F:\Qualidade_Florestal\02- MATO GROSSO DO SUL\11- Administrativo Qualidade MS\00- Colaboradores\17 - Alex Vinicius\AutomaÃ§Ã£o em R\AutoAlocador\data\parc.shp' using driver `ESRI Shapefile'
-Simple feature collection with 1 feature and 20 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -49.21066 ymin: -22.63133 xmax: -49.21066 ymax: -22.63133
-Geodetic CRS:  SIRGAS 2000
-Talhão 6455002-01: n_req=7 | delta_ideal=170.6 | iniciar em 50 (min=30, max=50)
-Talhão 6455002-01: não couberam 7 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6436066-01: n_req=2 | delta_ideal=94.9 | iniciar em 50 (min=30, max=50)
-Talhão 6436066-01: não couberam 2 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443006-01: n_req=16 | delta_ideal=186.2 | iniciar em 50 (min=30, max=50)
-Talhão 6443006-01: não couberam 16 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443010-01: n_req=12 | delta_ideal=181.8 | iniciar em 50 (min=30, max=50)
-Talhão 6443010-01: não couberam 12 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443007-01: n_req=20 | delta_ideal=195.6 | iniciar em 50 (min=30, max=50)
-Talhão 6443007-01: não couberam 20 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6356006-01: n_req=17 | delta_ideal=190.8 | iniciar em 50 (min=30, max=50)
-Talhão 6356006-01: não couberam 17 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6449009-01: n_req=8 | delta_ideal=152.6 | iniciar em 50 (min=30, max=50)
-Talhão 6449009-01: não couberam 8 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443013-01: n_req=15 | delta_ideal=187.8 | iniciar em 50 (min=30, max=50)
-Talhão 6443013-01: não couberam 15 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6291010-01: n_req=17 | delta_ideal=183.7 | iniciar em 50 (min=30, max=50)
-Talhão 6291010-01: não couberam 17 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443002-01: n_req=20 | delta_ideal=186.2 | iniciar em 50 (min=30, max=50)
-Talhão 6443002-01: não couberam 20 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6428006-01: área muito pequena para 2 parcelas com distância menor que 30 m.
-Talhão 6505028-01: n_req=18 | delta_ideal=186.6 | iniciar em 50 (min=30, max=50)
-Talhão 6505028-01: não couberam 18 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6505026-01: n_req=11 | delta_ideal=175.7 | iniciar em 50 (min=30, max=50)
-Talhão 6505026-01: não couberam 11 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6505029-01: n_req=13 | delta_ideal=179 | iniciar em 50 (min=30, max=50)
-Talhão 6505029-01: não couberam 13 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6268029-01: n_req=11 | delta_ideal=173.3 | iniciar em 50 (min=30, max=50)
-Talhão 6268029-01: não couberam 11 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6268026-01: n_req=9 | delta_ideal=174.8 | iniciar em 50 (min=30, max=50)
-Talhão 6268026-01: não couberam 9 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6268034-01: área muito pequena para 2 parcelas com distância menor que 30 m.
-Talhão 6319009-01: n_req=11 | delta_ideal=152 | iniciar em 50 (min=30, max=50)
-Talhão 6319009-01: não couberam 11 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6356003-01: n_req=14 | delta_ideal=186.2 | iniciar em 50 (min=30, max=50)
-Talhão 6356003-01: não couberam 14 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443008-01: n_req=15 | delta_ideal=183.2 | iniciar em 50 (min=30, max=50)
-Talhão 6443008-01: não couberam 15 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443012-01: n_req=5 | delta_ideal=161 | iniciar em 50 (min=30, max=50)
-Talhão 6443012-01: não couberam 5 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443015-01: n_req=17 | delta_ideal=193.7 | iniciar em 50 (min=30, max=50)
-Talhão 6443015-01: não couberam 17 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6387008-01: n_req=14 | delta_ideal=183.9 | iniciar em 50 (min=30, max=50)
-Talhão 6387008-01: não couberam 14 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6475004-01: n_req=13 | delta_ideal=171.6 | iniciar em 50 (min=30, max=50)
-Talhão 6475004-01: não couberam 13 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6518017-01: n_req=21 | delta_ideal=170 | iniciar em 50 (min=30, max=50)
-Talhão 6518017-01: não couberam 21 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6431011-01: n_req=13 | delta_ideal=176.3 | iniciar em 50 (min=30, max=50)
-Talhão 6431011-01: não couberam 13 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6449001-01: n_req=11 | delta_ideal=105.5 | iniciar em 50 (min=30, max=50)
-Talhão 6449001-01: não couberam 11 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6431012-01: n_req=13 | delta_ideal=185.1 | iniciar em 50 (min=30, max=50)
-Talhão 6431012-01: não couberam 13 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6268028-01: n_req=15 | delta_ideal=173.6 | iniciar em 50 (min=30, max=50)
-Talhão 6268028-01: não couberam 15 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6459015-01: n_req=14 | delta_ideal=169.5 | iniciar em 50 (min=30, max=50)
-Talhão 6459015-01: não couberam 14 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6443011-01: n_req=7 | delta_ideal=156.2 | iniciar em 50 (min=30, max=50)
-Talhão 6443011-01: não couberam 7 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6436062-01: n_req=7 | delta_ideal=147.3 | iniciar em 50 (min=30, max=50)
-Talhão 6436062-01: não couberam 7 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6431048-01: n_req=19 | delta_ideal=184.8 | iniciar em 50 (min=30, max=50)
-Talhão 6431048-01: não couberam 19 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6436047-01: n_req=15 | delta_ideal=189.6 | iniciar em 50 (min=30, max=50)
-Talhão 6436047-01: não couberam 15 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6518002-01: n_req=14 | delta_ideal=183.3 | iniciar em 50 (min=30, max=50)
-Talhão 6518002-01: não couberam 14 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6518001-01: n_req=20 | delta_ideal=190 | iniciar em 50 (min=30, max=50)
-Talhão 6518001-01: não couberam 20 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6459024-01: n_req=12 | delta_ideal=177.8 | iniciar em 50 (min=30, max=50)
-Talhão 6459024-01: não couberam 12 parcelas com 30 m ??? delta ??? 50 m
-Talhão 6505035-01: n_req=13 | delta_ideal=169.1 | iniciar em 50 (min=30, max=50)
-Talhão 6505035-01: não couberam 13 parcelas com 30 m ??? delta ??? 50 m
-Aviso: Error in group_by: Must group by variables found in `.data`.
-x Column `Index` is not found.
-  92: <Anonymous>
-  91: signalCondition
-  90: signal_abort
-  89: abort
-  88: group_by_prepare
-  87: group_by.data.frame
-  86: group_by
-  85: mutate
-  84: ungroup
-  83: %>%
-  82: process_data [src/process_data.R#143]
-  81: observe [src/server.R#74]
-  80: <observer:observeEvent(input$gerar_parcelas)>
-   1: runApp
-
-
-oque deu errado nesse codigo?
