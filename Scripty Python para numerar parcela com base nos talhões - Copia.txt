@@ -1,6 +1,6 @@
-def contar_parcelas_por_index(idx):
-    import arcpy
-    tabela = "Shape_IFQ12_teste"
-    where = f"\"Index\" = '{idx}'"
-    with arcpy.da.SearchCursor(tabela, ["Index"], where_clause=where) as cursor:
-        return sum(1 for _ in cursor)
+def autoIncrement(parcela, count):
+    parcela=int(parcela)
+    count=int(count)
+    if count <= 3:
+        return 1
+    return 1 if parcela % 2 != 0 else 0
