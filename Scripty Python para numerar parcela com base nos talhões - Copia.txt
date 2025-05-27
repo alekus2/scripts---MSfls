@@ -1,9 +1,11 @@
-contagens_por_talhao = {}
-def calcular_maximo(index,nm_parcela):
-    chave = f"{index}{nm_parcela}"
-    #quero que o codigo verifique se a nm parcela faz parte do index e se fizer contar a quantidade de vezes que eles fazem parte de um mesmo talhao assim fornecendo o numero maximo de parcelas.
-    with arcpy.da.SearchCursor("Shape_IFQ12_teste", ["ID_PROJETO", "ID_TALHAO"]) as cursor:
-        for row in cursor:
-            if row[0] == projeto and row[1] == talhao:
-                contagens_por_talhao[chave_talhao] += 1 
-    return contagens_por_talhao[chave_talhao]  
+def calc_max_por_index(idx):
+    import arcpy
+    table = "Shape_IFQ12_teste"
+    # obs: se Index for texto, coloque aspas simples
+    where = f"\"Index\" = '{idx}'"
+    max_nm = 0
+    with arcpy.da.SearchCursor(table, ["NM_PARCELA"], where_clause=where) as cur:
+        for (nm,) in cur:
+            if nm and nm > max_nm:
+                max_nm = nm
+    return max_nm
