@@ -1,10 +1,6 @@
-def contar_parcelas_unicas(idx):
+def contar_parcelas_por_index(idx):
     import arcpy
     tabela = "Shape_IFQ12_teste"
     where = f"\"Index\" = '{idx}'"
-    parcelas = set()
-    with arcpy.da.SearchCursor(tabela, ["nm_parcela"], where_clause=where) as cursor:
-        for row in cursor:
-            if row[0] is not None:
-                parcelas.add(row[0])
-    return len(parcelas)
+    with arcpy.da.SearchCursor(tabela, ["Index"], where_clause=where) as cursor:
+        return sum(1 for _ in cursor)
