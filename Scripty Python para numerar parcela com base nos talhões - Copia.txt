@@ -1,36 +1,9 @@
-DEU CERTO
-
-def calcular_maximo(talhao):
+def calcular_maximo(projeto,talhao,parcela):
+    index = projeto + talhao + parcela
     max_parcelas = {}
-    valores = [int(row[1]) for row in arcpy.da.SearchCursor("Nome da sua tabela", ["Index", "nm_parcela"]) if row[0] == talhao]
+    #tem que contar o maximo do valor de parcelas do talhao concatenando de "ID_PROJETO" + "ID_TALHAO" + "nm_parcela".
+    #para contar esse maximo ele tem q contar o numero de parcelas q esse talhao tem, mas sem ser só por nm parcela mas adicionando um contador que faz +1 toda vez que ele encntra uma parcela do mesmo talhao e do mesmo projeto com msm nm parcela tb.
+
     max_parcelas[talhao] = max(valores)
     return max_parcelas[talhao]
 
-calcular_maximo(!Index!)
-
-DEU CERTO TAMBEM
-
-def autoIncrement(parcela, count):
-    parcela=int(parcela)
-    count=int(count)
-    if count <= 3:
-        return 1
-    return 1 if parcela % 2 != 0 else 0
-
-autoIncrement(!nm_parcela!, !CONTADOR!)
-
-
-def matizador(area):
-    # Obtenha os valores da área da tabela "piracicaba_talhão"
-    parcelas = []
-    
-    # Busque as áreas da tabela
-    for row in arcpy.da.SearchCursor("piracicaba_talhão", ["AREA_HA"]):
-        # Divida cada área por 5 e armazene o resultado
-        parcelas.append(row[0] / 5)
-    
-    # Retorne a quantidade de parcelas para a área atual
-    return parcelas
-
-# Chame a função passando o valor da área atual
-matizador(!AREA_HA!)
