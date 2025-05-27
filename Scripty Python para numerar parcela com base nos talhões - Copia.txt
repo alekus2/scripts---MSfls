@@ -1,93 +1,73 @@
+# -*- coding: utf-8 -*-
 import arcpy
 from collections import defaultdict
 
-def autoIncrement(parcela, count):
-    parcela = int(parcela)
-    count = int(count)
-    if count <= 3:
-        return 1
-    return 1 if parcela % 2 != 0 else 0
-
-def main(fc, campo_index, campo_nm_parcela, campo_contador, campo_manter):
-    contagens = defaultdict(int)
-
-    # 1. Contar número de parcelas por Index
-    with arcpy.da.SearchCursor(fc, [campo_index]) as cursor:
-        for row in cursor:
-            contagens[row[0]] += 1
-
-    # 2. Atualizar CONTADOR e MANTER
-    with arcpy.da.UpdateCursor(fc, [campo_index, campo_nm_parcela, campo_contador, campo_manter]) as cursor:
-        for row in cursor:
-            idx = row[0]
-            parcela = row[1]
-            count = contagens[idx]
-
-            row[2] = count
-            row[3] = autoIncrement(parcela, count)
-            cursor.updateRow(row)
-
-# Parâmetros do toolbox
-if __name__ == '__main__':
-    fc = arcpy.GetParameterAsText(0)
-    campo_index = "Index"
-    campo_nm_parcela = "nm_parcela"
-    campo_contador = "CONTADOR"
-    campo_manter = "MANTER"
-    
-    main(fc, campo_index, campo_nm_parcela, campo_contador, campo_manter)
-
-
-# -*- coding: utf-8 -*-
-
-import arcpy
-
-
 class Toolbox(object):
     def __init__(self):
-        """Define the toolbox (the name of the toolbox is the name of the
-        .pyt file)."""
-        self.label = "Toolbox"
-        self.alias = "toolbox"
+        """Define o nome e alias da toolbox"""
+        self.label = "Toolbox Contador e Exclusor"
+        self.alias = "contador_exclusor"
 
-        # List of tool classes associated with this toolbox
-        self.tools = [Tool]
+        self.tools = [ContadorExclusor]
 
-
-class Tool(object):
+class ContadorExclusor(object):
     def __init__(self):
-        """Define the tool (tool name is the name of the class)."""
-        self.label = "Tool"
-        self.description = ""
+        self.label = "Contar Parcelas e Marcar Exclusão"
+        self.description = "Conta as parcelas por Index e marca quais manter com base na regra do autoIncrement."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
-        """Define parameter definitions"""
-        params = None
+        params = []
+
+        param0 = arcpy.Parameter(
+            displayName="Feature Class de Entrada",
+            name="fc",
+            datatype="DEFeatureClass",
+            parameterType="Required",
+            direction="Input"
+        )
+        params.append(param0)
+
         return params
 
     def isLicensed(self):
-        """Set whether tool is licensed to execute."""
         return True
 
     def updateParameters(self, parameters):
-        """Modify the values and properties of parameters before internal
-        validation is performed.  This method is called whenever a parameter
-        has been changed."""a
         return
 
     def updateMessages(self, parameters):
-        """Modify the messages created by internal validation for each tool
-        parameter.  This method is called after internal validation."""
         return
 
     def execute(self, parameters, messages):
-        """The source code of the tool."""
-        return
+        fc = parameters[0].valueAsText
 
-    def postExecute(self, parameters):
-        """This method takes place after outputs are processed and
-        added to the display."""
-        return
+        campo_index = "Index"
+        campo_nm_parcela = "nm_parcela"
+        campo_contador = "CONTADOR"
+        campo_manter = "MANTER"
 
-mas eu quero q seja estruturado como esse exemplo ja pronto de toolbox do arcgis.
+        contagens = defaultdict(int)
+
+        # 1. Contar número de parcelas por Index
+        with arcpy.da.SearchCursor(fc, [campo_index]) as cursor:
+            for row in cursor:
+                contagens[row[0]] += 1
+
+        # 2. Atualizar CONTADOR e MANTER
+        with arcpy.da.UpdateCursor(fc, [campo_index, campo_nm_parcela, campo_contador, campo_manter]) as cursor:
+            for row in cursor:
+                idx = row[0]
+                parcela = row[1]
+                count = contagens[idx]
+
+                row[2] = count
+                row[3] = self.autoIncrement(parcela, count)
+                cursor.updateRow(row)
+
+    def autoIncrement(self, parcela, count):
+        parcela = int(parcela)
+        count = int(count)
+        if count <= 3:
+            return 1
+        return 1 if parcela % 2 != 0 else 0
