@@ -4,10 +4,8 @@ from collections import defaultdict
 
 class Toolbox(object):
     def __init__(self):
-        """Define o nome e alias da toolbox"""
         self.label = "Toolbox Contador e Exclusor"
         self.alias = "contador_exclusor"
-
         self.tools = [ContadorExclusor]
 
 class ContadorExclusor(object):
@@ -17,8 +15,6 @@ class ContadorExclusor(object):
         self.canRunInBackground = False
 
     def getParameterInfo(self):
-        params = []
-
         param0 = arcpy.Parameter(
             displayName="Feature Class de Entrada",
             name="fc",
@@ -26,25 +22,34 @@ class ContadorExclusor(object):
             parameterType="Required",
             direction="Input"
         )
-        params.append(param0)
-        return params
+        return [param0]
+
     def execute(self, parameters, messages):
         fc = parameters[0].valueAsText
         campo_index = "Index"
         campo_nm_parcela = "nm_parcela"
         campo_contador = "CONTADOR"
         campo_manter = "MANTER"
+
         contagens = defaultdict(int)
+
+        # Conta quantas vezes cada Index aparece
         with arcpy.da.SearchCursor(fc, [campo_index]) as cursor:
             for row in cursor:
                 contagens[row[0]] += 1
+
+        # Encontra o valor máximo de parcelas entre todos os Index
+        maximo_geral = max(contagens.values())
+
+        # Atualiza os campos CONTADOR (por Index) e MANTER (regra de exclusão)
         with arcpy.da.UpdateCursor(fc, [campo_index, campo_nm_parcela, campo_contador, campo_manter]) as cursor:
             for row in cursor:
                 idx = row[0]
-                count_sem_max = contagens[idx]
-                count_com_max = max(count_sem_max)
-                row[2] = count_com_max
-                row[3] = self.autoIncrement(count_sem_max, count_com_max)
+                parcela = row[1]
+                count = contagens[idx]
+
+                row[2] = count                      # CONTADOR: quantas parcelas existem no talhão (Index)
+                row[3] = self.autoIncrement(parcela, count)  # MANTER: aplica regra de exclusão
                 cursor.updateRow(row)
 
     def autoIncrement(self, parcela, count):
@@ -53,6 +58,3 @@ class ContadorExclusor(object):
         if count <= 3:
             return 1
         return 1 if parcela % 2 != 0 else 0
-
-File "<string>", line 45, in execute
-TypeError: 'int' object is not iterable
