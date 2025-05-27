@@ -1,9 +1,13 @@
-def calcular_maximo(projeto,talhao,parcela):
-    index = projeto + talhao + parcela
-    max_parcelas = {}
-    #tem que contar o maximo do valor de parcelas do talhao concatenando de "ID_PROJETO" + "ID_TALHAO" + "nm_parcela".
-    #para contar esse maximo ele tem q contar o numero de parcelas q esse talhao tem, mas sem ser só por nm parcela mas adicionando um contador que faz +1 toda vez que ele encntra uma parcela do mesmo talhao e do mesmo projeto com msm nm parcela tb.
+def calcular_maximo(projeto, talhao, nm_parcela):
+    # Cria uma lista para armazenar os valores das parcelas
+    valores = []
 
-    max_parcelas[talhao] = max(valores)
-    return max_parcelas[talhao]
+    # Percorre as características da camada atual para contar as parcelas
+    for row in arcpy.da.SearchCursor("sua_layer_aqui", ["ID_PROJETO", "ID_TALHAO", "nm_parcela"]):
+        if row[0] == projeto and row[1] == talhao and row[2] == nm_parcela:
+            valores.append(row)
 
+    # Calcula o máximo das parcelas encontradas
+    max_parcelas = len(valores)  # Conta quantas parcelas existem para a combinação
+
+    return max_parcelas
