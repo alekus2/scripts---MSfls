@@ -1,13 +1,10 @@
-def calcular_maximo(projeto, talhao, nm_parcela):
-    # Cria uma lista para armazenar os valores das parcelas
-    valores = []
 
-    # Percorre as características da camada atual para contar as parcelas
-    for row in arcpy.da.SearchCursor("sua_layer_aqui", ["ID_PROJETO", "ID_TALHAO", "nm_parcela"]):
-        if row[0] == projeto and row[1] == talhao and row[2] == nm_parcela:
-            valores.append(row)
-
-    # Calcula o máximo das parcelas encontradas
-    max_parcelas = len(valores)  # Conta quantas parcelas existem para a combinação
-
-    return max_parcelas
+def calcular_maximo(projeto, talhao):
+    valores = 0
+    for row in arcpy.da.SearchCursor("Shape_IFQ12_teste", ["ID_PROJETO", "ID_TALHAO"]):
+        if row[0] == projeto and row[1] == talhao:
+            return valores + 1
+        else: #desejo contar a quantidade de vezes que a concatenação de id projeto e id talhao se repetem para formar o numero de parcelas total do talhao
+            return valores - 1
+    contar_parcelas = len(valores)  
+    return contar_parcelas
