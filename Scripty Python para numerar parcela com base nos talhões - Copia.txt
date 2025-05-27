@@ -1,17 +1,9 @@
-# Dicionário para armazenar contagens por combinação de ID_PROJETO e ID_TALHAO
 contagens_por_talhao = {}
-
-def calcular_maximo(projeto, talhao):
-    # Cria uma chave única para a combinação de ID_PROJETO e ID_TALHAO
-    chave_talhao = f"{projeto}{talhao}"  # Concatena diretamente
-
-    if chave_talhao not in contagens_por_talhao:
-        contagens_por_talhao[chave_talhao] = 0  # Inicializa a contagem para a combinação
-
-    # Usa um cursor para iterar sobre a camada
+def calcular_maximo(index,nm_parcela):
+    chave = f"{index}{nm_parcela}"
+    #quero que o codigo verifique se a nm parcela faz parte do index e se fizer contar a quantidade de vezes que eles fazem parte de um mesmo talhao assim fornecendo o numero maximo de parcelas.
     with arcpy.da.SearchCursor("Shape_IFQ12_teste", ["ID_PROJETO", "ID_TALHAO"]) as cursor:
         for row in cursor:
             if row[0] == projeto and row[1] == talhao:
-                contagens_por_talhao[chave_talhao] += 1  # Incrementa a contagem para a combinação
-
-    return contagens_por_talhao[chave_talhao]  # Retorna a contagem atualizada para a combinação
+                contagens_por_talhao[chave_talhao] += 1 
+    return contagens_por_talhao[chave_talhao]  
