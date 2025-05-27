@@ -27,42 +27,24 @@ class ContadorExclusor(object):
             direction="Input"
         )
         params.append(param0)
-
         return params
-
-    def isLicensed(self):
-        return True
-
-    def updateParameters(self, parameters):
-        return
-
-    def updateMessages(self, parameters):
-        return
-
     def execute(self, parameters, messages):
         fc = parameters[0].valueAsText
-
         campo_index = "Index"
         campo_nm_parcela = "nm_parcela"
         campo_contador = "CONTADOR"
         campo_manter = "MANTER"
-
         contagens = defaultdict(int)
-
-        # 1. Contar número de parcelas por Index
         with arcpy.da.SearchCursor(fc, [campo_index]) as cursor:
             for row in cursor:
                 contagens[row[0]] += 1
-
-        # 2. Atualizar CONTADOR e MANTER
         with arcpy.da.UpdateCursor(fc, [campo_index, campo_nm_parcela, campo_contador, campo_manter]) as cursor:
             for row in cursor:
                 idx = row[0]
-                parcela = row[1]
-                count = contagens[idx]
-
-                row[2] = count
-                row[3] = self.autoIncrement(parcela, count)
+                count_sem_max = contagens[idx]
+                count_com_max = max(count_sem_max)
+                row[2] = count_com_max
+                row[3] = self.autoIncrement(count_sem_max, count_com_max)
                 cursor.updateRow(row)
 
     def autoIncrement(self, parcela, count):
@@ -71,3 +53,6 @@ class ContadorExclusor(object):
         if count <= 3:
             return 1
         return 1 if parcela % 2 != 0 else 0
+
+File "<string>", line 45, in execute
+TypeError: 'int' object is not iterable
