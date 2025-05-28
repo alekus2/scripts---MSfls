@@ -10,7 +10,7 @@ class Toolbox(object):
 class ContadorExclusor(object):
     def __init__(self):
         self.label = "Contar Parcelas e Marcar Exclusão"
-        self.description = "Conta as parcelas por Index e marca quais manter com base na regra do autoIncrement."
+        self.description = "Conta as parcelas por Index e numera sequência de parcelas para aplicar a regra de manter/excluir."
         self.canRunInBackground = False
 
     def getParameterInfo(self):
@@ -23,38 +23,61 @@ class ContadorExclusor(object):
         )
         return [param0]
 
-
     def execute(self, parameters, messages):
         fc = parameters[0].valueAsText
-        campo_index = "Index"
-        campo_contador = "CONTADOR"
-        campo_manter = "MANTER"
+        campo_index   = "Index"
+        campo_parcela = "PARCELA"
+        campo_contador= "CONTADOR"
+        campo_manter  = "MANTER"
 
+        # --- 1) Garante existência dos campos PARCELA, CONTADOR e MANTER ---
+        exist = [f.name for f in arcpy.ListFields(fc)]
+        for fld, fld_type in [(campo_parcela, "LONG"),
+                              (campo_contador, "LONG"),
+                              (campo_manter,   "SHORT")]:
+            if fld not in exist:
+                arcpy.AddMessage(f"Adicionando campo {fld}...")
+                arcpy.AddField_management(fc, fld, fld_type)
+
+        # --- 2) Calcula quantos registros existem por Index ---
         contagens = defaultdict(int)
         with arcpy.da.SearchCursor(fc, [campo_index]) as s_cursor:
             for row in s_cursor:
                 contagens[row[0]] += 1
 
+        # --- 3) Imprime resumo das contagens ---
         arcpy.AddMessage("=== Contagem de parcelas por Index ===")
-        for idx, cnt in sorted(contagens.items()): #ele esta contando certo mas na hora de fazer o processamento de 1 e 0 ele deveria pegar e contar exemplo num talhao deu 11 parcelas ent cada parcela seria calculada em par ou impar e ser maior que 3 o numero maximo de parcelas entao ficaria se tiver 11 parcelas na coluna manter seria 1:1 2:0 3:1 4:0 5:1 6:0 7:1 8:0 9:1 10:0 11:1 ai ele teria que criar uma coluna "PARCELA" e colocar isso de contar as parcelas 1,2,3,4,5,6,7,8,9,10,11
+        for idx, cnt in sorted(contagens.items()):
             arcpy.AddMessage(f"Index {idx}: {cnt} parcela(s)")
 
+        # --- 4) Atualiza cada registro: numera parcela, preenche CONTADOR e MANTER ---
+        #    usa um segundo dict para controlar a sequência de numeração
+        sequencia = defaultdict(int)
         maximo_geral = max(contagens.values())
 
-        with arcpy.da.UpdateCursor(fc, [campo_index, campo_contador, campo_manter]) as u_cursor:
+        fields = [campo_index, campo_parcela, campo_contador, campo_manter]
+        with arcpy.da.UpdateCursor(fc, fields) as u_cursor:
             for row in u_cursor:
                 idx = row[0]
+                # incrementa sequência e atribui à PARCELA
+                sequencia[idx] += 1
+                seq = sequencia[idx]
+                row[1] = seq
+                # total de parcelas para este Index
                 cnt = contagens[idx]
-                row[1] = cnt
-                row[2] = self.autoIncrement(cnt, maximo_geral)
+                row[2] = cnt
+                # regra de manter/excluir usando seq e cnt
+                row[3] = self.autoIncrement(seq, cnt)
                 u_cursor.updateRow(row)
 
         arcpy.AddMessage("Processamento concluído com sucesso.")
 
-
-    def autoIncrement(self, parcela, count):
-        parcela = int(parcela)
-        count = int(count)
+    def autoIncrement(self, parcela_seq, count):
+        """
+        parcela_seq: número sequencial da parcela dentro do Index (1,2,3,…)
+        count: total de parcelas para aquele Index
+        """
         if count <= 3:
             return 1
-        return 1 if parcela % 2 != 0 else 0
+        # para >3, mantêm-se as ímpares
+        return 1 if (parcela_seq % 2) != 0 else 0
