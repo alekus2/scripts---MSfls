@@ -1,2 +1,77 @@
-if campo_parcela not in exist:
-    arcpy.AddField_management(fc, campo_parcela, "LONG")
+#DEU CERTOALSDJALKHFHLKAKDSDASKLJFD
+
+import arcpy
+from collections import defaultdict
+
+class Toolbox(object):
+    def __init__(self):
+        self.label = "Toolbox Contador e Exclusor"
+        self.alias = "contador_exclusor"
+        self.tools = [ContadorExclusor]
+
+class ContadorExclusor(object):
+    def __init__(self):
+        self.label = "Contar Parcelas e Marcar Exclusão"
+        self.description = "Conta as parcelas por Index e numera sequência de parcelas para aplicar a regra de manter/excluir."
+        self.canRunInBackground = False
+
+    def getParameterInfo(self):
+        param0 = arcpy.Parameter(
+            displayName="Feature Class de Entrada",
+            name="fc",
+            datatype="DEFeatureClass",
+            parameterType="Required",
+            direction="Input"
+        )
+        return [param0]
+
+    def execute(self, parameters, messages):
+        fc = parameters[0].valueAsText
+        campo_index   = "Index"
+        campo_parcela = "PARCELA"
+        campo_contador= "CONTADOR"
+        campo_manter  = "MANTER"
+        
+        exist = [f.name for f in arcpy.ListFields(fc)]
+        for fld, fld_type in [(campo_parcela, "LONG"),
+                              (campo_contador, "LONG"),
+                              (campo_manter,   "SHORT")]:
+            if fld not in exist:
+                arcpy.AddMessage(f"Adicionando campo {fld}...")
+                arcpy.AddField_management(fc, fld, fld_type)
+
+        contagens = defaultdict(int)
+        with arcpy.da.SearchCursor(fc, [campo_index]) as s_cursor:
+            for row in s_cursor:
+                contagens[row[0]] += 1
+
+        arcpy.AddMessage("=== Contagem de parcelas por Index ===")
+        for idx, cnt in sorted(contagens.items()):
+            arcpy.AddMessage(f"Index {idx}: {cnt} parcela(s)")
+
+        sequencia = defaultdict(int)
+        maximo_geral = max(contagens.values())
+
+        fields = [campo_index, campo_parcela, campo_contador, campo_manter]
+        with arcpy.da.UpdateCursor(fc, fields) as u_cursor:
+            for row in u_cursor:
+                idx = row[0]
+                sequencia[idx] += 1
+                seq = sequencia[idx]
+                row[1] = seq
+                cnt = contagens[idx]
+                row[2] = cnt
+                row[3] = self.autoIncrement(seq, cnt)
+                u_cursor.updateRow(row)
+
+        arcpy.AddMessage("Processamento concluído com sucesso.")
+
+    def autoIncrement(self, parcela_seq, count):
+        """
+        parcela_seq: número sequencial da parcela dentro do Index (1,2,3,…)
+        count: total de parcelas para aquele Index
+        """
+        if count <= 3:
+            return 1
+        # para >3, mantêm-se as ímpares
+        return 1 if (parcela_seq % 2) != 0 else 0
