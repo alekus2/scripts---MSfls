@@ -1,4 +1,3 @@
-# -*- coding: utf-8 -*-
 import arcpy
 from collections import defaultdict
 
@@ -24,32 +23,23 @@ class ContadorExclusor(object):
         )
         return [param0]
 
-    def execute(self, parameters, messages):
+    def execute(self, parameters):
         fc = parameters[0].valueAsText
         campo_index = "Index"
-        campo_nm_parcela = "nm_parcela"
         campo_contador = "CONTADOR"
         campo_manter = "MANTER"
 
         contagens = defaultdict(int)
-
-        # Conta quantas vezes cada Index aparece
         with arcpy.da.SearchCursor(fc, [campo_index]) as cursor:
             for row in cursor:
                 contagens[row[0]] += 1
-
-        # Encontra o valor máximo de parcelas entre todos os Index
         maximo_geral = max(contagens.values())
-
-        # Atualiza os campos CONTADOR (por Index) e MANTER (regra de exclusão)
-        with arcpy.da.UpdateCursor(fc, [campo_index, campo_nm_parcela, campo_contador, campo_manter]) as cursor:
+        with arcpy.da.UpdateCursor(fc, [campo_index, campo_contador, campo_manter]) as cursor:
             for row in cursor:
                 idx = row[0]
-                parcela = row[1]
                 count = contagens[idx]
-
-                row[2] = count                      # CONTADOR: quantas parcelas existem no talhão (Index)
-                row[3] = self.autoIncrement(parcela, count)  # MANTER: aplica regra de exclusão
+                row[1] = count                      
+                row[2] = self.autoIncrement(count, maximo_geral)  
                 cursor.updateRow(row)
 
     def autoIncrement(self, parcela, count):
