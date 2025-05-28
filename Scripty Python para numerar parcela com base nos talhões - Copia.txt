@@ -1,30 +1,60 @@
-def execute(self, parameters, messages):
-    fc = parameters[0].valueAsText
-    campo_index = "Index"
-    campo_contador = "CONTADOR"
-    campo_manter = "MANTER"
+import arcpy
+from collections import defaultdict
 
-    # 1) Calcula contagens por Index
-    contagens = defaultdict(int)
-    with arcpy.da.SearchCursor(fc, [campo_index]) as s_cursor:
-        for row in s_cursor:
-            contagens[row[0]] += 1
+class Toolbox(object):
+    def __init__(self):
+        self.label = "Toolbox Contador e Exclusor"
+        self.alias = "contador_exclusor"
+        self.tools = [ContadorExclusor]
 
-    # 2) Imprime cada contagem no painel de mensagens
-    arcpy.AddMessage("=== Contagem de parcelas por Index ===")
-    for idx, cnt in sorted(contagens.items()):
-        arcpy.AddMessage(f"Index {idx}: {cnt} parcela(s)")
+class ContadorExclusor(object):
+    def __init__(self):
+        self.label = "Contar Parcelas e Marcar Exclusão"
+        self.description = "Conta as parcelas por Index e marca quais manter com base na regra do autoIncrement."
+        self.canRunInBackground = False
 
-    # 3) Determina o máximo geral (opcional, mas você já calculava)
-    maximo_geral = max(contagens.values())
+    def getParameterInfo(self):
+        param0 = arcpy.Parameter(
+            displayName="Feature Class de Entrada",
+            name="fc",
+            datatype="DEFeatureClass",
+            parameterType="Required",
+            direction="Input"
+        )
+        return [param0]
 
-    # 4) Atualiza os campos CONTADOR e MANTER
-    with arcpy.da.UpdateCursor(fc, [campo_index, campo_contador, campo_manter]) as u_cursor:
-        for row in u_cursor:
-            idx = row[0]
-            cnt = contagens[idx]
-            row[1] = cnt
-            row[2] = self.autoIncrement(cnt, maximo_geral)
-            u_cursor.updateRow(row)
 
-    arcpy.AddMessage("Processamento concluído com sucesso.")
+    def execute(self, parameters, messages):
+        fc = parameters[0].valueAsText
+        campo_index = "Index"
+        campo_contador = "CONTADOR"
+        campo_manter = "MANTER"
+
+        contagens = defaultdict(int)
+        with arcpy.da.SearchCursor(fc, [campo_index]) as s_cursor:
+            for row in s_cursor:
+                contagens[row[0]] += 1
+
+        arcpy.AddMessage("=== Contagem de parcelas por Index ===")
+        for idx, cnt in sorted(contagens.items()): #ele esta contando certo mas na hora de fazer o processamento de 1 e 0 ele deveria pegar e contar exemplo num talhao deu 11 parcelas ent cada parcela seria calculada em par ou impar e ser maior que 3 o numero maximo de parcelas entao ficaria se tiver 11 parcelas na coluna manter seria 1:1 2:0 3:1 4:0 5:1 6:0 7:1 8:0 9:1 10:0 11:1 ai ele teria que criar uma coluna "PARCELA" e colocar isso de contar as parcelas 1,2,3,4,5,6,7,8,9,10,11
+            arcpy.AddMessage(f"Index {idx}: {cnt} parcela(s)")
+
+        maximo_geral = max(contagens.values())
+
+        with arcpy.da.UpdateCursor(fc, [campo_index, campo_contador, campo_manter]) as u_cursor:
+            for row in u_cursor:
+                idx = row[0]
+                cnt = contagens[idx]
+                row[1] = cnt
+                row[2] = self.autoIncrement(cnt, maximo_geral)
+                u_cursor.updateRow(row)
+
+        arcpy.AddMessage("Processamento concluído com sucesso.")
+
+
+    def autoIncrement(self, parcela, count):
+        parcela = int(parcela)
+        count = int(count)
+        if count <= 3:
+            return 1
+        return 1 if parcela % 2 != 0 else 0
