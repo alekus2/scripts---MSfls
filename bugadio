@@ -1,3 +1,297 @@
+library(readxl)
+library(dplyr)
+library(tidyr)
+library(openxlsx)
+library(lubridate)
+
+OtimizadorIFQ6 <- function(paths) {
+  nomes_colunas <- c("CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA", "NM_AREA_PARCELA",
+                     "NM_LARG_PARCELA", "NM_COMP_PARCELA", "NM_DEC_LAR_PARCELA", "NM_DEC_COM_PARCELA",
+                     "DT_INICIAL", "DT_FINAL", "CD_EQUIPE", "NM_LATITUDE", "NM_LONGITUDE", "NM_ALTITUDE",
+                     "DC_MATERIAL", "NM_FILA", "NM_COVA", "NM_FUSTE", "NM_DAP_ANT", "NM_ALTURA_ANT",
+                     "NM_CAP_DAP1", "NM_DAP2", "NM_DAP", "NM_ALTURA", "CD_01", "CD_02", "CD_03")
+  
+  lista_df <- list()
+  equipes <- list()
+  meses <- c("Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro")
+  mes_atual <- month(Sys.Date())
+  nome_mes <- meses[mes_atual]
+  data_emissao <- format(Sys.Date(), "%Y%m%d")
+  base_dir <- dirname(paths[1])
+  pasta_mes <- file.path(dirname(base_dir), nome_mes)
+  pasta_output <- file.path(pasta_mes, "output")
+  dir.create(pasta_output, showWarnings = FALSE)
+  
+  cadastro_path <- paths[grepl("SGF", toupper(basename(paths)))][1]
+  
+  for (path in paths) {
+    if (path == cadastro_path || !file.exists(path)) {
+      next
+    }
+    nome_arquivo <- toupper(basename(path))
+    base <- if (grepl("LEBATEC", nome_arquivo)) {
+      "lebatec"
+    } else if (grepl("BRAVORE", nome_arquivo)) {
+      "bravore"
+    } else if (grepl("PROPRIA", nome_arquivo)) {
+      "propria"
+    } else {
+      escolha <- ""
+      while (!escolha %in% c("1", "2", "3")) {
+        escolha <- readline(prompt = "Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):")
+      }
+      c("lebatec", "bravore", "propria")[as.numeric(escolha)]
+    }
+    
+    equipes[[base]] <- ifelse(is.null(equipes[[base]]), 1, equipes[[base]] + 1)
+    equipe <- if (equipes[[base]] == 1) {
+      base
+    } else {
+      paste0(base, "_", sprintf("%02d", equipes[[base]]))
+    }
+    
+    df <- tryCatch({
+      read_excel(path, sheet = 1)
+    }, error = function(e) {
+      return(NULL)
+    })
+    
+    df <- df %>% rename_with(toupper) %>% mutate(across(everything(), trimws))
+    
+    falt <- setdiff(nomes_colunas, names(df))
+    if (length(falt) > 0) {
+      df <- tryCatch({
+        read_excel(path, sheet = 2)
+      }, error = function(e) {
+        return(NULL)
+      })
+      df <- df %>% rename_with(toupper) %>% mutate(across(everything(), trimws))
+      falt <- setdiff(nomes_colunas, names(df))
+      if (length(falt) > 0) {
+        next
+      }
+    }
+    
+    dff <- df[nomes_colunas] %>% mutate(EQUIPE = equipe)
+    lista_df[[length(lista_df) + 1]] <- dff
+  }
+  
+  if (length(lista_df) == 0) {
+    cat("nenhum arquivo processado.\n")
+    return()
+  }
+  
+  df_final <- bind_rows(lista_df)
+  
+  dup_cols <- c("CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "NM_FILA", "NM_COVA", "NM_FUSTE", "NM_ALTURA")
+  df_final <- df_final %>%
+    mutate(`check dup` = ifelse(duplicated(select(., all_of(dup_cols)), fromLast = TRUE) | duplicated(select(., all_of(dup_cols))), "VERIFICAR", "OK"),
+           `check cd` = ifelse(CD_01 %in% LETTERS[1:24] & NM_FUSTE == 1, "OK",
+                               ifelse(CD_01 == "L" & NM_FUSTE == 1, "VERIFICAR", "OK")),
+           CD_TALHAO = str_sub(as.character(CD_TALHAO), -3) %>% str_pad(width = 3, pad = "0"))
+  
+  seq <- function(g) {
+    last <- NULL
+    for (r in 1:nrow(g)) {
+      if (g[r, "CD_01"] == "L") {
+        last <- if (is.null(last)) g[r, "NM_COVA"] else last
+        if (g[r, "NM_COVA"] != last) return(FALSE)
+      }
+      if (g[r, "CD_01"] == "N") {
+        if (is.null(last) || g[r, "NM_COVA"] != last + 1) return(FALSE)
+        last <- g[r, "NM_COVA"]
+      }
+    }
+    return(TRUE)
+  }
+  
+  bif <- any(!sapply(split(df_final, df_final$NM_FILA), seq))
+  df_final$`check SQC` <- "OK"
+  df_final$NM_COVA_ORIG <- df_final$NM_COVA
+  df_final$group_id <- cumsum(c(1, diff(as.numeric(df_final$NM_FILA)) != 0))
+  
+  if (bif) {
+    for (g in split(df_final, df_final$group_id)) {
+      idxs <- rownames(g)
+      seqs <- seq(1, nrow(g))
+      for (i in seq_along(idxs)) {
+        if (g[i, "CD_01"] == "L") {
+          ori <- g[i, "NM_COVA_ORIG"]
+          if (i > 1 && ori == g[i - 1, "NM_COVA_ORIG"]) {
+            seqs[i] <- seqs[i - 1]
+          } else if (i < nrow(g) && ori == g[i + 1, "NM_COVA_ORIG"]) {
+            seqs[i] <- seqs[i + 1]
+            df_final[df_final$NM_COVA == g[i, "NM_COVA"], "check SQC"] <- "VERIFICAR"
+          }
+        }
+      }
+      df_final[df_final$NM_COVA == g$NM_COVA, "NM_COVA"] <- seqs
+    }
+  } else {
+    for (i in 2:nrow(df_final)) {
+      a <- df_final[i, ]
+      b <- df_final[i - 1, ]
+      if (a$NM_COVA == b$NM_COVA && a$CD_01 == "N" && b$CD_01 == "L" && b$NM_FUSTE == 2) {
+        df_final[i, "check SQC"] <- "VERIFICAR"
+      }
+    }
+  }
+  
+  df_final <- df_final %>% select(-NM_COVA_ORIG, -group_id)
+  
+  count_ver <- sum(df_final$`check SQC` == "VERIFICAR")
+  cat(sprintf("Quantidade de 'VERIFICAR': %d\n", count_ver))
+  
+  if (count_ver > 0) {
+    resposta <- readline(prompt = "Deseja verificar a planilha agora? (s/n): ")
+    if (tolower(resposta) == 's') {
+      nome_base <- sprintf("IFQ6_%s_%s", nome_mes, data_emissao)
+      cnt <- 1
+      out <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
+      while (file.exists(out)) {
+        cnt <- cnt + 1
+        out <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
+      }
+      write.xlsx(df_final, out, rowNames = FALSE)
+      cat(sprintf("Dados verificados e salvos em '%s'.\n", out))
+      return()
+    }
+  }
+  
+  df_final$`Ht média` <- coalesce(df_final$NM_ALTURA, 0)
+  df_final <- df_final %>% arrange(CD_PROJETO, CD_TALHAO, NM_PARCELA, `Ht média`)
+  df_final$NM_COVA_ORDENADO <- ave(df_final$`Ht média`, df_final$CD_PROJETO, df_final$CD_TALHAO, df_final$NM_PARCELA, FUN = seq_along)
+  
+  df_final$Chave_stand_1 <- paste(df_final$CD_PROJETO, df_final$CD_TALHAO, df_final$NM_PARCELA, sep = "-")
+  df_final$DT_MEDIÇÃO1 <- df_final$DT_INICIAL
+  df_final$EQUIPE_2 <- df_final$CD_EQUIPE
+  df_final <- df_final %>% select(-`check dup`, -`check cd`, -`check SQC`)
+  
+  df_cadastro <- read_excel(cadastro_path, sheet = 1)
+  df_cadastro$Talhão_z3 <- str_sub(df_cadastro$Talhão, -3) %>% str_pad(width = 3, pad = "0")
+  df_cadastro$Index_z3 <- trimws(df_cadastro$`Id Projeto`) + df_cadastro$Talhão_z3
+  df_final$Index_z3 <- trimws(as.character(df_final$CD_PROJETO)) + trimws(as.character(df_final$CD_TALHAO))
+  
+  area_col <- names(df_cadastro)[grepl("ÁREA", toupper(names(df_cadastro)))]
+  df_res <- merge(df_final, df_cadastro[, c("Index_z3", area_col)], by = "Index_z3", all.x = TRUE)
+  names(df_res)[names(df_res) == area_col] <- "Área (ha)"
+  df_res$`Área (ha)` <- coalesce(df_res$`Área (ha)`, "")
+  names(df_res)[names(df_res) == "NM_PARCELA"] <- "nm_parcela"
+  names(df_res)[names(df_res) == "NM_AREA_PARCELA"] <- "nm_area_parcela"
+  
+  cols0 <- c("Área (ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela")
+  df_res$`Ht média` <- as.numeric(as.character(df_res$`Ht média`))
+  
+  codes <- c("A", "B", "D", "F", "G", "H", "I", "J", "L", "M", "N", "O", "Q", "K", "T", "V", "S", "E")
+  falhas <- c("M", "H", "F", "L", "S")
+  
+  calc_metrics <- function(row, covas) {
+    vals <- unlist(row[covas])
+    last <- max(which(vals > 0), na.rm = TRUE)
+    vals <- if (last >= 1) vals[1:last] else numeric(0)
+    n <- length(vals)
+    med <- if (n > 0) median(vals) else 0.0
+    tot <- sum(vals)
+    ordered <- sort(vals)
+    meio <- floor(n / 2)
+    le <- if (n %% 2 == 0) sum(ordered[1:meio][ordered[1:meio] <= med]) else sum(ordered[1:meio]) + med / 2.0
+    pv50 <- ifelse(tot > 0, le / tot * 100, 0.1)
+    return(data.frame(n = n, `n/2` = meio, Mediana = med, `3Ht` = tot, `3Ht(<=Med)` = le, PV50 = pv50))
+  }
+  
+  df_pivot <- df_res %>%
+    pivot_wider(names_from = NM_COVA_ORDENADO, values_from = `Ht média`, values_fill = 0) %>%
+    arrange(CD_PROJETO, CD_TALHAO, nm_parcela)
+  
+  num_cols <- sort(as.numeric(names(df_pivot)[!(names(df_pivot) %in% cols0)]))
+  df_tabela <- bind_cols(df_pivot[cols0], df_pivot %>% rowwise() %>% do(calc_metrics(cur_data(), num_cols)))
+  
+  counts <- df_final %>%
+    group_by(CD_PROJETO, CD_TALHAO, NM_PARCELA) %>%
+    summarise(across(CD_01, ~ length(.), .names = "count")) %>%
+    pivot_wider(names_from = CD_01, values_from = count, values_fill = 0) %>%
+    select(CD_PROJETO, CD_TALHAO, NM_PARCELA, all_of(codes))
+  
+  df_tabela <- left_join(df_tabela, counts, by = c("CD_PROJETO", "CD_TALHAO", "nm_parcela")) %>% replace_na(0)
+  df_tabela$`Stand (tree/ha)` <- (rowSums(df_tabela[codes]) - rowSums(df_tabela[falhas])) * 10000 / as.numeric(as.character(df_tabela$nm_area_parcela))
+  df_tabela$Pits_per_ha <- ((df_tabela$n - df_tabela$L) * 10000 / as.numeric(as.character(df_tabela$nm_area_parcela))) %>% replace_na(0)
+  medianas <- df_final %>% group_by(CD_PROJETO, CD_TALHAO) %>% summarise(`Média Ht` = median(`Ht média`), .groups = "drop")
+  df_tabela <- left_join(df_tabela, medianas, by = c("CD_PROJETO", "CD_TALHAO"))
+  
+  tot <- rowSums(df_tabela[codes])
+  valid <- tot - rowSums(df_tabela[falhas])
+  surv <- valid / tot
+  df_tabela$`%_Sobrevivência_decimal` <- ifelse(tot != 0, surv, 0)
+  df_tabela$`Pits por sob` <- df_tabela$`Stand (tree/ha)` / df_tabela$`%_Sobrevivência_decimal`
+  df_tabela$`%_Sobrevivência` <- paste0(round(surv * 100, 1), "%")
+  
+  df_tabela$`Check pits` <- df_tabela$`Pits por sob` - df_tabela$Pits_per_ha
+  
+  df_D <- df_res %>%
+    pivot_wider(names_from = NM_COVA_ORDENADO, values_from = `Ht média`, values_fill = 0)
+  
+  num_cols_D <- sort(as.numeric(names(df_D)[!(names(df_D) %in% cols0)]))
+  df_D[num_cols_D] <- df_D[num_cols_D]^3
+  
+  df_D_resultados <- bind_cols(df_D[cols0], df_D %>% rowwise() %>% do(calc_metrics(cur_data(), num_cols_D)))
+  df_D_resultados <- left_join(df_D_resultados, counts, by = c("CD_PROJETO", "CD_TALHAO", "nm_parcela")) %>% replace_na(0)
+  df_D_resultados$`Stand (tree/ha)` <- (rowSums(df_D_resultados[codes]) - rowSums(df_D_resultados[falhas])) * 10000 / as.numeric(as.character(df_D_resultados$nm_area_parcela))
+  df_D_resultados$Pits_per_ha <- ((df_D_resultados$n - df_D_resultados$L) * 10000 / as.numeric(as.character(df_D_resultados$nm_area_parcela))) %>% replace_na(0)
+  df_D_resultados <- left_join(df_D_resultados, medianas, by = c("CD_PROJETO", "CD_TALHAO"))
+  
+  tot_D <- rowSums(df_D_resultados[codes])
+  valid_D <- tot_D - rowSums(df_D_resultados[falhas])
+  surv_D <- valid_D / tot_D
+  df_D_resultados$`%_Sobrevivência_decimal` <- surv_D
+  df_D_resultados$`%_Sobrevivência` <- paste0(round(surv_D * 100, 1), "%")
+  
+  df_D_resultados$CHECK_covas <- df_D_resultados$`Stand (tree/ha)` / df_D_resultados$`%_Sobrevivência_decimal`
+  df_D_resultados$CHECK_pits <- df_D_resultados$CHECK_covas - df_D_resultados$Pits_per_ha
+  df_D_resultados$CHECK_impares_pares <- ifelse(df_D_resultados$n %% 2 == 0, "Par", "Impar")
+  
+  df_aux <- distinct(df_final, CD_PROJETO, CD_TALHAO, DC_MATERIAL, DT_MEDIÇÃO1, EQUIPE_2)
+  df_D_resultados <- left_join(df_D_resultados, df_aux, by = c("CD_PROJETO", "CD_TALHAO"))
+  
+  df_D_resultados$`%_K` <- (df_D_resultados$K / (df_D_resultados$n - df_D_resultados$L)) %>% round(2) %>% paste0("%")
+  df_D_resultados$`%_L` <- ((df_D_resultados$H + df_D_resultados$I) / (df_D_resultados$n - df_D_resultados$L)) %>% round(2) %>% paste0("%")
+  
+  df_D_resultados <- select(df_D_resultados, -`%_Sobrevivência_decimal`)
+  
+  nome_base <- sprintf("BASE_IFQ6_%s_%s", nome_mes, data_emissao)
+  cnt <- 1
+  out2 <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
+  while (file.exists(out2)) {
+    cnt <- cnt + 1
+    out2 <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
+  }
+  
+  write.xlsx(df_cadastro, file = out2, sheetName = "Cadastro_SGF", rowNames = FALSE)
+  write.xlsx(df_final, file = out2, sheetName = sprintf("Dados_CST_%s", nome_mes), rowNames = FALSE, append = TRUE)
+  write.xlsx(df_tabela, file = out2, sheetName = "C_tabela_resultados", rowNames = FALSE, append = TRUE)
+  write.xlsx(df_D_resultados, file = out2, sheetName = "D_tabela_resultados_Ht3", rowNames = FALSE, append = TRUE)
+  
+  cat(sprintf("Tudo gravado em '%s'\n", out2))
+}
+
+arquivos <- c(
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/base_dados_IFQ6_propria_fev.xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/Cadastro SGF (correto).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_24032025.xlsx"
+)
+
+OtimizadorIFQ6(arquivos)
+
 > source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
 
 > library(readxl)
@@ -42,3 +336,39 @@ NULL
 > OtimizadorIFQ6(arquivos)
 nenhum arquivo processado.
 NULL
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
+
+> library(readxl)
+
+> library(dplyr)
+
+> library(tidyr)
+
+> library(openxlsx)
+
+> library(lubridate)
+
+> OtimizadorIFQ6 <- function(paths) {
++   nomes_colunas <- c("CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA", "NM_AREA_PARCELA",
++          .... [TRUNCATED] 
+
+> arquivos <- c(
++   "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R ..." ... [TRUNCATED] 
+
+> OtimizadorIFQ6(arquivos)
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+Selecione a equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA):1
+New names:
+* `` -> `...35`
+Error in `mutate()`:
+i In argument: `CD_TALHAO = str_sub(as.character(CD_TALHAO), -3) %>% str_pad(width = 3, pad = "0")`.
+Caused by error in `str_pad()`:
+! não foi possível encontrar a função "str_pad"
+Run `rlang::last_trace()` to see where the error occurred.
+Houve 50 ou mais avisos (use warnings() para ver os primeiros 50)
