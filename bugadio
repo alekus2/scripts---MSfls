@@ -1,17 +1,44 @@
-arquivos <- c(
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6271_TABOCA_SRP - IFQ6 (4).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6348_BERRANTE_II_RRP - IFQ6 (29).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/base_dados_IFQ6_propria_fev.xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/Cadastro SGF (correto).xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_10032025.xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_17032025.xlss",
-  "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_24032025.xlss"
-)
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
 
-OtimizadorIFQ6(arquivos)
+> library(readxl)
+
+> library(dplyr)
+
+> library(tidyr)
+
+> library(openxlsx)
+
+> library(lubridate)
+
+> OtimizadorIFQ6 <- function(paths) {
++   nomes_colunas <- c("CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA", "NM_AREA_PARCELA",
++          .... [TRUNCATED] 
+
+> arquivos <- c(
++   "F:/glwfs02/lwc-florestal/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex  ..." ... [TRUNCATED] 
+
+> OtimizadorIFQ6(arquivos)
+nenhum arquivo processado.
+NULL
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
+
+> library(readxl)
+
+> library(dplyr)
+
+> library(tidyr)
+
+> library(openxlsx)
+
+> library(lubridate)
+
+> OtimizadorIFQ6 <- function(paths) {
++   nomes_colunas <- c("CD_PROJETO", "CD_TALHAO", "NM_PARCELA", "DC_TIPO_PARCELA", "NM_AREA_PARCELA",
++          .... [TRUNCATED] 
+
+> arquivos <- c(
++   "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R ..." ... [TRUNCATED] 
+
+> OtimizadorIFQ6(arquivos)
+nenhum arquivo processado.
+NULL
