@@ -1,3 +1,4 @@
+
 library(glue)
 library(sf)
 library(dplyr)
@@ -5,7 +6,7 @@ library(dplyr)
 process_data <- function(shape, parc_exist_path,
                          forma_parcela, tipo_parcela,
                          distancia.minima,
-                         distancia_parcelas,    # agora não será usada para limitar delta
+                         distancia_parcelas,    
                          intensidade_amostral,
                          update_progress) {
   
@@ -33,13 +34,13 @@ process_data <- function(shape, parc_exist_path,
     idx    <- indices[i]
     talhao <- shapeb[shapeb$Index == idx, ]
     if (nrow(talhao)==0) next
-
+    
     area_ha <- talhao$AREA_HA[1]
     n_req   <- max(2, ceiling(area_ha / intensidade_amostral))
-
+    
     delta_ideal <- sqrt(as.numeric(st_area(talhao)) / n_req)
     delta_min   <- 30
-    delta       <- max(delta_ideal, delta_min)  # delta no mínimo delta_min (30m)
+    delta       <- max(delta_ideal, delta_min)  
     
     if (delta_min * sqrt(n_req) > sqrt(as.numeric(st_area(talhao)))) {
       message(glue("Talhão {idx}: área muito pequena para {n_req} parcelas com distância menor que 30 m."))
@@ -75,7 +76,7 @@ process_data <- function(shape, parc_exist_path,
       pts_tmp  <- grid_all[inside]
       n_pts    <- length(pts_tmp)
       diff     <- abs(n_pts - n_req)
-
+      
       if (diff < best_diff) {
         best_diff  <- diff
         best_pts   <- pts_tmp
@@ -86,11 +87,11 @@ process_data <- function(shape, parc_exist_path,
         pts_sel <- pts_tmp
         break
       }
-
+      
       if (n_pts < n_req) {
         delta <- max(delta * 0.95, delta_min)
       } else {
-        delta <- delta * 1.05  # sem limite máximo agora
+        delta <- delta * 1.05
       }
       
       iter <- iter + 1
@@ -104,7 +105,7 @@ process_data <- function(shape, parc_exist_path,
           "Talhão {idx}: aceitando {length(pts_sel)} pontos (±1) com delta={round(delta,1)} m"))
       } else {
         message(glue(
-          "Talhão {idx}: não couberam {n_req} parcelas com delta ≥ {delta_min} m"))
+          "Talhão {idx}: não couberam {n_req} parcelas com delta ??? {delta_min} m"))
         next
       }
     }
@@ -114,19 +115,27 @@ process_data <- function(shape, parc_exist_path,
     sel <- pts_sel[ord][seq_len(n_req)]
     
     df <- tibble(
-      Index      = idx,
-      PROJETO    = talhao$ID_PROJETO[1],
-      TALHAO     = talhao$TALHAO[1],
+      ID_PROJETO    = talhao$ID_PROJETO[1],
+      PROJETO = talhao$PROJETO[1],
+      TALHAO = talhao$TALHAO[1],
+      REGIME = talhao$REGIME[1],
+      ESPACAMENT = talhao$ESPACAMENT[1],
+      MATERIAL_G = talhao$MATERIAL_G[1],
+      DATA_PLANT = talhao$DATA_PLANT[1],
+      CHAVE = idx,
+      POINT_X    = st_coordinates(sel)[,1],
+      POINT_Y    = st_coordinates(sel)[,2],
+      INDEX_ = idx,
+      #NM_Parcela deve ficar aqui
+      #Deve ter uma coluna que calcula o nome do mes separado por um "-" e o ano
       CICLO      = talhao$CICLO[1],
       ROTACAO    = talhao$ROTACAO[1],
       STATUS     = "ATIVA",
       FORMA      = forma_parcela,
       TIPO_INSTA = tipo_parcela,
       TIPO_ATUAL = tipo_parcela,
-      DATA       = Sys.Date(),
       DATA_ATUAL = Sys.Date(),
-      COORD_X    = st_coordinates(sel)[,1],
-      COORD_Y    = st_coordinates(sel)[,2],
+     
       AREA_HA    = area_ha
     )
     
@@ -138,6 +147,6 @@ process_data <- function(shape, parc_exist_path,
   
   bind_rows(result_pts) %>%
     group_by(Index) %>%
-    mutate(PARCELA = row_number()) %>%
+    mutate(NM_PARCELA = row_number()) %>%
     ungroup()
 }
