@@ -1,4 +1,5 @@
 
+
 import pandas as pd
 import os
 import numpy as np
@@ -151,12 +152,13 @@ class OtimizadorIFQ6:
         df_final.drop(columns=["check dup","check cd","check SQC"], inplace=True)
 
         df_cadastro = pd.read_excel(cadastro_path, sheet_name=0, dtype=str)
-        df_cadastro["Talhão_z3"] = df_cadastro["Talhão"].str[-3:].str.zfill(3)
-        df_cadastro["Index_z3"] = df_cadastro["Id Projeto"].str.strip() + df_cadastro["Talhão_z3"]
-        df_final["Index_z3"] = df_final["CD_PROJETO"].astype(str).str.strip() + df_final["CD_TALHAO"].astype(str).str.strip()
+        df_cadastro["Index"] = df_cadastro["Id Projeto"] + df_cadastro["Talhão"]
+        #quero que verifique se ao final do index de df final existe "-01" ou "-02" ou !-03" se não existir quero que o codigo traga isso.
+        #exemplo:6234001-01 teria q ser o index.
+        df_final["Index"] = df_final["CD_PROJETO"].astype(str) + df_final["CD_TALHAO"].astype(str)
 
         area_col = next((c for c in df_cadastro.columns if "ÁREA" in c.upper()), None)
-        df_res = pd.merge(df_final, df_cadastro[["Index_z3", area_col]], on="Index_z3", how="left")
+        df_res = pd.merge(df_final, df_cadastro[["Index", area_col]], on="Index", how="left")
         df_res.rename(columns={area_col: "Área (ha)"}, inplace=True)
         df_res["Área (ha)"] = df_res["Área (ha)"].fillna("")
         df_res.rename(columns={"NM_PARCELA":"nm_parcela","NM_AREA_PARCELA":"nm_area_parcela"}, inplace=True)
@@ -180,7 +182,6 @@ class OtimizadorIFQ6:
             pv50 = (le/tot*100) if tot else 0.1
             return pd.Series({"n":n,"n/2":meio,"Mediana":med,"∑Ht":tot,"∑Ht(<=Med)":le,"PV50":pv50})
 
-        # df_tabela (igual ao original)…
         df_pivot = df_res.pivot_table(index=cols0, columns="NM_COVA_ORDENADO", values="Ht média",
                                       aggfunc="first", fill_value=0).reset_index()
         df_pivot.columns = [str(c) if isinstance(c,int) else c for c in df_pivot.columns]
@@ -249,9 +250,7 @@ class OtimizadorIFQ6:
             cnt += 1
             out2 = os.path.join(pasta_output, f"{nome_base}_{str(cnt).zfill(2)}.xlsx")
         with pd.ExcelWriter(out2, engine="openpyxl") as w:
-            df_cadastro.drop(columns=["Talhão_z3","Index_z3"], inplace=True)
             df_cadastro.to_excel(w, sheet_name="Cadastro_SGF", index=False)
-            df_final.drop(columns=["Index_z3"], inplace=True)
             df_final.to_excel(w, sheet_name=f"Dados_CST_{nome_mes}", index=False)
             df_tabela.to_excel(w, sheet_name="C_tabela_resultados", index=False)
             df_D_resultados.to_excel(w, sheet_name="D_tabela_resultados_Ht3", index=False)
