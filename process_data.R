@@ -8,4 +8,9 @@ bind_rows(result_pts) %>%
     mes_prog = paste(month(DATA_PLANT, label = TRUE, abbr = FALSE), 
                      format(DATA_PLANT, "%Y"), sep = "-")  # Nome do mês completo e ano
   ) %>%
-  ungroup()
+  ungroup() %>%
+  select(
+    everything(),  # Mantém todas as colunas
+    NM_PARCELA,     # Coloca NM_PARCELA na posição desejada
+    mes_prog        # Coloca mes_prog na posição desejada
+  )
