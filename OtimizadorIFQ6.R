@@ -1,6 +1,3 @@
-# OtimizadorIFQ6.R
-# Versão sem acentos e corrigida para evitar erros de encoding
-
 library(readxl)
 library(dplyr)
 library(tidyr)
@@ -9,7 +6,6 @@ library(lubridate)
 library(stringr)
 
 OtimizadorIFQ6 <- function(paths) {
-  # 1. Configuracoes iniciais -------------------------------------------------
   nomes_colunas <- c(
     "CD_PROJETO","CD_TALHAO","NM_PARCELA","DC_TIPO_PARCELA","NM_AREA_PARCELA",
     "NM_LARG_PARCELA","NM_COMP_PARCELA","NM_DEC_LAR_PARCELA","NM_DEC_COM_PARCELA",
@@ -32,8 +28,7 @@ OtimizadorIFQ6 <- function(paths) {
   cadastro_path <- paths[grepl("SGF", toupper(basename(paths)))][1]
   lista_df      <- list()
   equipes       <- list()
-  
-  # 2. Leitura e consolidacao de cada IFQ6 ------------------------------------
+
   for (path in paths) {
     if (!file.exists(path) || identical(path, cadastro_path)) next
     
@@ -79,14 +74,13 @@ OtimizadorIFQ6 <- function(paths) {
   }
   
   df_final <- bind_rows(lista_df)
-  
-  # 3. Flags de duplicidade e codigos -----------------------------------------
+
   dup_cols <- c("CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_FILA","NM_COVA","NM_FUSTE","NM_ALTURA")
   df_final <- df_final %>%
     mutate(
       check_dup = if_else(
         duplicated(select(., all_of(dup_cols))) |
-        duplicated(select(., all_of(dup_cols)), fromLast = TRUE),
+          duplicated(select(., all_of(dup_cols)), fromLast = TRUE),
         "VERIFICAR","OK"
       ),
       check_cd = case_when(
@@ -136,8 +130,7 @@ OtimizadorIFQ6 <- function(paths) {
       return(invisible(NULL))
     }
   }
-  
-  # 4. Ordenacao e campos adicionais -----------------------------------------
+
   df_final <- df_final %>%
     mutate(
       Ht_media = coalesce(as.numeric(NM_ALTURA), 0)
@@ -152,8 +145,7 @@ OtimizadorIFQ6 <- function(paths) {
       EQUIPE_2      = CD_EQUIPE
     ) %>%
     select(-check_dup, -check_cd, -check_sqc)
-  
-  # 5. Juncao com cadastro SGF para Area -------------------------------------
+
   df_cad <- read_excel(cadastro_path, sheet = 1) %>%
     rename_with(~ str_replace_all(., "[^A-Za-z0-9_]", "")) %>%
     mutate(
@@ -170,8 +162,7 @@ OtimizadorIFQ6 <- function(paths) {
     ) %>%
     rename(Area_ha = all_of(area_col)) %>%
     mutate(Area_ha = coalesce(as.numeric(Area_ha), NA))
-  
-  # 6. Funcao de metricas -----------------------------------------------------
+
   calc_metrics <- function(vals) {
     nonzero <- vals[vals > 0]
     n     <- length(nonzero)
@@ -183,10 +174,8 @@ OtimizadorIFQ6 <- function(paths) {
     pv50  <- if (tot>0) le/tot*100 else 0
     data.frame(n=n, Mediana=med, `3Ht`=tot, PV50=pv50)
   }
-  
-  # 7. Tabela C: pivot + metricas + contagens + calculos finais --------------
+
   df_res   <- df_final
-  # Renomeia parcelas para minusculas
   df_res <- df_res %>%
     rename(
       nm_parcela       = NM_PARCELA,
@@ -203,8 +192,7 @@ OtimizadorIFQ6 <- function(paths) {
   
   cols0 <- c("Area_ha","Chave_stand_1","CD_PROJETO","CD_TALHAO","nm_parcela","nm_area_parcela")
   num_cols <- sort(as.numeric(names(df_pivot)[!names(df_pivot) %in% cols0]))
-  
-  # calcula metricas linha a linha
+
   metrics <- df_pivot %>%
     select(all_of(num_cols)) %>%
     as.data.frame() %>%
@@ -230,7 +218,7 @@ OtimizadorIFQ6 <- function(paths) {
     mutate(
       `Stand (tree/ha)`  = (rowSums(across(all_of(codes)), na.rm=TRUE)
                             - rowSums(across(all_of(falhas)), na.rm=TRUE))
-                           * 10000 / as.numeric(nm_area_parcela),
+      * 10000 / as.numeric(nm_area_parcela),
       Pits_per_ha       = ((n - L) * 10000 / as.numeric(nm_area_parcela)) %>% replace_na(0)
     )
   
@@ -250,8 +238,7 @@ OtimizadorIFQ6 <- function(paths) {
       `Check_pits`                 = `Pits_por_sobrevivente` - Pits_per_ha
     ) %>%
     select(-tot, -valid)
-  
-  # 8. Tabela D: Ht^3 e mesmas metricas ---------------------------------------
+
   df_D <- df_res %>%
     pivot_wider(
       names_from  = NM_COVA_ORDENADO,
@@ -274,7 +261,7 @@ OtimizadorIFQ6 <- function(paths) {
     mutate(
       `Stand (tree/ha)` = (rowSums(across(all_of(codes)), na.rm=TRUE)
                            - rowSums(across(all_of(falhas)), na.rm=TRUE))
-                          * 10000 / as.numeric(nm_area_parcela),
+      * 10000 / as.numeric(nm_area_parcela),
       Pits_per_ha       = ((n - L) * 10000 / as.numeric(nm_area_parcela)) %>% replace_na(0)
     ) %>%
     left_join(medianas, by = c("CD_PROJETO","CD_TALHAO")) %>%
@@ -290,8 +277,7 @@ OtimizadorIFQ6 <- function(paths) {
       `%_L`                 = paste0(round((H+I)/(n-L)*100,1),"%")
     ) %>%
     select(-tot_D, -valid_D)
-  
-  # 9. Gravacao em Excel ------------------------------------------------------
+
   nome_base <- sprintf("BASE_IFQ6_%s_%s", nome_mes, data_emissao)
   cnt <- 1
   out2 <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
@@ -308,7 +294,36 @@ OtimizadorIFQ6 <- function(paths) {
   cat("Tudo gravado em:", out2, "\n")
 }
 
-# Para usar:
-# 1) Salve este script em UTF-8
-# 2) No R (ou RStudio): source("OtimizadorIFQ6.R", encoding="UTF-8")
-# 3) Chame: OtimizadorIFQ6(arquivos)
+arquivos <- c(
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6271_TABOCA_SRP - IFQ6 (4).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/base_dados_IFQ6_propria_fev.xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/Cadastro SGF (correto).xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_10032025.xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_17032025.xlsx",
+  "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_24032025.xlsx"
+)
+
+OtimizadorIFQ6(arquivos)
+
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
+> library(readxl)
+> library(dplyr)
+> library(tidyr)
+> library(openxlsx)
+> library(lubridate)
+> library(stringr)
+> OtimizadorIFQ6 <- function(paths) {
++   nomes_colunas <- c(
++     "CD_PROJETO","CD_TALHAO","NM_PARCELA","DC_TIPO_PARCELA","NM_AREA_PARCELA",
++     " ..." ... [TRUNCATED] 
+> arquivos <- c(
++   "F:Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R ..." ... [TRUNCATED] 
+> OtimizadorIFQ6(arquivos)
+Nenhum arquivo IFQ6 processado.
