@@ -291,3 +291,12 @@ arquivos <- c(
 )
 
 OtimizadorIFQ6(arquivos)
+
+deu esse erro, como posso resolver ?
+
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", echo=TRUE)
+Error in source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R",  : 
+  F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação :167:20: invalid token inesperado
+166:   df_final$Chave_stand_1 <- paste(df_final$CD_PROJETO, df_final$CD_TALHAO, df_final$NM_PARCELA, sep = "-")
+167:   df_final$DT_MEDIÃ‡
+                        ^
