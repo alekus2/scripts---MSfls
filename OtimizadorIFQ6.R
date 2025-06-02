@@ -9,6 +9,8 @@ library(openxlsx)
 library(glue)
 library(scales)
 
+`%notin%` <- function(x, y) !(x %in% y)
+
 OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                           public = list(
                             validacao = function(paths) {
