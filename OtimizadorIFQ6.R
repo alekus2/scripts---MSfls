@@ -288,3 +288,21 @@ arquivos <- c(
 )
 otimizador <- OtimizadorIFQ6$new()
 otimizador$validacao(arquivos)
+
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Selecione (1=L,2=B,3=P): 1
+Error in last + 1 : argumento não-numérico para operador binário
+Além disso: Mensagens de aviso:
+1: In eval_tidy(pair$rhs, env = default_env) :
+  NAs introduzidos por coerção
+2: In ler_ifq6(p) :
+  A coluna 'CD_PROJETO' não foi encontrada no arquivo: F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados at/base_dados_IFQ6_propria_fev.xlsx
