@@ -1,279 +1,309 @@
-# OtimizadorIFQ6.R
-# Salve este arquivo em UTF-8
-
 library(readxl)
 library(dplyr)
 library(tidyr)
-library(openxlsx)
-library(lubridate)
+library(purrr)
 library(stringr)
+library(lubridate)
+library(openxlsx)
+library(glue)
+library(scales)
 
-OtimizadorIFQ6 <- function(paths) {
-  # --- 1. Configurações iniciais --------------------------------------------
-  nomes_colunas <- c(
+validacao_ifq6 <- function(paths) {
+  cols_esperadas <- c(
     "CD_PROJETO","CD_TALHAO","NM_PARCELA","DC_TIPO_PARCELA","NM_AREA_PARCELA",
     "NM_LARG_PARCELA","NM_COMP_PARCELA","NM_DEC_LAR_PARCELA","NM_DEC_COM_PARCELA",
     "DT_INICIAL","DT_FINAL","CD_EQUIPE","NM_LATITUDE","NM_LONGITUDE","NM_ALTITUDE",
     "DC_MATERIAL","NM_FILA","NM_COVA","NM_FUSTE","NM_DAP_ANT","NM_ALTURA_ANT",
     "NM_CAP_DAP1","NM_DAP2","NM_DAP","NM_ALTURA","CD_01","CD_02","CD_03"
   )
-  meses <- c("Janeiro","Fevereiro","Marco","Abril","Maio","Junho",
-             "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro")
-  mes_atual    <- month(Sys.Date())
-  nome_mes     <- meses[mes_atual]
-  data_emissao <- format(Sys.Date(), "%Y%m%d")
-  
-  base_dir     <- dirname(paths[1])
-  pasta_mes    <- file.path(dirname(base_dir), nome_mes)
-  pasta_output <- file.path(pasta_mes, "output")
-  dir.create(pasta_output, showWarnings = FALSE, recursive = TRUE)
-  
-  cadastro_path <- paths[grepl("SGF", toupper(basename(paths)))][1]
-  lista_df      <- list()
-  equipes       <- list()
-  
-  # --- 2. Leitura e consolidação dos IFQ6 -----------------------------------
-  for (path in paths) {
-    if (!file.exists(path) || identical(path, cadastro_path)) next
-    
-    nome_arquivo <- toupper(basename(path))
-    base <- case_when(
-      str_detect(nome_arquivo, "LEBATEC") ~ "lebatec",
-      str_detect(nome_arquivo, "BRAVORE") ~ "bravore",
-      str_detect(nome_arquivo, "PROPRIA")  ~ "propria",
-      TRUE ~ {
-        escolha <- ""
-        while (!escolha %in% c("1","2","3")) {
-          escolha <- readline("Selecione equipe (1-LEBATEC,2-BRAVORE,3-PROPRIA): ")
-        }
-        c("lebatec","bravore","propria")[as.numeric(escolha)]
-      }
-    )
-    equipes[[base]] <- ifelse(is.null(equipes[[base]]), 1, equipes[[base]] + 1)
-    sufixo <- if (equipes[[base]]==1) "" else paste0("_", sprintf("%02d", equipes[[base]]))
-    equipe  <- paste0(base, sufixo)
-    
+  cadastro_path <- paths[str_detect(toupper(basename(paths)), "SGF")][1]
+  arquivos_ifq6 <- paths[!paths %in% cadastro_path & file.exists(paths)]
+  ler_ifq6 <- function(path) {
     df <- tryCatch(read_excel(path, sheet = 1), error = function(e) NULL)
-    if (is.null(df)) next
-    df <- df %>% rename_with(toupper) %>% mutate(across(everything(), trimws))
-    
-    falt <- setdiff(nomes_colunas, names(df))
-    if (length(falt)>0) {
-      df2 <- tryCatch(read_excel(path, sheet = 2), error = function(e) NULL)
-      if (!is.null(df2)) {
-        df2 <- df2 %>% rename_with(toupper) %>% mutate(across(everything(), trimws))
-        if (all(nomes_colunas %in% names(df2))) df <- df2
-      }
+    if (is.null(df) || !all(cols_esperadas %in% toupper(names(df)))) {
+      df <- tryCatch(read_excel(path, sheet = 2), error = function(e) NULL)
     }
-    if (!all(nomes_colunas %in% names(df))) next
-    
-    lista_df[[length(lista_df)+1]] <- df %>%
-      select(all_of(nomes_colunas)) %>%
-      mutate(EQUIPE = equipe)
+    if (is.null(df) || !all(cols_esperadas %in% toupper(names(df)))) return(NULL)
+    names(df) <- toupper(str_trim(names(df)))
+    df %>% select(all_of(cols_esperadas))
   }
-  if (length(lista_df)==0) {
-    cat("Nenhum arquivo IFQ6 processado.\n"); return(invisible(NULL))
-  }
-  df_final <- bind_rows(lista_df)
-  
-  # --- 3. Checks de duplicidade e código ------------------------------------
-  dup_cols <- c("CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_FILA","NM_COVA","NM_FUSTE","NM_ALTURA")
-  df_final <- df_final %>%
-    mutate(
-      check_dup = if_else(
-        duplicated(select(., all_of(dup_cols))) |
-        duplicated(select(., all_of(dup_cols)), fromLast = TRUE),
-        "VERIFICAR","OK"
-      ),
-      check_cd = case_when(
-        CD_01 %in% LETTERS[1:24] & NM_FUSTE==1 ~ "OK",
-        CD_01=="L" & NM_FUSTE==1 ~ "VERIFICAR",
-        TRUE ~ "OK"
-      ),
-      CD_TALHAO = str_sub(as.character(CD_TALHAO), -3) %>% str_pad(3, "left", "0")
+  atribuir_equipe <- function(path, cont) {
+    nome <- toupper(basename(path))
+    base <- case_when(
+      str_detect(nome, "LEBATEC") ~ "lebatec",
+      str_detect(nome, "BRAVORE") ~ "bravore",
+      str_detect(nome, "PROPRIA") ~ "propria",
+      TRUE ~ c("lebatec","bravore","propria")[as.integer(readline(glue("Selecione (1=L,2=B,3=P): ")))]
     )
-  seq_check <- function(g) {
-    last <- NA_integer_
-    for (i in seq_len(nrow(g))) {
-      if (g$CD_01[i]=="L") {
-        if (!is.na(last) && g$NM_COVA[i]!=last) return(FALSE)
-        last <- g$NM_COVA[i]
-      } else if (g$CD_01[i]=="N") {
-        if (is.na(last) || g$NM_COVA[i]!=last+1) return(FALSE)
-        last <- g$NM_COVA[i]
+    n <- cont[[base]] %||% 0
+    cont[[base]] <- n + 1
+    sufixo <- if (n==0) "" else sprintf("_%02d", n+1)
+    list(equipe = paste0(base, sufixo), cont = cont)
+  }
+  cont_eq <- list()
+  lista_dfs <- map(arquivos_ifq6, function(p) {
+    df <- ler_ifq6(p)
+    if (is.null(df)) return(NULL)
+    tmp <- atribuir_equipe(p, cont_eq)
+    cont_eq <<- tmp$cont
+    df %>% mutate(EQUIPE = tmp$equipe)
+  }) %>% compact()
+  df_all <- bind_rows(lista_dfs)
+  cols_dup <- c("CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_FILA","NM_COVA","NM_FUSTE","NM_ALTURA")
+  df_all <- df_all %>%
+    mutate(
+      check_dup = if_else(duplicated(select(., all_of(cols_dup))) | duplicated(select(., all_of(cols_dup)), fromLast=TRUE), "VERIFICAR", "OK"),
+      check_cd  = case_when(
+        CD_01 %in% LETTERS[1:24] & NM_FUSTE==1 ~ "OK",
+        CD_01=="L" & NM_FUSTE==1               ~ "VERIFICAR",
+        TRUE                                   ~ "OK"
+      ),
+      CD_TALHAO = str_pad(str_sub(CD_TALHAO, -3), 3, "left", "0")
+    )
+  verifica_seq <- function(df) {
+    last <- NA_integer_; ok <- TRUE
+    for (i in seq_len(nrow(df))) {
+      if (df$CD_01[i]=="L") {
+        if (is.na(last)) last <- df$NM_COVA[i]
+        if (df$NM_COVA[i]!=last) ok <- FALSE
+      }
+      if (df$CD_01[i]=="N") {
+        if (is.na(last) || df$NM_COVA[i]!=last+1) ok <- FALSE
+        last <- df$NM_COVA[i]
       }
     }
-    TRUE
+    ok
   }
-  by_fila <- split(df_final, df_final$NM_FILA)
-  df_final$check_sqc <- "OK"
-  for (nm in names(by_fila)) {
-    if (!seq_check(by_fila[[nm]])) {
-      df_final$check_sqc[rownames(by_fila[[nm]])] <- "VERIFICAR"
-    }
+  has_bad <- df_all %>% group_by(NM_FILA) %>% group_map(~ !verifica_seq(.x)) %>% unlist() %>% any()
+  if (has_bad) {
+    df_all <- df_all %>%
+      arrange(NM_FILA) %>%
+      group_by(NM_FILA) %>%
+      mutate(
+        idx = row_number(),
+        new_cova = {
+          seqs <- seq_len(n())
+          for (i in seq_along(seqs)) {
+            if (CD_01[i]=="L") {
+              if (i>1 && NM_COVA[i]==NM_COVA[i-1]) seqs[i] <- seqs[i-1]
+              else if (i<n() && NM_COVA[i]==NM_COVA[i+1]) seqs[i] <- seqs[i+1]
+            }
+          }
+          seqs
+        },
+        check_sqc = if_else(idx==new_cova, "OK", "VERIFICAR")
+      ) %>%
+      ungroup() %>%
+      rename(NM_COVA = new_cova) %>%
+      select(-idx)
+  } else {
+    df_all <- df_all %>%
+      arrange(NM_FILA, NM_COVA) %>%
+      mutate(check_sqc = "OK") %>%
+      group_by(NM_FILA) %>%
+      mutate(
+        check_sqc = if_else(CD_01=="N" & lag(CD_01)=="L" & lag(NM_FUSTE)==2 & NM_COVA==lag(NM_COVA), "VERIFICAR", check_sqc)
+      ) %>%
+      ungroup()
   }
-  n_ver <- sum(df_final$check_sqc=="VERIFICAR")
-  cat(sprintf("Quantidade de 'VERIFICAR': %d\n", n_ver))
-  if (n_ver>0) {
-    resp <- readline("Deseja verificar agora? (s/n): ")
-    if (tolower(resp)=="s") {
-      base_out <- sprintf("IFQ6_%s_%s", nome_mes, data_emissao)
-      cnt <- 1
-      outx <- file.path(pasta_output, sprintf("%s_%02d.xlsx", base_out, cnt))
-      while (file.exists(outx)) {
-        cnt <- cnt+1
-        outx <- file.path(pasta_output, sprintf("%s_%02d.xlsx", base_out, cnt))
-      }
-      write.xlsx(df_final, outx, rowNames=FALSE)
-      cat("Salvo em:", outx, "\n")
-      return(invisible(NULL))
-    }
-  }
-  
-  # --- 4. Ordenação, Ht_media e campos extras -------------------------------
-  df_final <- df_final %>%
-    mutate(Ht_media = coalesce(as.numeric(NM_ALTURA),0)) %>%
-    arrange(CD_PROJETO,CD_TALHAO,NM_PARCELA,Ht_media) %>%
-    group_by(CD_PROJETO,CD_TALHAO,NM_PARCELA) %>%
+  df_all <- df_all %>%
+    mutate(`Ht média` = coalesce(NM_ALTURA, 0)) %>%
+    arrange(CD_PROJETO, CD_TALHAO, NM_PARCELA, `Ht média`) %>%
+    group_by(CD_PROJETO, CD_TALHAO, NM_PARCELA) %>%
     mutate(NM_COVA_ORDENADO = row_number()) %>%
     ungroup() %>%
     mutate(
-      Chave_stand_1 = paste0(CD_PROJETO,"-",CD_TALHAO,"-",NM_PARCELA),
-      DT_MEDICAO1   = DT_INICIAL,
+      Chave_stand_1 = str_c(CD_PROJETO, CD_TALHAO, NM_PARCELA, sep = "-"),
+      DT_MEDIÇÃO1   = DT_INICIAL,
       EQUIPE_2      = CD_EQUIPE
     ) %>%
-    select(-check_dup,-check_cd,-check_sqc)
-  
-  # --- 5. Carrega cadastro SGF e faz o patch de UMA coluna AREA -----------
-  df_cad <- read_excel(cadastro_path, sheet = 1) %>%
-    rename_with(~ str_to_upper(.) %>% str_replace_all("[^A-Z0-9_]", "_")) %>%
-    rename_with(~ str_replace_all(., "_+", "_")) %>%
-    rename_with(~ str_remove_all(., "^_|_$"))
-  area_cols <- names(df_cad)[str_detect(names(df_cad),"AREA")]
-  area_col  <- area_cols[1]
-  df_cad <- df_cad %>%
+    select(-check_dup, -check_cd, -check_sqc)
+  df_cad <- read_excel(cadastro_path, sheet = 1, col_types = "text") %>%
+    mutate(Index = str_c(`Id Projeto`, Talhão))
+  area_col <- names(df_cad)[str_detect(names(df_cad), regex("ÁREA", ignore_case = TRUE))]
+  df_all <- df_all %>%
     mutate(
-      TALHAO_Z3 = str_sub(as.character(TALHAO), -3) %>% str_pad(3,"left","0"),
-      INDEX_Z3  = paste0(trimws(ID_PROJETO),TALHAO_Z3)
+      Index = str_c(CD_PROJETO, CD_TALHAO) %>%
+        str_replace("-(\\d)$", "-0\\1") %>%
+        str_replace("^(?!.*-\\d{2}$)(.*)$", "\\1-01")
     ) %>%
-    select(INDEX_Z3, all_of(area_col))
-  
-  df_final <- df_final %>%
-    mutate(
-      INDEX_Z3 = paste0(
-        trimws(CD_PROJETO),
-        str_pad(str_sub(as.character(CD_TALHAO), -3), 3, "left", "0")
+    left_join(df_cad %>% select(Index, !!sym(area_col)), by = "Index") %>%
+    rename(`Área (ha)` = !!sym(area_col)) %>%
+    mutate(`Área (ha)` = coalesce(`Área (ha)`, "")) %>%
+    rename(nm_parcela = NM_PARCELA, nm_area_parcela = NM_AREA_PARCELA)
+  calcular_metricas <- function(vals) {
+    n <- length(vals); meio <- floor(n/2); med <- if (n>0) median(vals) else 0
+    tot <- sum(vals); ord <- sort(vals)
+    le <- if (n%%2==0) sum(ord[1:meio][ord[1:meio] <= med]) else sum(ord[1:meio]) + med/2
+    pv50 <- if (tot>0) le/tot*100 else 0.1
+    tibble(n = n, `n/2` = meio, Mediana = med, `MHt` = tot, `MHt(<=Med)` = le, PV50 = pv50)
+  }
+  gera_tabela <- function(df_base, expo = 1) {
+    pivot <- df_base %>%
+      mutate(Ht = `Ht média`^expo) %>%
+      pivot_wider(
+        id_cols = c("Área (ha)", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO", "nm_parcela", "nm_area_parcela"),
+        names_from = NM_COVA_ORDENADO,
+        values_from = Ht,
+        values_fill = 0
       )
-    ) %>%
-    left_join(df_cad, by="INDEX_Z3") %>%
-    rename(AREA_HA_SGF = all_of(area_col))
-  
-  # --- 6. Função de métricas n, Mediana, 3Ht, PV50 --------------------------
-  calc_metrics <- function(vals) {
-    nonzero <- vals[vals>0]
-    n     <- length(nonzero)
-    med   <- if(n>0) median(nonzero) else 0
-    tot   <- sum(nonzero)
-    ord   <- sort(nonzero)
-    meio  <- floor(n/2)
-    le    <- if(n%%2==0) sum(ord[1:meio][ord[1:meio]<=med]) else sum(ord[1:meio]) + med/2
-    pv50  <- if(tot>0) le/tot*100 else 0
-    data.frame(n=n, Mediana=med, `3Ht`=tot, PV50=pv50)
+    covas <- as.character(sort(as.integer(names(pivot)[-(1:6)])))
+    met <- pivot %>% select(all_of(covas)) %>% pmap_dfr(calcular_metricas)
+    codes  <- c("A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E")
+    falhas <- c("M","H","F","L","S")
+    conts <- df_base %>%
+      count(CD_PROJETO, CD_TALHAO, nm_parcela, CD_01) %>%
+      pivot_wider(names_from = CD_01, values_from = n, values_fill = 0) %>%
+      rename(NM_PARCELA = nm_parcela)
+    tab <- pivot %>%
+      bind_cols(met) %>%
+      left_join(conts, by = c("CD_PROJETO","CD_TALHAO","nm_parcela" = "NM_PARCELA")) %>%
+      replace(is.na(.), 0) %>%
+      mutate(
+        `Stand (tree/ha)` = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) * 10000 / as.numeric(nm_area_parcela),
+        `Pits/ha`         = ((n - L) * 10000 / as.numeric(nm_area_parcela)),
+        `%_Sobrevivência_decimal` = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) / rowSums(across(all_of(codes))),
+        `%_Sobrevivência`  = percent(`%_Sobrevivência_decimal`, accuracy = 0.1, decimal.mark = ","),
+        `Pits por sob`    = `Stand (tree/ha)` / `%_Sobrevivência_decimal`,
+        `Check pits`      = `Pits por sob` - `Pits/ha`
+      ) %>%
+      select(-`%_Sobrevivência_decimal`)
+    tab
   }
-  
-  # --- 7. Tabela C -----------------------------------------------------------
-  df_res   <- df_final %>% rename(nm_parcela=NM_PARCELA,nm_area_parcela=NM_AREA_PARCELA)
-  df_pivot <- df_res %>%
-    pivot_wider(names_from=NM_COVA_ORDENADO, values_from=Ht_media, values_fill=0) %>%
-    arrange(CD_PROJETO,CD_TALHAO,nm_parcela)
-  cols0    <- c("AREA_HA_SGF","Chave_stand_1","CD_PROJETO","CD_TALHAO","nm_parcela","nm_area_parcela")
-  num_cols <- sort(as.numeric(names(df_pivot)[!names(df_pivot)%in%cols0]))
-  metrics  <- lapply(split(df_pivot[num_cols],1:nrow(df_pivot)), function(x) calc_metrics(unlist(x))) %>%
-              bind_rows()
-  df_tabela <- bind_cols(df_pivot[cols0], metrics)
-  codes     <- c("A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E")
-  falhas    <- c("M","H","F","L","S")
-  counts    <- df_final %>%
-                group_by(CD_PROJETO,CD_TALHAO,nm_parcela) %>%
-                summarise(count = n(), .groups="drop") %>%
-                pivot_wider(names_from=CD_01, values_from=count, values_fill=0)
-  df_tabela <- df_tabela %>%
-                left_join(counts, by=c("CD_PROJETO","CD_TALHAO","nm_parcela")) %>%
-                replace_na(list()) %>%
-                mutate(
-                  `Stand (tree/ha)`   = (rowSums(across(all_of(codes))) -
-                                         rowSums(across(all_of(falhas)))) *10000 / as.numeric(nm_area_parcela),
-                  Pits_per_ha        = ((n - L)*10000 / as.numeric(nm_area_parcela)) %>% replace_na(0)
-                )
-  medianas <- df_final %>%
-               group_by(CD_PROJETO,CD_TALHAO) %>%
-               summarise(Media_Ht=median(Ht_media), .groups="drop")
-  df_tabela <- df_tabela %>%
-                left_join(medianas,by=c("CD_PROJETO","CD_TALHAO")) %>%
-                mutate(
-                  tot= rowSums(across(all_of(codes))),
-                  valid= tot-rowSums(across(all_of(falhas))),
-                  surv= if_else(tot>0, valid/tot, 0),
-                  `%_Sobrevivencia`         = paste0(round(surv*100,1),"%"),
-                  `%_Sobrevivencia_decimal` = surv,
-                  `Pits_por_sobrevivente`   = `Stand (tree/ha)`/surv,
-                  Check_pits                = `Pits_por_sobrevivente`-Pits_per_ha
-                ) %>%
-                select(-tot,-valid)
-  
-  # --- 8. Tabela D (Ht^3) ----------------------------------------------------
-  df_D <- df_res %>%
-          pivot_wider(names_from=NM_COVA_ORDENADO, values_from=Ht_media, values_fill=0)
-  df_D[num_cols] <- df_D[num_cols]^3
-  metrics_D <- lapply(split(df_D[num_cols],1:nrow(df_D)), function(x) calc_metrics(unlist(x))) %>%
-               bind_rows()
-  df_D_resultados <- bind_cols(df_D[cols0], metrics_D) %>%
-                     left_join(counts, by=c("CD_PROJETO","CD_TALHAO","nm_parcela")) %>%
-                     replace_na(list()) %>%
-                     mutate(
-                       `Stand (tree/ha)` = (rowSums(across(all_of(codes))) -
-                                            rowSums(across(all_of(falhas))))*10000 / as.numeric(nm_area_parcela),
-                       Pits_per_ha       = ((n - L)*10000 / as.numeric(nm_area_parcela))%>%replace_na(0)
-                     ) %>%
-                     left_join(medianas, by=c("CD_PROJETO","CD_TALHAO")) %>%
-                     mutate(
-                       tot_D   = rowSums(across(all_of(codes))),
-                       valid_D = tot_D-rowSums(across(all_of(falhas))),
-                       surv_D  = if_else(tot_D>0, valid_D/tot_D, 0),
-                       `%_Sobrevivencia`    = paste0(round(surv_D*100,1),"%"),
-                       CHECK_covas          = `Stand (tree/ha)`/surv_D,
-                       CHECK_pits           = CHECK_covas - Pits_per_ha,
-                       CHECK_impares_pares  = if_else(n%%2==0,"Par","Impar"),
-                       `%_K`                = paste0(round(K/(n-L)*100,1),"%"),
-                       `%_L`                = paste0(round((H+I)/(n-L)*100,1),"%")
-                     ) %>%
-                     select(-tot_D,-valid_D)
-  
-  # --- 9. Gravação em Excel -------------------------------------------------
-  nome_base <- sprintf("BASE_IFQ6_%s_%s", nome_mes, data_emissao)
-  cnt <- 1
-  out2 <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
-  while (file.exists(out2)) {
-    cnt <- cnt + 1
-    out2 <- file.path(pasta_output, sprintf("%s_%02d.xlsx", nome_base, cnt))
-  }
-  write.xlsx(df_cad,           file = out2, sheetName = "Cadastro_SGF",               rowNames = FALSE)
-  write.xlsx(df_final,         file = out2, sheetName = paste0("Dados_CST_",nome_mes), append = TRUE, rowNames = FALSE)
-  write.xlsx(df_tabela,        file = out2, sheetName = "C_tabela_resultados",        append = TRUE, rowNames = FALSE)
-  write.xlsx(df_D_resultados,  file = out2, sheetName = "D_tabela_resultados_Ht3",     append = TRUE, rowNames = FALSE)
-  
-  cat("Tudo gravado em:", out2, "\n")
+  df_tabela <- gera_tabela(df_all, expo = 1)
+  df_D     <- gera_tabela(df_all, expo = 3) %>%
+    mutate(`CHECK covas` = `Stand (tree/ha)`/(`Pits/ha`/`Pits por sob`),
+           `CHECK impares/pares` = if_else(n %% 2 == 0, "Par", "Impar"))
+  df_aux <- df_all %>% distinct(CD_PROJETO, CD_TALHAO, DC_MATERIAL, DT_MEDIÇÃO, EQUIPE_2)
+  df_D <- left_join(df_D, df_aux, by = c("CD_PROJETO","CD_TALHAO")) %>%
+    rename(`Material Genético` = DC_MATERIAL, `Data Medição` = DT_MEDIÇÃO1, Equipe = EQUIPE_2)
+  mes  <- month(Sys.Date(), label = TRUE, abbr = FALSE)
+  hoje <- format(Sys.Date(), "%Y%m%d")
+  base <- glue("BASE_IFQ6_{mes}_{hoje}.xlsx")
+  out  <- file.path(dirname(dirname(paths[1])), "output", base)
+  dir.create(dirname(out), showWarnings = FALSE, recursive = TRUE)
+  wb <- createWorkbook()
+  addWorksheet(wb, "Cadastro_SGF"); writeData(wb, "Cadastro_SGF", df_cad %>% select(-Index))
+  addWorksheet(wb, paste0("Dados_CST_", mes)); writeData(wb, paste0("Dados_CST_", mes), df_all %>% select(-Index))
+  addWorksheet(wb, "C_tabela_resultados"); writeData(wb, "C_tabela_resultados", df_tabela)
+  addWorksheet(wb, "D_tabela_resultados_Ht3"); writeData(wb, "D_tabela_resultados_Ht3", df_D)
+  saveWorkbook(wb, out, overwrite = TRUE)
+  message("Tudo gravado em '", out, "'")
 }
 
-# ---------------------------------------------------
-# Exemplo de uso: monte automaticamente o vetor 'arquivos'
-pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/.../OtimizadorIFQ6/dados"
-todos_xlsx <- list.files(path=pasta_dados, pattern="\\.xlsx$", full.names=TRUE)
-cadastro   <- todos_xlsx[grepl("SGF", toupper(basename(todos_xlsx)))]
-ifq6       <- setdiff(todos_xlsx, cadastro)
-arquivos   <- c(cadastro, ifq6)
-stopifnot(all(file.exists(arquivos)))
+pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados"
+todos_xlsx <- list.files(
+  path        = pasta_dados,
+  pattern     = "\\.xlsx$",
+  full.names  = TRUE
+)
+cadastro <- todos_xlsx[grepl("SGF", toupper(basename(todos_xlsx)))]
+ifq6      <- setdiff(todos_xlsx, cadastro)
+arquivos <- c(
+  cadastro,
+  ifq6
+)
+stopifnot(all(file.exists(arquivos)))  
+print(arquivos)
 
-# Carregue e rode
-# source("OtimizadorIFQ6.R", encoding="UTF-8")
-# OtimizadorIFQ6(arquivos)
+valicacao_ifq6(arquivos)
+
+                     > source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
+
+> library(readxl)
+
+> library(dplyr)
+
+Anexando pacote: ‘dplyr’
+
+Os seguintes objetos são mascarados por ‘package:stats’:
+
+    filter, lag
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+> library(tidyr)
+
+> library(purrr)
+
+> library(stringr)
+
+> library(lubridate)
+
+Anexando pacote: ‘lubridate’
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+> library(openxlsx)
+
+> library(glue)
+
+> library(scales)
+
+Anexando pacote: ‘scales’
+
+O seguinte objeto é mascarado por ‘package:purrr’:
+
+    discard
+
+
+> validacao_ifq6 <- function(paths) {
++   cols_esperadas <- c(
++     "CD_PROJETO","CD_TALHAO","NM_PARCELA","DC_TIPO_PARCELA","NM_AREA_PARCELA",
++      .... [TRUNCATED] 
+
+> pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/Ot ..." ... [TRUNCATED] 
+
+> todos_xlsx <- list.files(
++   path        = pasta_dados,
++   pattern     = "\\.xlsx$",
++   full.names  = TRUE
++ )
+
+> cadastro <- todos_xlsx[grepl("SGF", toupper(basename(todos_xlsx)))]
+
+> ifq6      <- setdiff(todos_xlsx, cadastro)
+
+> arquivos <- c(
++   cadastro,
++   ifq6
++ )
+
+> stopifnot(all(file.exists(arquivos)))  
+
+> print(arquivos)
+ [1] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/Cadastro SGF (correto).xlsx"                  
+ [2] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/~$04_Base IFQ6_APRIL_Ht3_2025.xlsx"           
+ [3] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/04_Base IFQ6_APRIL_Ht3_2025.xlsx"             
+ [4] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6271_TABOCA_SRP - IFQ6 (4).xlsx"              
+ [5] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx"
+ [6] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx"        
+ [7] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx" 
+ [8] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx"          
+ [9] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx"           
+[10] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx"         
+[11] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx"      
+[12] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/base_dados_IFQ6_propria_fev.xlsx"             
+[13] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_10032025.xlsx"      
+[14] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_17032025.xlsx"      
+[15] "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados/IFQ6_MS_Florestal_Bravore_24032025.xlsx"      
+
+> valicacao_ifq6(arquivos)
+Error in valicacao_ifq6(arquivos) : 
+  não foi possível encontrar a função "valicacao_ifq6"
+Além disso: Mensagens de aviso:
+1: pacote ‘readxl’ foi compilado no R versão 4.4.3 
+2: pacote ‘dplyr’ foi compilado no R versão 4.4.3 
+3: pacote ‘tidyr’ foi compilado no R versão 4.4.3 
+4: pacote ‘purrr’ foi compilado no R versão 4.4.3 
+5: pacote ‘stringr’ foi compilado no R versão 4.4.3 
+6: pacote ‘lubridate’ foi compilado no R versão 4.4.3 
+7: pacote ‘openxlsx’ foi compilado no R versão 4.4.3 
+8: pacote ‘glue’ foi compilado no R versão 4.4.3 
+9: pacote ‘scales’ foi compilado no R versão 4.4.3 
