@@ -1,141 +1,175 @@
-# --- início do bloco parte 8/9 dentro de validacao() ---
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", echo=TRUE)
 
-# (i) função de métricas e vetores de códigos
-calc_metrics <- function(vals) {
-  vals <- vals[!is.na(vals)]
-  n    <- length(vals)
-  if (n == 0) {
-    return(tibble(n = 0, n2 = 0, Mediana = 0, sumHt = 0, sumHt_le = 0, PV50 = 0))
-  }
-  meio <- floor(n/2)
-  med  <- median(vals)
-  tot  <- sum(vals)
-  ordv <- sort(vals)
-  le   <- if (n %% 2 == 0) {
-            sum(ordv[1:meio][ordv[1:meio] <= med])
-          } else {
-            sum(ordv[1:meio]) + med/2
-          }
-  pv50 <- if (tot > 0) le/tot*100 else 0
-  tibble(n = n, n2 = meio, Mediana = med, sumHt = tot, sumHt_le = le, PV50 = pv50)
-}
-codes  <- c("A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E")
-falhas <- c("M","H","F","L","S")
+> library(R6)
 
-# (ii) prepara df_final para pivot
-df_final <- df_final %>%
-  mutate(
-    Ht_media         = as.numeric(NM_ALTURA),
-    Ht_media         = replace_na(Ht_media, 0),
-    NM_COVA_ORDENADO = NM_COVA,
-    chave_stand      = paste(CD_PROJETO, CD_TALHAO, NM_PARCELA, sep = "-"),
-    dt_medicao1      = DT_INICIAL,
-    equipe2          = CD_EQUIPE
-  ) %>%
-  select(-check_dup, -check_cd, -check_sqc)
+> library(readxl)
 
-# (iii) TABELA C
-pivot_c <- df_final %>%
-  pivot_wider(
-    id_cols     = c("chave_stand","CD_PROJETO","CD_TALHAO",
-                    "NM_PARCELA","NM_AREA_PARCELA"),
-    names_from  = NM_COVA_ORDENADO,
-    values_from = Ht_media,
-    values_fill = list(.default = 0),
-    values_fn   = function(x) mean(x, na.rm = TRUE)
-  )
+> library(dplyr)
 
-covas <- setdiff(
-  names(pivot_c),
-  c("chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA")
-)
+> library(tidyr)
 
-met_c <- pivot_c %>%
-  select(all_of(covas)) %>%
-  pmap_dfr(~ calc_metrics(c(...)))
+> library(purrr)
 
-conts <- df_final %>%
-  count(CD_PROJETO, CD_TALHAO, NM_PARCELA, CD_01) %>%
-  pivot_wider(
-    names_from  = CD_01,
-    values_from = n,
-    values_fill = list(.default = 0)
-  )
+> library(stringr)
 
-df_c <- bind_cols(pivot_c, met_c) %>%
-  left_join(conts, by = c("CD_PROJETO","CD_TALHAO","NM_PARCELA")) %>%
-  mutate(
-    Stand_tree_ha = (rowSums(across(all_of(codes))) -
-                     rowSums(across(all_of(falhas)))) * 10000 /
-                    as.numeric(NM_AREA_PARCELA),
-    Pits_ha       = ((n - L) * 10000 / as.numeric(NM_AREA_PARCELA)),
-    surv_dec      = (rowSums(across(all_of(codes))) -
-                     rowSums(across(all_of(falhas)))) /
-                    rowSums(across(all_of(codes))),
-    surv_pct      = percent(surv_dec/100, accuracy = 0.1, decimal.mark = ","),
-    Pits_por_sob  = Stand_tree_ha / surv_dec,
-    Check_pits    = Pits_por_sob - Pits_ha
-  ) %>%
-  select(-surv_dec)
+> library(lubridate)
 
-# (iv) TABELA D (Ht^3)
-pivot_d <- df_final %>%
-  mutate(Ht3 = Ht_media^3) %>%
-  pivot_wider(
-    id_cols     = c("chave_stand","CD_PROJETO","CD_TALHAO",
-                    "NM_PARCELA","NM_AREA_PARCELA"),
-    names_from  = NM_COVA_ORDENADO,
-    values_from = Ht3,
-    values_fill = list(.default = 0),
-    values_fn   = function(x) mean(x, na.rm = TRUE)
-  )
+> library(openxlsx)
 
-met_d <- pivot_d %>%
-  select(all_of(covas)) %>%
-  pmap_dfr(~ calc_metrics(c(...)))
+> library(glue)
 
-df_d <- bind_cols(pivot_d, met_d) %>%
-  left_join(conts, by = c("CD_PROJETO","CD_TALHAO","NM_PARCELA")) %>%
-  mutate(
-    Stand_tree_ha  = (rowSums(across(all_of(codes))) -
-                      rowSums(across(all_of(falhas)))) * 10000 /
-                     as.numeric(NM_AREA_PARCELA),
-    Pits_ha        = ((n - L) * 10000 / as.numeric(NM_AREA_PARCELA)),
-    surv_dec       = (rowSums(across(all_of(codes))) -
-                      rowSums(across(all_of(falhas)))) /
-                     rowSums(across(all_of(codes))),
-    surv_pct       = percent(surv_dec/100, accuracy = 0.1, decimal.mark = ","),
-    Check_covas    = Stand_tree_ha / (Pits_ha / Pits_por_sob),
-    Check_imp_par  = if_else(n %% 2 == 0, "Par", "Impar")
-  ) %>%
-  select(-surv_dec)
+> library(scales)
 
-# (v) grava em Excel
-df_cadastro <- read_excel(cadastro_path, sheet = 1, col_types = "text") %>%
-  mutate(index = paste0(`Id Projeto`, Talhao))
+> `%notin%` <- function(x, y) !(x %in% y)
 
-wb <- createWorkbook()
-addWorksheet(wb, "cadastro_sgf")
-writeData(wb, "cadastro_sgf", df_cadastro %>% select(-index))
+> OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
++   public = list(
++     validacao = function(paths) {
++       # 1) colunas esperadas
++       nomes_colu .... [TRUNCATED] 
 
-addWorksheet(wb, glue("dados_cst_{nome_mes}"))
-writeData(wb, glue("dados_cst_{nome_mes}"), df_final)
+> pasta_dados <- "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação e ..." ... [TRUNCATED] 
 
-addWorksheet(wb, "C_tabela_resultados")
-writeData(wb, "C_tabela_resultados", df_c)
+> arquivos <- list.files(
++   path       = pasta_dados,
++   pattern    = "\\.xlsx$",
++   full.names = TRUE,
++   recursive = TRUE
++ )
 
-addWorksheet(wb, "D_tabela_resultados_Ht3")
-writeData(wb, "D_tabela_resultados_Ht3", df_d)
+> arquivos <- c(
++   arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
++   setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)),  .... [TRUNCATED] 
 
-nome_base2 <- glue("BASE_IFQ6_{nome_mes}_{data_emissao}")
-cnt2 <- 1
-repeat {
-  out2 <- file.path(pasta_output,
-                    glue("{nome_base2}_{str_pad(cnt2, width = 2, pad = '0')}.xlsx"))
-  if (!file.exists(out2)) break
-  cnt2 <- cnt2 + 1
-}
-saveWorkbook(wb, out2, overwrite = TRUE)
-message("Tudo gravado em ", out2)
+> print(arquivos)
+ [1] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/Cadastro SGF (correto).xlsx"                  
+ [2] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6271_TABOCA_SRP - IFQ6 (4).xlsx"              
+ [3] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx"
+ [4] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx"        
+ [5] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx" 
+ [6] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx"          
+ [7] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx"           
+ [8] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx" 
+ [9] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx"         
+[10] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx"      
+[11] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/base_dados_IFQ6_propria_fev.xlsx"             
+[12] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_10032025.xlsx"      
+[13] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_17032025.xlsx"      
+[14] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_24032025.xlsx"      
 
-# --- fim do bloco parte 8/9 ---
+> otimizador <- OtimizadorIFQ6$new()
+
+> otimizador$validacao(arquivos)
+Arquivo sem equipe identificada automaticamente: 6271_TABOCA_SRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6348_BERRANTE_II_RRP - IFQ6 (29).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+New names:
+* `` -> `...35`
+Quantidade de VERIFICAR: 0
+Error in otimizador$validacao(arquivos) : objeto 'df_c' não encontrado
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", echo=TRUE)
+
+> library(R6)
+
+> library(readxl)
+
+> library(dplyr)
+
+> library(tidyr)
+
+> library(purrr)
+
+> library(stringr)
+
+> library(lubridate)
+
+> library(openxlsx)
+
+> library(glue)
+
+> library(scales)
+
+> `%notin%` <- function(x, y) !(x %in% y)
+
+> OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
++   public = list(
++     validacao = function(paths) {
++       # 1) colunas esperadas
++       nomes_colu .... [TRUNCATED] 
+
+> pasta_dados <- "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação e ..." ... [TRUNCATED] 
+
+> arquivos <- list.files(
++   path       = pasta_dados,
++   pattern    = "\\.xlsx$",
++   full.names = TRUE,
++   recursive = TRUE
++ )
+
+> arquivos <- c(
++   arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
++   setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)),  .... [TRUNCATED] 
+
+> print(arquivos)
+ [1] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/Cadastro SGF (correto).xlsx"                  
+ [2] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6271_TABOCA_SRP - IFQ6 (4).xlsx"              
+ [3] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx"
+ [4] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx"        
+ [5] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx" 
+ [6] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx"          
+ [7] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx"           
+ [8] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx" 
+ [9] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx"         
+[10] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx"      
+[11] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/base_dados_IFQ6_propria_fev.xlsx"             
+[12] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_10032025.xlsx"      
+[13] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_17032025.xlsx"      
+[14] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_24032025.xlsx"      
+
+> otimizador <- OtimizadorIFQ6$new()
+
+> otimizador$validacao(arquivos)
+Arquivo sem equipe identificada automaticamente: 6271_TABOCA_SRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6348_BERRANTE_II_RRP - IFQ6 (29).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+New names:
+* `` -> `...35`
+Quantidade de VERIFICAR: 0
+Error in `mutate()`:
+i In argument: `Stand_tree_ha = `/`(...)`.
+Caused by error in `across()`:
+i In argument: `all_of(codes)`.
+Caused by error in `all_of()`:
+! Can't subset elements that don't exist.
+x Elements `A`, `D`, `G`, `J`, `S`, etc. don't exist.
+Run `rlang::last_trace()` to see where the error occurred.
