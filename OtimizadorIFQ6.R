@@ -22,7 +22,7 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
         "DC_MATERIAL","NM_FILA","NM_COVA","NM_FUSTE","NM_DAP_ANT","NM_ALTURA_ANT",
         "NM_CAP_DAP1","NM_DAP2","NM_DAP","NM_ALTURA","CD_01","CD_02","CD_03"
       )
-      # 2) datas e diretórios
+      # 2) datas e diretÃ³rios
       meses <- c("Janeiro","Fevereiro","Marco","Abril","Maio","Junho",
                  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro")
       mes_atual    <- month(Sys.Date())
@@ -36,7 +36,7 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
       cadastro_path <- keep(paths,
                             ~ str_detect(toupper(basename(.x)), "SGF")
       )[[1]]
-      # 4) leitura e atribuição de equipe
+      # 4) leitura e atribuiÃ§Ã£o de equipe
       lista_df <- list()
       equipes   <- list()
       for (p in paths) {
@@ -81,7 +81,7 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
         message("Nenhum arquivo processado.")
         return(invisible(NULL))
       }
-      # 5) concatenação e verificações
+      # 5) concatenaÃ§Ã£o e verificaÃ§Ãµes
       df_final <- bind_rows(lista_df) %>%
         mutate(NM_COVA = as.numeric(NM_COVA)) %>%
         arrange(CD_PROJETO, CD_TALHAO, NM_PARCELA, NM_FILA, NM_COVA) %>%
@@ -212,10 +212,10 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                 pivot_wider(
                                   id_cols    = c("chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA"),
                                   names_from = NM_COVA_ORDENADO,
-                                  -   values_from= Ht_media,
-                                  -   values_fill= 0
-                                  +   values_from= Ht_media,
-                                  +   values_fill= list(.default = 0)
+                                     values_from= Ht_media,
+                                     values_fill= 0,
+                                     values_from= Ht_media,
+                                     values_fill= list(.default = 0)
                                 )
                               covas <- setdiff(
                                 names(pivot_c),
@@ -248,10 +248,10 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                 pivot_wider(
                                   id_cols    = c("chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA"),
                                   names_from = NM_COVA_ORDENADO,
-                                  -   values_from= Ht3,
-                                  -   values_fill= 0
-                                  +   values_from= Ht3,
-                                  +   values_fill= list(.default = 0)
+                                     values_from= Ht3,
+                                     values_fill= 0,
+                                     values_from= Ht3,
+                                     values_fill= list(.default = 0)
                                 )
                               
                               met_d <- pivot_d %>%
@@ -296,7 +296,7 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                           )
 )
 
-pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados at"
+pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/AutomaÃ§Ã£o em R/OtimizadorIFQ6/dados at"
 arquivos <- list.files(
   path       = pasta_dados,
   pattern    = "\\.xlsx$",
@@ -310,8 +310,102 @@ otimizador <- OtimizadorIFQ6$new()
 otimizador$validacao(arquivos)
 
 
-> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
-Error in source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R",  : 
-  F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação :215:50: '=' inesperado
-214:                                   names_from = NM_COVA_ORDENADO,
-215:                                   -   values_from=
+R version 4.4.0 (2024-04-24 ucrt) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: x86_64-w64-mingw32/x64
+
+R é um software livre e vem sem GARANTIA ALGUMA.
+Você pode redistribuí-lo sob certas circunstâncias.
+Digite 'license()' ou 'licence()' para detalhes de distribuição.
+
+R é um projeto colaborativo com muitos contribuidores.
+Digite 'contributors()' para obter mais informações e
+'citation()' para saber como citar o R ou pacotes do R em publicações.
+
+Digite 'demo()' para demonstrações, 'help()' para o sistema on-line de ajuda,
+ou 'help.start()' para abrir o sistema de ajuda em HTML no seu navegador.
+Digite 'q()' para sair do R.
+
+[Workspace loaded from ~/.RData]
+
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", echo=TRUE)
+
+> library(R6)
+
+> library(readxl)
+
+> library(dplyr)
+
+Anexando pacote: ‘dplyr’
+
+Os seguintes objetos são mascarados por ‘package:stats’:
+
+    filter, lag
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+> library(tidyr)
+
+> library(purrr)
+
+> library(stringr)
+
+> library(lubridate)
+
+Anexando pacote: ‘lubridate’
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+> library(openxlsx)
+
+> library(glue)
+
+> library(scales)
+
+Anexando pacote: ‘scales’
+
+O seguinte objeto é mascarado por ‘package:purrr’:
+
+    discard
+
+
+> `%notin%` <- function(x, y) !(x %in% y)
+
+> OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
++   public = list(
++     validacao = function(paths) {
++       # 1) colunas esperadas
++       nomes_colu .... [TRUNCATED] 
+
+> pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/AutomaÃ§Ã£o em R/ ..." ... [TRUNCATED] 
+
+> arquivos <- list.files(
++   path       = pasta_dados,
++   pattern    = "\\.xlsx$",
++   full.names = TRUE
++ )
+
+> arquivos <- c(
++   arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
++   setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)),  .... [TRUNCATED] 
+
+> otimizador <- OtimizadorIFQ6$new()
+
+> otimizador$validacao(arquivos)
+Error in paths[[1]] : índice fora dos limites
+Além disso: Mensagens de aviso:
+1: pacote ‘R6’ foi compilado no R versão 4.4.3 
+2: pacote ‘readxl’ foi compilado no R versão 4.4.3 
+3: pacote ‘dplyr’ foi compilado no R versão 4.4.3 
+4: pacote ‘tidyr’ foi compilado no R versão 4.4.3 
+5: pacote ‘purrr’ foi compilado no R versão 4.4.3 
+6: pacote ‘stringr’ foi compilado no R versão 4.4.3 
+7: pacote ‘lubridate’ foi compilado no R versão 4.4.3 
+8: pacote ‘openxlsx’ foi compilado no R versão 4.4.3 
+9: pacote ‘glue’ foi compilado no R versão 4.4.3 
