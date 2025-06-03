@@ -1,96 +1,64 @@
-# --- dentro de validacao(), antes de montar tabela C/D ---
+> OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
++   public = list(
++     validacao = function(paths) {
++       # 1) colunas esperadas
++       nomes_colu .... [TRUNCATED] 
 
-# Definição da função de métricas e vetores de códigos
-calc_metrics <- function(vals) {
-  n    <- length(vals)
-  meio <- floor(n/2)
-  med  <- if (n>0) median(vals) else 0
-  tot  <- sum(vals)
-  ordv <- sort(vals)
-  le   <- if (n%%2==0) {
-            sum(ordv[1:meio][ordv[1:meio] <= med])
-          } else {
-            sum(ordv[1:meio]) + med/2
-          }
-  pv50 <- if (tot>0) le/tot*100 else 0.1
-  tibble(n = n, n2 = meio, Mediana = med, sumHt = tot, sumHt_le = le, PV50 = pv50)
-}
-codes  <- c("A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E")
-falhas <- c("M","H","F","L","S")
+> pasta_dados <- "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação e ..." ... [TRUNCATED] 
 
-# 8) gera tabelas C e D
-df_final <- df_final %>%
-  mutate(
-    Ht_media         = as.numeric(NM_ALTURA),
-    NM_COVA_ORDENADO = NM_COVA,
-    chave_stand      = paste(CD_PROJETO, CD_TALHAO, NM_PARCELA, sep = "-"),
-    dt_medicao1      = DT_INICIAL,
-    equipe2          = CD_EQUIPE
-  ) %>%
-  select(-check_dup, -check_cd, -check_sqc)
+> arquivos <- list.files(
++   path       = pasta_dados,
++   pattern    = "\\.xlsx$",
++   full.names = TRUE,
++   recursive = TRUE
++ )
 
-# TABELA C
-pivot_c <- df_final %>%
-  pivot_wider(
-    id_cols     = c("chave_stand","CD_PROJETO","CD_TALHAO",
-                    "NM_PARCELA","NM_AREA_PARCELA"),
-    names_from  = NM_COVA_ORDENADO,
-    values_from = Ht_media,
-    values_fill = list(.default = 0),
-    values_fn   = mean
-  )
+> arquivos <- c(
++   arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
++   setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)),  .... [TRUNCATED] 
 
-covas <- setdiff(
-  names(pivot_c),
-  c("chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA")
-)
+> print(arquivos)
+ [1] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/Cadastro SGF (correto).xlsx"                  
+ [2] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6271_TABOCA_SRP - IFQ6 (4).xlsx"              
+ [3] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx"
+ [4] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6348_BERRANTE_II_RRP - IFQ6 (29).xlsx"        
+ [5] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx" 
+ [6] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx"          
+ [7] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx"           
+ [8] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx" 
+ [9] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx"         
+[10] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx"      
+[11] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/base_dados_IFQ6_propria_fev.xlsx"             
+[12] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_10032025.xlsx"      
+[13] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_17032025.xlsx"      
+[14] "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at/IFQ6_MS_Florestal_Bravore_24032025.xlsx"      
 
-met_c <- pivot_c %>%
-  select(all_of(covas)) %>%
-  pmap_dfr(calc_metrics)
+> otimizador <- OtimizadorIFQ6$new()
 
-conts <- df_final %>%
-  count(CD_PROJETO, CD_TALHAO, NM_PARCELA, CD_01) %>%
-  pivot_wider(names_from = CD_01, values_from = n, values_fill = list(.default = 0))
-
-df_c <- bind_cols(pivot_c, met_c) %>%
-  left_join(conts, by = c("CD_PROJETO","CD_TALHAO","NM_PARCELA")) %>%
-  mutate(
-    Stand_tree_ha = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) * 10000 / as.numeric(NM_AREA_PARCELA),
-    Pits_ha       = ((n - L) * 10000 / as.numeric(NM_AREA_PARCELA)),
-    surv_dec      = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) / rowSums(across(all_of(codes))),
-    surv_pct      = percent(surv_dec/100, accuracy = 0.1, decimal.mark = ","),
-    Pits_por_sob  = Stand_tree_ha / surv_dec,
-    Check_pits    = Pits_por_sob - Pits_ha
-  ) %>%
-  select(-surv_dec)
-
-# TABELA D (Ht^3)
-pivot_d <- df_final %>%
-  mutate(Ht3 = Ht_media^3) %>%
-  pivot_wider(
-    id_cols     = c("chave_stand","CD_PROJETO","CD_TALHAO",
-                    "NM_PARCELA","NM_AREA_PARCELA"),
-    names_from  = NM_COVA_ORDENADO,
-    values_from = Ht3,
-    values_fill = list(.default = 0),
-    values_fn   = mean
-  )
-
-met_d <- pivot_d %>%
-  select(all_of(covas)) %>%
-  pmap_dfr(calc_metrics)
-
-df_d <- bind_cols(pivot_d, met_d) %>%
-  left_join(conts, by = c("CD_PROJETO","CD_TALHAO","NM_PARCELA")) %>%
-  mutate(
-    Stand_tree_ha  = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) * 10000 / as.numeric(NM_AREA_PARCELA),
-    Pits_ha        = ((n - L) * 10000 / as.numeric(NM_AREA_PARCELA)),
-    surv_dec       = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) / rowSums(across(all_of(codes))),
-    surv_pct       = percent(surv_dec/100, accuracy = 0.1, decimal.mark = ","),
-    Check_covas    = Stand_tree_ha / (Pits_ha / Pits_por_sob),
-    Check_imp_par  = if_else(n %% 2 == 0, "Par", "Impar")
-  ) %>%
-  select(-surv_dec)
-
-# … siga com a gravação em Excel normalmente …
+> otimizador$validacao(arquivos)
+Arquivo sem equipe identificada automaticamente: 6271_TABOCA_SRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6348_BERRANTE_II_RRP - IFQ6 (29).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+New names:
+* `` -> `...35`
+Quantidade de VERIFICAR: 0
+Error in `pmap()`:
+i In index: 1.
+Caused by error in `.f()`:
+! argumentos não utilizados (`1` = .l[[1]][[i]], `2` = .l[[2]][[i]], `3` = .l[[3]][[i]], `4` = .l[[4]][[i]], `5` = .l[[5]][[i]], `6` = .l[[6]][[i]], `7` = .l[[7]][[i]], `8` = .l[[8]][[i]], `9` = .l[[9]][[i]], `10` = .l[[10]][[i]], `11` = .l[[11]][[i]], `12` = .l[[12]][[i]], `13` = .l[[13]][[i]], `14` = .l[[14]][[i]], `15` = .l[[15]][[i]], `16` = .l[[16]][[i]], `17` = .l[[17]][[i]], `18` = .l[[18]][[i]], `19` = .l[[19]][[i]], `20` = .l[[20]][[i]], `21` = .l[[21]][[i]], `22` = .l[[22]][[i]], `23` = .l[[23]][[i]], `24` = .l[[24]][[i]], `25` = .l[[25]][[i]], `26` = .l[[26]][[i]], `27` = .l[[27]][[i]], `28` = .l[[28]][[i]], `29` = .l[[29]][[i]], `30` = .l[[30]][[i]], `31` = .l[[31]][[i]], `32` = .l[[32]][[i]], `33` = .l[[33]][[i]], `34` = .l[[34]][[i]], `35` = .l[[35]][[i]], `36` = .l[[36]][[i]], `37` = .l[[37]][[i]], `38` = .l[[38]][[i]], `39` = .l[[39]][[i]], `40` = .l[[40]][[i]], `41` = .l[[41]][[i]], `42` = .l[[42]][[i]], `43` = .l[[43]][[i]], `44` = .l[[44]][[i]], `45` = .l[[45]][[i]], `46` = .l[[46]][[i]], `47` = .l[[47]][[i]], `48` = .l[[48]][[i]], `49` = .l[[49]][[i]], `50` = .l[[50]][[i]], `51` = .l[[51]][[i]], `52` = .l[[52]][[i]], `53` = .l[[53]][[i]], `54` = .l[[54]][[i]], `55` = .l[[55]][[i]], `56` = .l[[56]][[i]], `57` = .l[[57]][[i]], `58` = .l[[58]][[i]], `59` = .l[[59]][[i]], `60` = .l[[60]][[i]], `61` = .l[[61]][[i]], `62` = .l[[62]][[i]], `63` = .l[[63]][[i]], `64` = .l[[64]][[i]], `65` = .l[[65]][[i]], `66` = .l[[66]][[i]], `67` = .l[[67]][[i]], `68` = .l[[68]][[i]], `69` = .l[[69]][[i]], `70` = .l[[70]][[i]], `71` = .l[[71]][[i]], `72` = .l[[72]][[i]], `73` = .l[[73]][[i]], `74` = .l[[74]][[i]], `75` = .l[[75]][[i]], `76` = .l[[76]][[i]], `77` = .l[[77]][[i]], `78` = .l[[78]][[i]], `79` = .l[[79]][[i]], `80` = .l[[80]][[i]], `81` = .l[[81]][[i]], `82` = .l[[82]][[i]], `83` = .l[[83]][[i]], `84` = .l[[84]][[i]], `85` = .l[[85]][[i]], `86` = .l[[86]][[i]], `87` = .l[[87]][[i]], `88` = .l[[88]][[i]], `89` = .l[[89]][[i]], `90` = .l[[90]][[i]], `91` = .l[[91]][[i]], `92` = .l[[92]][[i]], `93` = .l[[93]][[i]], `94` = .l[[94]][[i]], `95` = .l[[95]][[i]], `96` = .l[[96]][[i]], `97` = .l[[97]][[i]], `98` = .l[[98]][[i]], `99` = .l[[99]][[i]], `100` = .l[[100]][[i]], `101` = .l[[101]][[i]], `102` = .l[[102]][[i]], `103` = .l[[103]][[i]], `104` = .l[[104]][[i]], `105` = .l[[105]][[i]], `106` = .l[[106]][[i]], `107` = .l[[107]][[i]], `108` = .l[[108]][[i]], `109` = .l[[109]][[i]], `110` = .l[[110]][[i]], `111` = .l[[111]][[i]], `112` = .l[[112]][[i]], `113` = .l[[113]][[i]], `114` = .l[[114]][[i]], `115` = .l[[115]][[i]], `116` = .l[[116]][[i]], `117` = .l[[117]][[i]], `118` = .l[[118]][[i]], `119` = .l[[119]][[i]], `120` = .l[[120]][[i]], `121` = .l[[121]][[i]], `122` = .l[[122]][[i]], `123` = .l[[123]][[i]], `124` = .l[[124]][[i]], `125` = .l[[125]][[i]], `126` = .l[[126]][[i]], `127` = .l[[127]][[i]], `128` = .l[[128]][[i]], `129` = .l[[129]][[i]], `130` = .l[[130]][[i]], `131` = .l[[131]][[i]], `132` = .l[[132]][[i]], `133` = .l[[133]][[i]], `134` = .l[[134]][[i]], `135` = .l[[135]][[i]], `136` = .l[[136]][[i]], `137` = .l[[137]][[i]], `138` = .l[[138]][[i]], `139` = .l[[139]][[i]], `140` = .l[[140]][[i]], `141` = .l[[141]][[i]], `142` = .l[[142]][[i]], `143` = .l[[143]][[i]], `144` = .l[[144]][[i]], `145` = .l[[145]][[i]], `146` = .l[[146]][[i]], `147` = .l[[147]][[i]], `148` = .l[[148]][[i]], `149` = .l[[149]][[i]], `150` = .l[[150]][[i]], `151` = .l[[151]][[i]], `152` = .l[[152]][[i]], `153` = .l[[153]][[i]], `154` = .l[[154]][[i]], `155` = .l[[155]][[i]], `156` = .l[[156]][[i]], `157` = .l[[157]][[i]], `158` = .l[[158]][[i]], `159` = .l[[159]][[i]], `160` = .l[[160]][[i]], `161` = .l[[161]][[i]], `162` = .l[[162]][[i]], `163` = .l[[163]][[i]], `164` = .l[[164]][[i]], `165` = .l[[165]][[i]], `166` = .l[[166]][[i]], `167` = .l[[167]][[i]], `168` = .l[[168]][[i]], `169` = .l[[169]][[i]], `170` = .l[[170]][[i]], `171` = .l[[171]][[i]], `172` = .l[[172]][[i]], `173` = .l[[173]][[i]], `174` = .l[[174]][[i]], `175` = .l[[175]][[i]], `176` = .l[[176]][[i]], `177` = .l[[177]][[i]], `178` = .l[[178]][[i]], `179` = .l[[179]][[i]], `180` = .l[[180]][[i]], `181` = .l[[181]][[i]], `182` = .l[[182]][[i]], `183` = .l[[183]][[i]], `184` = .l[[184]][[i]], `185` = .l[[185]][[i]], `186` = .l[[186]][[i]], `187` = .l[[187]][[i]], `188` = .l[[188]][[i]], `189` = .l[[189]][[i]], `190` = .l[[190]][[i]], `191` = .l[[191]][[i]], `192` = .l[[192]][[i]], `193` = .l[[193]][[i]], `194` = .l[[194]][[i]], `195` = .l[[195]][[i]], `196` = .l[[196]][[i]], `197` = .l[[197]][[i]], `198` = .l[[198]][[i]], `199` = .l[[199]][[i]], `200` = .l[[200]][[i]], `201` = .l[[201]][[i]], `202` = .l[[202]][[i]], `203` = .l[[203]][[i]], `204` = .l[[204]][[i]], `205` = .l[[205]][[i]], `206` = .l[[206]][[i]], `207` = .l[[207]][[i]], `208` = .l[[208]][[i]], `209` = .l[[209]][[i]], `210` = .l[[210]][[i]], `211` = .l[[211]][[i]], `212` = .l[[212]][[i]], `213` = .l[[213]][[i]], `214` = .l[[214]][[i]], `215` = .l[[215]][[i]], `216` = .l[[216]][[i]], `217` = .l[[217]][[i]], `218` = .l[[218]][[i]], `219` = .l[[219]][[i]], `220` = .l[[220]][[i]], `221` = .l[[221]][[i]], `222` = .l[[222]][[i]], `223` = .l[[223]][[i]], `224` = .l[[224]][[i]], `225` = .l[[225]][[i]], `226` = .l[[226]][[i]], `227` = .l[[227]][[i]], `228` = .l[[228]][[i]], `229` = .l[[229]][[i]], `230` = .l[[230]][[i]], `231` = .l[[231]][[i]], `232` = .l[[232]][[i]], `233` = .l[[233]][[i]], `234` = .l[[234]][[i]], `235` = .l[[235]][[i]], `236` = .l[[236]][[i]], `237` = .l[[237]][[i]], `238` = .l[[238]][[i]], `239` = .l[[239]][[i]], `240` = .l[[240]][[i]], `241` = .l[[241]][[i]], `242` = .l[[242]][[i]], `243` = .l[[243]][[i]], `244` = .l[[244]][[i]], `245` = .l[[245]][[i]], `246` = .l[[246]][[i]], `247` = .l[[247]][[i]], `248` = .l[[248]][[i]], `249` = .l[[249]][[i]], `250` = .l[[250]][[i]], `251` = .l[[251]][[i]], `252` = .l[[252]][[i]], `253` = .l[[253]][[i]], `254` = .l[[254]][[i]], `255` = .l[[255]][[i]], `256` = .l[[256]][[i]], `257` = .l[[257]][[i]], `258` = .l[[258]][[i]], `259` = .l[[259]][[i]], `260` = .l[[260]][[i]], `261` = .l[[261]][[i]], `262` = .l[[262]][[i]], `263` = .l[[263]][[i]], `264` = .l[[264]][[i]], `265` = .l[[265]][[i]], `266` = .l[[266]][[i]], `267` = .l[[267]][[i]], `268` = .l[[268]][[i]], `269` = .l[[269]][[i]], `270` = .l[[270]][[i]], `271` = .l[[271]][[i]], `272` = .l[[272]][[i]], `273` = .l[[273]][[i]], `274` = .l[[274]][[i]], `275` = .l[[275]][[i]], `276` = .l[[276]][[i]], `277` = .l[[277]][[i]], `278` = .l[[278]][[i]], `279` = .l[[279]][[i]], `280` = .l[[280]][[i]], `281` = .l[[281]][[i]], `282` = .l[[282]][[i]], `283` = .l[[283]][[i]], `284` = .l[[284]][[i]], `285` = .l[[285]][[i]], `286` = .l[[286]][[i]], `287` = .l[[287]][[i]], `288` = .l[[288]][[i]], `289` = .l[[289]][[i]], `290` = .l[[290]][[i]], `291` = .l[[291]][[i]], `292` = .l[[292]][[i]], `293` = .l[[293]][[i]], `294` = .l[[294]][[i]], `295` = .l[[295]][[i]], `296` = .l[[296]][[i]], `297` = .l[[297]][[i]], `298` = .l[[298]][[i]], `299` = .l[[299]][[i]], `300` = .l[[300]][[i]], `301` = .l[[301]][[i]], `302` = .l[[302]][[i]], `303` = .l[[303]][[i]], `304` = .l[[304]][[i]], `305` = .l[[305]][[i]], `306` = .l[[306]][[i]], `307` = .l[[307]][[i]], `308` = .l[[308]][[i]], `309` = .l[[309]][[i]], `310` = .l[[310]][[i]], `311` = .l[[311]][[i]], `312` = .l[[312]][[i]], `313` = .l[[313]][[i]], `314` = .l[[314]][[i]], `315` = .l[[315]][[i]], `316` = .l[[316]][[i]], `317` = .l[[317]][[i]], `318` = .l[[318]][[i]], `319` = .l[[319]][[i]], `320` = .l[[320]][[i]], `321` = .l[[321]][[i]], `322` = .l[[322]][[i]], `323` = .l[[323]][[i]], `324` = .l[[324]][[i]], `325` = .l[[325]][[i]], `326` = .l[[326]][[i]], `327` = .l[[327]][[i]], `328` = .l[[328]][[i]], `329` = .l[[329]][[i]], `330` = .l[[330]][[i]], `331` = .l[[331]][[i]], `332` = .l[[332]][[i]], `333` = .l[[333]][[i]], `334` = .l[[334]][[i]], `335` = .l[[335]][[i]], `336` = .l[[336]][[i]], `337` = .l[[337]][[i]], `338` = .l[[338]][[i]], `339` = .l[[339]][[i]], `340` = .l[[340]][[i]], `341` = .l[[341]][[i]], `342` = .l[[342]][[i]], `343` = .l[[343]][[i]], `344` = .l[[344]][[i]], `345` = .l[[345]][[i]], `346` = .l[[346]][[i]], `347` = .l[[347]][[i]], `348` = .l[[348]][[i]], `349` = .l[[349]][[i]], `35
+Run `rlang::last_trace()` to see where the error occurred.
