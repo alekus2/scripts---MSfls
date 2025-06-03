@@ -90,144 +90,335 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
           NM_COVA = row_number()
         ) %>%
         ungroup()
-      
-      dup_cols <- c("CD_PROJETO","CD_TALHAO","NM_PARCELA",
-                    "NM_FILA","NM_COVA","NM_FUSTE","NM_ALTURA")
-      df_final <- df_final %>%
-        mutate(
-          check_dup = if_else(
-            duplicated(across(all_of(dup_cols))) |
-              duplicated(across(all_of(dup_cols)), fromLast = TRUE),
-            "VERIFICAR","OK"
-          ),
-          check_cd = case_when(
-            CD_01 %in% LETTERS[1:24] & NM_FUSTE == "1" ~ "OK",
-            CD_01 == "L" & NM_FUSTE == "1"           ~ "VERIFICAR",
-            TRUE                                     ~ "OK"
-          ),
-          CD_TALHAO = str_sub(as.character(CD_TALHAO), -3) %>%
-            str_pad(width = 3, pad = "0")
-        )
-      
-      # 6) sequencia
-      seq_valida <- function(df) {
-        df <- df %>%
-          mutate(NM_COVA = as.numeric(NM_COVA)) 
-        
-        last <- NA_real_
-        ok <- TRUE
-        for (i in seq_len(nrow(df))) {
-          cov <- df$NM_COVA[i]
-          tipo <- df$CD_01[i]
-          
-          if (tipo == "L") {
-            if (is.na(last)) last <- cov
-            if (!is.na(cov) && cov != last) ok <- FALSE
-          }
-          if (tipo == "N") {
-            if (is.na(last) || is.na(cov) || cov != last + 1) ok <- FALSE
-            last <- cov
-          }
-        }
-        ok
-      }
-      
-      df_final <- df_final %>%
-        mutate(NM_COVA = as.numeric(NM_COVA)) %>%  
-        arrange(NM_FILA) %>%
-        mutate(
-          check_sqc    = "OK",
-          NM_COVA_ORIG = NM_COVA,
-          group_id     = cumsum(NM_FILA != lag(NM_FILA, default = first(NM_FILA)))
-        )
-      
-      bif <- any(!map_lgl(group_split(df_final, NM_FILA), seq_valida))
-      
-      if (bif) {
-        df_final <- df_final %>%
-          group_by(group_id) %>%
-          mutate(
-            new_seq = {
-              seqs <- seq_len(n())
-              for (i in seq_along(seqs)) {
-                if (CD_01[i] == "L") {
-                  ori <- NM_COVA_ORIG[i]
-                  if (i > 1 && ori == NM_COVA_ORIG[i - 1]) seqs[i] <- seqs[i - 1]
-                  else if (i < n() && ori == NM_COVA_ORIG[i + 1]) seqs[i] <- seqs[i + 1]
-                }
-              }
-              seqs
-            },
-            check_sqc = if_else(row_number() != new_seq, "VERIFICAR", "OK"),
-            NM_COVA   = new_seq
-          ) %>%
-          ungroup() %>%
-          select(-new_seq)
-      } else {
-        df_final <- df_final %>%
-          arrange(NM_FILA, NM_COVA) %>%
-          mutate(
-            check_sqc = if_else(
-              CD_01 == "N" & lag(CD_01) == "L" &
-                lag(NM_FUSTE) == "2" & NM_COVA == lag(NM_COVA),
-              "VERIFICAR", "OK"
-            )
-          )
-      }
-      
-      df_final <- df_final %>% select(-NM_COVA_ORIG, -group_id)
-      
-      # 7) opcional salvar ver
-      qtd_ver <- sum(df_final$check_sqc == "VERIFICAR")
-      message("Quantidade de VERIFICAR: ", qtd_ver)
-      if (qtd_ver > 0) {
-        resp <- tolower(readline("Deseja verificar agora? (s/n): "))
-        if (resp == "s") {
-          nome_base <- glue("IFQ6_{nome_mes}_{data_emissao}")
-          cnt <- 1
-          repeat {
-            out <- file.path(pasta_output,
-                             glue("{nome_base}_{str_pad(cnt, width = 2, pad = '0')}.xlsx"))
-            if (!file.exists(out)) break
-            cnt <- cnt + 1
-          }
-          write.xlsx(df_final, out, rowNames = FALSE)
-          message("Dados salvos em ", out)
-          return(invisible(NULL))
-        }
-      }
-      # 8) gera tabelas C e D
-      df_final <- df_final %>%
-        mutate(
-          NM_DAP = coalesce(NM_DAP, NM_CAP_DAP1),
-          NM_ALTURA = as.numeric(NM_ALTURA)
-        )
-      
-      tabela_C <- df_final %>%
-        group_by(CD_PROJETO, CD_TALHAO, NM_PARCELA) %>%
-        summarise(
-          PV50 = sum(NM_DAP^2 * NM_ALTURA, na.rm = TRUE),
-          .groups = "drop"
-        )
-      
-      tabela_D <- df_final %>%
-        filter(CD_01 %in% LETTERS[1:24]) %>%
-        group_by(CD_PROJETO, CD_TALHAO, NM_PARCELA) %>%
-        summarise(
-          DAP_MEDIO = mean(NM_DAP, na.rm = TRUE),
-          ALTURA_MED = mean(NM_ALTURA, na.rm = TRUE),
-          .groups = "drop"
-        )
-      
-      list(
-        dados = df_final,
-        tabela_C = tabela_C,
-        tabela_D = tabela_D
-      )
-    }
-  )
+                              dup_cols <- c("CD_PROJETO","CD_TALHAO","NM_PARCELA",
+                                            "NM_FILA","NM_COVA","NM_FUSTE","NM_ALTURA")
+                              df_final <- df_final %>%
+                                mutate(
+                                  check_dup = if_else(
+                                    duplicated(across(all_of(dup_cols))) |
+                                      duplicated(across(all_of(dup_cols)), fromLast = TRUE),
+                                    "VERIFICAR","OK"
+                                  ),
+                                  check_cd = case_when(
+                                    CD_01 %in% LETTERS[1:24] & NM_FUSTE == "1" ~ "OK",
+                                    CD_01 == "L" & NM_FUSTE == "1"           ~ "VERIFICAR",
+                                    TRUE                                     ~ "OK"
+                                  ),
+                                  CD_TALHAO = str_sub(as.character(CD_TALHAO), -3) %>%
+                                    str_pad(width = 3, pad = "0")
+                                )
+                              
+                              
+                              # 6) sequencia
+                              seq_valida <- function(df) {
+                                df <- df %>%
+                                  mutate(NM_COVA = as.numeric(NM_COVA)) 
+                                
+                                last <- NA_real_
+                                ok <- TRUE
+                                for (i in seq_len(nrow(df))) {
+                                  cov <- df$NM_COVA[i]
+                                  tipo <- df$CD_01[i]
+                                  
+                                  if (tipo == "L") {
+                                    if (is.na(last)) last <- cov
+                                    if (!is.na(cov) && cov != last) ok <- FALSE
+                                  }
+                                  if (tipo == "N") {
+                                    if (is.na(last) || is.na(cov) || cov != last + 1) ok <- FALSE
+                                    last <- cov
+                                  }
+                                }
+                                ok
+                              }
+                              
+                              df_final <- df_final %>%
+                                mutate(NM_COVA = as.numeric(NM_COVA)) %>%  
+                                arrange(NM_FILA) %>%
+                                mutate(
+                                  check_sqc    = "OK",
+                                  NM_COVA_ORIG = NM_COVA,
+                                  group_id     = cumsum(NM_FILA != lag(NM_FILA, default = first(NM_FILA)))
+                                )
+                              
+                              bif <- any(!map_lgl(group_split(df_final, NM_FILA), seq_valida))
+                              
+                              if (bif) {
+                                df_final <- df_final %>%
+                                  group_by(group_id) %>%
+                                  mutate(
+                                    new_seq = {
+                                      seqs <- seq_len(n())
+                                      for (i in seq_along(seqs)) {
+                                        if (CD_01[i] == "L") {
+                                          ori <- NM_COVA_ORIG[i]
+                                          if (i > 1 && ori == NM_COVA_ORIG[i - 1]) seqs[i] <- seqs[i - 1]
+                                          else if (i < n() && ori == NM_COVA_ORIG[i + 1]) seqs[i] <- seqs[i + 1]
+                                        }
+                                      }
+                                      seqs
+                                    },
+                                    check_sqc = if_else(row_number() != new_seq, "VERIFICAR", "OK"),
+                                    NM_COVA   = new_seq
+                                  ) %>%
+                                  ungroup() %>%
+                                  select(-new_seq)
+                              } else {
+                                df_final <- df_final %>%
+                                  arrange(NM_FILA, NM_COVA) %>%
+                                  mutate(
+                                    check_sqc = if_else(
+                                      CD_01 == "N" & lag(CD_01) == "L" &
+                                        lag(NM_FUSTE) == "2" & NM_COVA == lag(NM_COVA),
+                                      "VERIFICAR", "OK"
+                                    )
+                                  )
+                              }
+                              
+                              df_final <- df_final %>% select(-NM_COVA_ORIG, -group_id)
+                              
+                              # 7) opcional salvar ver
+                              qtd_ver <- sum(df_final$check_sqc == "VERIFICAR")
+                              message("Quantidade de VERIFICAR: ", qtd_ver)
+                              if (qtd_ver > 0) {
+                                resp <- tolower(readline("Deseja verificar agora? (s/n): "))
+                                if (resp == "s") {
+                                  nome_base <- glue("IFQ6_{nome_mes}_{data_emissao}")
+                                  cnt <- 1
+                                  repeat {
+                                    out <- file.path(pasta_output,
+                                                     glue("{nome_base}_{str_pad(cnt, width = 2, pad = '0')}.xlsx"))
+                                    if (!file.exists(out)) break
+                                    cnt <- cnt + 1
+                                  }
+                                  write.xlsx(df_final, out, rowNames = FALSE)
+                                  message("Dados salvos em ", out)
+                                  return(invisible(NULL))
+                                }
+                              }
+                              # 8) gera tabelas C e D
+                              df_final <- df_final %>%
+                                mutate(NM_COVA = as.numeric(NM_COVA)) %>%
+                                arrange(CD_PROJETO, CD_TALHAO, NM_PARCELA, NM_COVA) %>%
+                                group_by(CD_PROJETO, CD_TALHAO, NM_PARCELA) %>%
+                                mutate(NM_COVA = row_number()) %>%
+                                ungroup() %>%
+                                mutate(
+                                  chave_stand = paste(CD_PROJETO, CD_TALHAO, NM_PARCELA, sep="-"),
+                                  dt_medicao1 = DT_INICIAL,
+                                  equipe2     = CD_EQUIPE
+                                ) %>%
+                                select(-check_dup, -check_cd, -check_sqc)
+
+                              calc_metrics <- function(vals) {
+                                n    <- length(vals)
+                                meio <- floor(n/2)
+                                med  <- if (n>0) median(vals) else 0
+                                tot  <- sum(vals)
+                                ordv <- sort(vals)
+                                le   <- if (n%%2==0) sum(ordv[1:meio][ordv[1:meio] <= med]) else sum(ordv[1:meio]) + med/2
+                                pv50 <- if (tot>0) le/tot*100 else 0.1
+                                tibble(n = n, n2 = meio, Mediana = med, sumHt = tot, sumHt_le = le, PV50 = pv50)
+                              }
+                              codes  <- c("A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E")
+                              falhas <- c("M","H","F","L","S")
+                              # tabela C
+                              pivot_c <- df_final %>%
+                                pivot_wider(
+                                  id_cols   = c("Ht_media","chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA"),
+                                  names_from = NM_COVA_ORDENADO,
+                                  values_from= Ht_media,
+                                  values_fill= 0
+                                )
+                              covas <- setdiff(names(pivot_c), c("Ht_media","chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA"))
+                              met_c <- pivot_c %>%
+                                select(all_of(covas)) %>%
+                                pmap_dfr(calc_metrics)
+                              conts <- df_final %>%
+                                count(CD_PROJETO, CD_TALHAO, NM_PARCELA, CD_01) %>%
+                                pivot_wider(names_from=CD_01, values_from=n, values_fill=0)
+                              df_c <- bind_cols(pivot_c, met_c) %>%
+                                left_join(conts, by=c("CD_PROJETO","CD_TALHAO","NM_PARCELA")) %>%
+                                replace_na(list()) %>%
+                                mutate(
+                                  Stand_tree_ha = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) * 10000 / as.numeric(NM_AREA_PARCELA),
+                                  Pits_ha       = ((n - L)*10000 / as.numeric(NM_AREA_PARCELA)),
+                                  surv_dec      = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) / rowSums(across(all_of(codes))),
+                                  surv_pct      = percent(surv_dec/100, accuracy=0.1, decimal.mark=","),
+                                  Pits_por_sob  = Stand_tree_ha / surv_dec,
+                                  Check_pits    = Pits_por_sob - Pits_ha
+                                ) %>%
+                                select(-surv_dec)
+                              # tabela D (Ht^3)
+                              
+                              df_final$NM_COVA_ORDENADO = row_number()
+                                
+                                
+                              pivot_d <- df_final %>%
+                                mutate(Ht3 = Ht_media^3) %>%
+                                pivot_wider(
+                                  id_cols   = c("Ht_media","chave_stand","CD_PROJETO","CD_TALHAO","NM_PARCELA","NM_AREA_PARCELA"),
+                                  names_from = NM_COVA_ORDENADO,
+                                  values_from= Ht3,
+                                  values_fill= 0
+                                )
+                              covas_d <- covas
+                              met_d <- pivot_d %>%
+                                select(all_of(covas_d)) %>%
+                                pmap_dfr(calc_metrics)
+                              df_d <- bind_cols(pivot_d, met_d) %>%
+                                left_join(conts, by=c("CD_PROJETO","CD_TALHAO","NM_PARCELA")) %>%
+                                replace_na(list()) %>%
+                                mutate(
+                                  Stand_tree_ha = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) * 10000 / as.numeric(NM_AREA_PARCELA),
+                                  Pits_ha       = ((n - L)*10000 / as.numeric(NM_AREA_PARCELA)),
+                                  surv_dec      = (rowSums(across(all_of(codes))) - rowSums(across(all_of(falhas)))) / rowSums(across(all_of(codes))),
+                                  surv_pct      = percent(surv_dec/100, accuracy=0.1, decimal.mark=","),
+                                  Check_covas   = Stand_tree_ha / (Pits_ha/Pits_por_sob),
+                                  Check_imp_par = if_else(n%%2==0, "Par","Impar")
+                                ) %>%
+                                select(-surv_dec)
+                              # 9) grava em excel
+                              df_cadastro <- read_excel(cadastro_path, sheet=1, col_types="text") %>%
+                                mutate(index = paste0(`Id Projeto`, Talhao))
+                              wb <- createWorkbook()
+                              addWorksheet(wb, "cadastro_sgf")
+                              writeData(wb, "cadastro_sgf", df_cadastro %>% select(-index))
+                              addWorksheet(wb, glue("dados_cst_{nome_mes}"))
+                              writeData(wb, glue("dados_cst_{nome_mes}"), df_final %>% select(-index))
+                              addWorksheet(wb, "C_tabela_resultados")
+                              writeData(wb, "C_tabela_resultados", df_c)
+                              addWorksheet(wb, "D_tabela_resultados_Ht3")
+                              writeData(wb, "D_tabela_resultados_Ht3", df_d)
+                              nome_base2 <- glue("BASE_IFQ6_{nome_mes}_{data_emissao}")
+                              cnt2 <- 1
+                              repeat {
+                                out2 <- file.path(pasta_output,
+                                                  glue("{nome_base2}_{str_pad(cnt2, width = 2, pad = '0')}.xlsx"))
+                                if (!file.exists(out2)) break
+                                cnt2 <- cnt2 + 1
+                              }
+                              saveWorkbook(wb, out2, overwrite=TRUE)
+                              message("Tudo gravado em ", out2)
+                            }
+                          )
 )
 
-# Exemplo de uso:
-# otimizador <- OtimizadorIFQ6$new()
-# resultado <- otimizador$validacao(c("caminho/para/arquivo1.xlsx", "caminho/para/arquivo2.xlsx", "caminho/para/SGF.xlsx"))
+pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/dados at"
+arquivos <- list.files(
+  path       = pasta_dados,
+  pattern    = "\\.xlsx$",
+  full.names = TRUE
+)
+arquivos <- c(
+  arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
+  setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)), "SGF")])
+)
+otimizador <- OtimizadorIFQ6$new()
+otimizador$validacao(arquivos)
+
+> source("F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/OtimizadorIFQ6/OtimizadorIFQ6.R", encoding = 'UTF-8', echo=TRUE)
+
+> library(R6)
+
+> library(readxl)
+
+> library(dplyr)
+
+Anexando pacote: ‘dplyr’
+
+Os seguintes objetos são mascarados por ‘package:stats’:
+
+    filter, lag
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    intersect, setdiff, setequal, union
+
+
+> library(tidyr)
+
+> library(purrr)
+
+> library(stringr)
+
+> library(lubridate)
+
+Anexando pacote: ‘lubridate’
+
+Os seguintes objetos são mascarados por ‘package:base’:
+
+    date, intersect, setdiff, union
+
+
+> library(openxlsx)
+
+> library(glue)
+
+> library(scales)
+
+Anexando pacote: ‘scales’
+
+O seguinte objeto é mascarado por ‘package:purrr’:
+
+    discard
+
+
+> `%notin%` <- function(x, y) !(x %in% y)
+
+> OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
++   public = list(
++     validacao = function(paths) {
++       # 1) colunas esperadas
++       nomes_colu .... [TRUNCATED] 
+
+> pasta_dados <- "F:/Qualidade_Florestal/02- MATO GROSSO DO SUL/11- Administrativo Qualidade MS/00- Colaboradores/17 - Alex Vinicius/Automação em R/Ot ..." ... [TRUNCATED] 
+
+> arquivos <- list.files(
++   path       = pasta_dados,
++   pattern    = "\\.xlsx$",
++   full.names = TRUE
++ )
+
+> arquivos <- c(
++   arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
++   setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)),  .... [TRUNCATED] 
+
+> otimizador <- OtimizadorIFQ6$new()
+
+> otimizador$validacao(arquivos)
+Arquivo sem equipe identificada automaticamente: 6271_TABOCA_SRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6304_DOURADINHA_I_GLEBA_A_RRP - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6348_BERRANTE_II_RRP - IFQ6 (29).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6362_PONTAL_III_GLEBA_A_RRP - IFQ6 (22).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (33).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6371_SÃO_ROQUE_BTG - IFQ6 (8).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6) - Copia.xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6418_SÃO_JOÃO_IV_SRP - IFQ6 (6).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+Arquivo sem equipe identificada automaticamente: 6439_TREZE_DE_JULHO_RRP - IFQ6 (4).xlsx
+Selecione equipe (1-LEBATEC, 2-BRAVORE, 3-PROPRIA): 1
+New names:
+* `` -> `...35`
+Quantidade de VERIFICAR: 0
+Error in `pivot_wider()`:
+! Can't select columns that don't exist.
+x Column `NM_COVA_ORDENADO` doesn't exist.
+Run `rlang::last_trace()` to see where the error occurred.
+Mensagens de aviso:
+1: pacote ‘R6’ foi compilado no R versão 4.4.3 
+2: pacote ‘readxl’ foi compilado no R versão 4.4.3 
+3: pacote ‘dplyr’ foi compilado no R versão 4.4.3 
+4: pacote ‘tidyr’ foi compilado no R versão 4.4.3 
+5: pacote ‘purrr’ foi compilado no R versão 4.4.3 
+6: pacote ‘stringr’ foi compilado no R versão 4.4.3 
+7: pacote ‘lubridate’ foi compilado no R versão 4.4.3 
+8: pacote ‘openxlsx’ foi compilado no R versão 4.4.3 
+9: pacote ‘glue’ foi compilado no R versão 4.4.3 
