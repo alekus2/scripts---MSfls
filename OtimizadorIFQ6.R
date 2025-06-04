@@ -1,3 +1,5 @@
+
+#PARTE 1
 library(R6)
 library(readxl)
 library(dplyr)
@@ -183,6 +185,10 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     return(invisible(NULL))
                                   }
                                 }
+
+
+                                #PARTE 2
+                                
                                 df_final <- df_final %>%
                                   mutate(
                                     Ht_media = as.numeric(NM_ALTURA),
