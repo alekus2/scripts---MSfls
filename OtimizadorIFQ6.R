@@ -1,6 +1,6 @@
-medianas_df <- df_res %>%
-  group_by(CD_PROJETO, CD_TALHAO) %>%
-  summarize(mediana_ht_proj_tal = median(Ht_media, na.rm = TRUE), .groups = "drop")
-
-df_C <- df_C %>%
-  left_join(medianas_df, by = c("CD_PROJETO", "CD_TALHAO"))
+Error in `mutate()`:
+i In argument: `mediana_ht_proj_tal = `%>%`(...)`.
+Caused by error in `select()`:
+! Can't select columns that don't exist.
+x Columns `1`, `2`, `1`, `2`, `1`, etc. don't exist.
+Run `rlang::last_trace()` to see where the error occurred.
