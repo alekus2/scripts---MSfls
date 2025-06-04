@@ -14,7 +14,6 @@ library(scales)
 OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                             public = list(
                               validacao = function(paths) {
-                                # 1) colunas esperadas
                                 col_esp <- c(
                                   "CD_PROJETO","CD_TALHAO","NM_PARCELA","DC_TIPO_PARCELA","NM_AREA_PARCELA",
                                   "NM_LARG_PARCELA","NM_COMP_PARCELA","NM_DEC_LAR_PARCELA","NM_DEC_COM_PARCELA",
@@ -22,8 +21,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                   "DC_MATERIAL","NM_FILA","NM_COVA","NM_FUSTE","NM_DAP_ANT","NM_ALTURA_ANT",
                                   "NM_CAP_DAP1","NM_DAP2","NM_DAP","NM_ALTURA","CD_01","CD_02","CD_03"
                                 )
-                                
-                                # 2) datas e diretórios
                                 meses <- c("Janeiro","Fevereiro","Marco","Abril","Maio","Junho",
                                            "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro")
                                 mes_atual    <- month(Sys.Date())
@@ -33,13 +30,9 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                 pasta_mes    <- file.path(dirname(base_dir), nome_mes)
                                 pasta_output <- file.path(pasta_mes, "output")
                                 dir.create(pasta_output, recursive = TRUE, showWarnings = FALSE)
-                                
-                                # 3) identifica arquivo de cadastro (SGF)
                                 cadastro_path <- keep(paths,
                                                       ~ str_detect(toupper(basename(.x)), "SGF")
                                 )[[1]]
-                                
-                                # 4) leitura dos arquivos de medição e atribuição de equipe
                                 lista_df <- list()
                                 equipes   <- list()
                                 for (p in paths) {
@@ -60,11 +53,9 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     }
                                     base <- c("lebatec", "bravore", "propria")[as.integer(escolha)]
                                   }
-                                  
                                   equipes[[base]] <- (equipes[[base]] %||% 0) + 1
                                   sufixo <- if (equipes[[base]] == 1) "" else sprintf("_%02d", equipes[[base]])
                                   equipe  <- paste0(base, sufixo)
-                                  
                                   df <- tryCatch(
                                     read_excel(p, sheet = 1, col_types = "text"),
                                     error = function(e) NULL
@@ -87,8 +78,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                   message("Nenhum arquivo processado.")
                                   return(invisible(NULL))
                                 }
-                                
-                                # 5) concatenação e verificações iniciais
                                 df_final <- bind_rows(lista_df) %>%
                                   mutate(NM_COVA = as.numeric(NM_COVA)) %>%
                                   arrange(CD_PROJETO, CD_TALHAO, NM_PARCELA, NM_FILA, NM_COVA) %>%
@@ -112,8 +101,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     CD_TALHAO = str_sub(as.character(CD_TALHAO), -3) %>%
                                       str_pad(width = 3, pad = "0")
                                   )
-                                
-                                # 6) validação da sequência de covas (L e N)
                                 seq_valida <- function(df) {
                                   last <- NA_real_
                                   ok <- TRUE
@@ -139,7 +126,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     NM_COVA_ORIG = NM_COVA,
                                     group_id     = cumsum(NM_FILA != lag(NM_FILA, default = first(NM_FILA)))
                                   )
-                                
                                 bif <- any(!map_lgl(group_split(df_final, NM_FILA), seq_valida))
                                 
                                 if (bif) {
@@ -197,8 +183,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     return(invisible(NULL))
                                   }
                                 }
-                                
-                                # 7) preparar Ht_media e ordenação conforme Python
                                 df_final <- df_final %>%
                                   mutate(
                                     Ht_media = as.numeric(NM_ALTURA),
@@ -214,11 +198,8 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     EQUIPE_2     = CD_EQUIPE
                                   ) %>%
                                   select(-check_dup, -check_cd, -check_sqc)
-                                
-                                # 8) leitura de cadastro e criação de “Index”
                                 df_cadastro <- read_excel(cadastro_path, sheet = 1, col_types = "text") %>%
                                   mutate(Index = paste0(`Id Projeto`, Talhão))
-                                
                                 df_final <- df_final %>%
                                   mutate(
                                     Index = paste0(CD_PROJETO, CD_TALHAO),
@@ -232,29 +213,20 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                       )
                                     )
                                   )
-                                print(df_final$Index)
-                                print(df_cadastro$Index)
-                                
                                 area_col <- df_cadastro %>% select(contains("ÁREA")) %>% names() %>% first()
-                                
-                                # Certifique-se de que a coluna existe antes de tentar fazer a junção
                                 if (!is.null(area_col) && area_col %in% names(df_cadastro)) {
-                                  # Realize a junção
                                   df_res <- df_final %>%
                                     left_join(
-                                      df_cadastro %>% select(Index, !!sym(area_col)), # Use !!sym() para referenciar a coluna selecionada
+                                      df_cadastro %>% select(Index, !!sym(area_col)), 
                                       by = "Index"
                                     ) %>%
-                                    rename(Area_ha = !!sym(area_col)) %>% # Renomeie a coluna para Area_ha
-                                    mutate(Area_ha = replace_na(Area_ha, 0)) # Substitua NAs por 0 ou outro valor desejado
+                                    rename(Area_ha = !!sym(area_col)) %>%
+                                    mutate(Area_ha = replace_na(Area_ha, 0)) 
                                 } else {
                                   stop("A coluna de área não foi encontrada em df_cadastro.")
                                 }
-                                
-                                # 9) Construção da tabela C conforme lógica do Python
                                 cols0 <- c("Area_ha", "Chave_stand_1", "CD_PROJETO", "CD_TALHAO",
                                            "NM_PARCELA", "NM_AREA_PARCELA")
-
                                 df_pivot <- df_res %>%
                                   select(any_of(cols0), NM_COVA_ORDENADO, Ht_media) %>%
                                   pivot_wider(
@@ -262,16 +234,11 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     values_from = Ht_media,
                                     values_fill = 0
                                   )
-                                
-                                # identificar colunas numéricas (os nomes são caracteres, mas representam posições)
                                 num_cols <- df_pivot %>%
                                   select(-all_of(cols0)) %>%
                                   names()
-                                
                                 codes  <- c("A","B","D","F","G","H","I","J","L","M","N","O","Q","K","T","V","S","E")
                                 falhas <- c("M","H","F","L","S")
-                                
-                                # função para métricas (vetor de valores)
                                 calc_metrics <- function(vals) {
                                   vals_num <- as.numeric(vals)
                                   last_pos <- max(which(vals_num > 0), na.rm = TRUE)
@@ -299,14 +266,10 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     pv50 = pv50
                                   )
                                 }
-                                
-                                # aplicar calc_metrics linha a linha
                                 metrics_list_C <- lapply(seq_len(nrow(df_pivot)), function(i) {
                                   calc_metrics(df_pivot[i, num_cols])
                                 })
                                 df_metrics_C <- bind_rows(metrics_list_C)
-                                
-                                # contagem de códigos por grupo
                                 conts <- df_res %>%
                                   count(CD_PROJETO, CD_TALHAO, NM_PARCELA, CD_01) %>%
                                   pivot_wider(
@@ -318,7 +281,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                 if (length(falt_c) > 0) conts[falt_c] <- 0
                                 falt_f <- setdiff(falhas, names(conts))
                                 if (length(falt_f) > 0) conts[falt_f] <- 0
-                                
                                 df_C <- bind_cols(df_pivot, df_metrics_C) %>%
                                   left_join(
                                     conts,
@@ -345,16 +307,12 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     Check_pits    = Pits_por_sob - Pits_ha
                                   ) %>%
                                   select(-surv_dec)
-                                
-                                # 10) Construção da tabela D (Ht^3)
                                 df_D_wide <- df_pivot %>%
                                   mutate(across(all_of(num_cols), ~ .x^3))
-                                
                                 metrics_list_D <- lapply(seq_len(nrow(df_D_wide)), function(i) {
                                   calc_metrics(df_D_wide[i, num_cols])
                                 })
                                 df_metrics_D <- bind_rows(metrics_list_D)
-                                
                                 df_D <- bind_cols(df_D_wide, df_metrics_D) %>%
                                   left_join(
                                     conts,
@@ -377,8 +335,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     Check_impares_pares = if_else(n %% 2 == 0, "Par", "Impar")
                                   ) %>%
                                   select(-surv_dec)
-                                
-                                # 11) adicionar Material_Genetico, Data_Medicao e Equipe na tabela D
                                 df_aux <- df_final %>%
                                   select(CD_PROJETO, CD_TALHAO, DC_MATERIAL, DT_MEDICAO1, EQUIPE_2) %>%
                                   distinct()
@@ -389,8 +345,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                     Data_Medicao      = DT_MEDICAO1,
                                     Equipe            = EQUIPE_2
                                   )
-                                
-                                # 12) percentuais K e L na tabela D
                                 df_D <- df_D %>%
                                   mutate(
                                     Percent_K = if_else(
@@ -404,8 +358,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                       "0%"
                                     )
                                   )
-                                
-                                # 13) gravação final em Excel
                                 nome_base2 <- glue("BASE_IFQ6_{nome_mes}_{data_emissao}")
                                 cnt2 <- 1
                                 repeat {
@@ -414,26 +366,20 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                   if (!file.exists(out2)) break
                                   cnt2 <- cnt2 + 1
                                 }
-                                
                                 wb <- createWorkbook()
                                 addWorksheet(wb, "Cadastro_SGF")
                                 writeData(wb, "Cadastro_SGF", df_cadastro %>% select(-Index))
-                                
                                 addWorksheet(wb, glue("Dados_CST_{nome_mes}"))
                                 writeData(wb, glue("Dados_CST_{nome_mes}"), df_final %>% select(-Index))
-                                
                                 addWorksheet(wb, "C_tabela_resultados")
                                 writeData(wb, "C_tabela_resultados", df_C)
-                                
                                 addWorksheet(wb, "D_tabela_resultados_Ht3")
                                 writeData(wb, "D_tabela_resultados_Ht3", df_D)
-                                
                                 saveWorkbook(wb, out2, overwrite = TRUE)
                                 message("Tudo gravado em '", out2, "'")
                               }
                             )
   )
-  
   pasta_dados <- "F://Qualidade_Florestal//02- MATO GROSSO DO SUL//11- Administrativo Qualidade MS//00- Colaboradores//17 - Alex Vinicius//Automação em R//OtimizadorIFQ6//dados at"
   arquivos <- list.files(
     path       = pasta_dados,
@@ -445,7 +391,6 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
     arquivos[str_detect(toupper(basename(arquivos)), "SGF")],
     setdiff(arquivos, arquivos[str_detect(toupper(basename(arquivos)), "SGF")])
   )
-  
   print(arquivos)
   otimizador <- OtimizadorIFQ6$new()
   otimizador$validacao(arquivos)
