@@ -249,7 +249,7 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                   pivot_wider(
                                     names_from  = NM_COVA_ORDENADO,
                                     values_from = Ht_media,
-                                    values_fill = list(Ht_media = 0) #dando erro aq
+                                    values_fill = list(Ht_media = 0) #dando erro aq  Can't convert `fill` <double> to <list>.
                                   )
                                 num_cols <- df_pivot %>%
                                   select(-all_of(cols0)) %>%
