@@ -429,3 +429,13 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
   print(arquivos)
   otimizador <- OtimizadorIFQ6$new()
   otimizador$validacao(arquivos)
+
+# Limpando a coluna NM_ALTURA
+df_final <- df_final %>%
+  mutate(NM_ALTURA = as.numeric(NM_ALTURA)) %>%  # Converte para numérico
+  mutate(NM_ALTURA = round(NM_ALTURA, 2),          # Arredonda para 2 casas decimais
+         NM_ALTURA = replace_na(NM_ALTURA, 0))   # Substitui NAs por 0
+
+# Criando Ht_media
+df_final <- df_final %>%
+  mutate(Ht_media = NM_ALTURA)  # Ou outra lógica que você queira aplicar
