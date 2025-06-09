@@ -124,3 +124,13 @@ df_cadastro <- read_excel(cadastro_path, sheet = 1, col_types = "text") %>%
 
                                 df_D_wide <- df_pivot %>%
                                   mutate(across(all_of(num_cols), ~ .x^3))
+
+
+output:
+Error in `mutate()`:
+i In argument: `across(all_of(num_cols), ~.x^3)`.
+Caused by error in `across()`:
+! Can't compute column `1`.
+Caused by error in `` `1`^3 ``:
+! argumento não-numérico para operador binário
+Run `rlang::last_trace()` to see where the error occurred.
