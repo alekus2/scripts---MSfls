@@ -249,7 +249,7 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
                                   pivot_wider(
                                     names_from  = NM_COVA_ORDENADO,
                                     values_from = Ht_media,
-                                    values_fill = 0
+                                    values_fill = list(Ht_media = 0) #dando erro aq
                                   )
                                 num_cols <- df_pivot %>%
                                   select(-all_of(cols0)) %>%
@@ -429,7 +429,3 @@ OtimizadorIFQ6 <- R6Class("OtimizadorIFQ6",
   print(arquivos)
   otimizador <- OtimizadorIFQ6$new()
   otimizador$validacao(arquivos)
-
-Error in `pivot_wider()`:
-! Can't convert `fill` <double> to <list>.
-Run `rlang::last_trace()` to see where the error occurred.
