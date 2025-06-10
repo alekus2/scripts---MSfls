@@ -1,8 +1,6 @@
 import pandas as pd
 import os
 from datetime import datetime
-import numpy as np
-
 
 class farming:
     def trans_colunas(self, paths):
@@ -64,7 +62,7 @@ class farming:
             # Processar a coluna "Data Avaliação"
             if "Data Avaliação" in df.columns:
                 df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
-                # novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
+                novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
                 novo_df["MONTH/YEAR MEASUREMENT"] = df["Data Avaliação"].dt.strftime('%Y')
 
             # Processar a coluna "Data Plantio" e calcular "AGE(DAYS)"
@@ -72,9 +70,12 @@ class farming:
                 df["Data Plantio"] = pd.to_datetime(df["Data Plantio"], errors='coerce')
                 novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
 
-            if "PV50(%)" in novo_df:
-              novo_df["PV50(%)"] = df["PV50(%)"].map(lambda x: f"{x:.1%}".replace(".",","))
+            # Formatar colunas de porcentagem
+            for col in ["PV50(%)", "Survival(%)", "Arrow_PV50", "Arrow_Stand", "Arrow_survival"]:
+                if col in novo_df.columns:
+                    novo_df[col] = novo_df[col].map(lambda x: f"{x:.1%}".replace(".", ",") if pd.notnull(x) else "")
 
+            # Gerar o novo arquivo com o nome apropriado
             nome_base = f"marcar_col"
             contador = 1
             destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
@@ -90,5 +91,3 @@ class farming:
 fazenda = farming()
 arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
 fazenda.trans_colunas(arquivos)
-
-KeyError: 'PV50(%)'
