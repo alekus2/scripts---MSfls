@@ -9,25 +9,20 @@ class farming:
                                "Height AVG(m)","PV50(%)","Pits/ha","Arrow_survival","Arrow_stand","Arrow_height",
                                "ID_FARM","TALHAO"
         ]
-        colunas_copiadas=["cd_talhao","Área(ha)","Data Plantio","Data Avaliação","Avaliação","GM","Média de PV50 CF",
-                          "Ht (m)","Stand (tree/ha)","Média Pits/ha","Média de %_Sobrevivência","Arrow_PV50","Arrow_Ht",
-                          "Arrow_Stand (tree/ha)","Arrow_Survival","Projeto","Talhão","Mês"]
+        colunas_copiadas = ["cd_talhao","Área(ha)","Data Plantio","Data Avaliação","Avaliação","GM","Média de PV50 CF",
+                            "Ht (m)","Stand (tree/ha)","Média Pits/ha","Média de %_Sobrevivência","Arrow_PV50","Arrow_Ht",
+                            "Arrow_Stand (tree/ha)","Arrow_Survival","Projeto","Talhão","Mês"]
         
-
         meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
                  "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
-        nome_mes = meses[datetime.now().month - 1]
-        data_emissao = datetime.now().strftime("%Y%m%d")
-
+        
         base_path = os.path.abspath(paths[0])
-        if nome_mes.lower() in base_path.lower():
+        if "output" in base_path.lower():
             parent_dir = os.path.dirname(base_path)
-            pasta_output = parent_dir if os.path.basename(parent_dir).lower()=='output' \
-                           else os.path.join(parent_dir,'output')
+            pasta_output = parent_dir
         else:
             base_dir = os.path.dirname(paths[0])
-            pasta_mes = os.path.join(os.path.dirname(base_dir), nome_mes)
-            pasta_output = os.path.join(pasta_mes, 'output')
+            pasta_output = os.path.join(base_dir, 'output')
         os.makedirs(pasta_output, exist_ok=True)
 
         for path in paths:
@@ -37,9 +32,27 @@ class farming:
             print(f"Processando: {path}")
             df = pd.read_excel(path, sheet_name=0, header=1)
 
-            # Aqui construíremos começar o processamento de dados onde iremos pegar os dados de cada coluna e colocar em cada local exato.
+            # Criar um novo DataFrame com as colunas transformadas
+            novo_df = pd.DataFrame(columns=nomes_colunas_trans)
 
-            nome_base = f"marcar_col_{nome_mes}_{data_emissao}"
+            # Mapeamento das colunas copiadas para as colunas transformadas
+            colunas_mapping = {copiada: trans for copiada, trans in zip(colunas_copiadas, nomes_colunas_trans) if trans in nomes_colunas_trans}
+            colunas_mapping["cd_talhao"] = "INDEX_2"  # Mapeando 'cd_talhao' para 'INDEX_2' e 'INDEX'
+            colunas_mapping["Talhão"] = "INDEX"  # Mapeando 'Talhão' para 'INDEX'
+
+            # Preenchendo o novo DataFrame com os dados mapeados
+            for col_copiada, col_trans in colunas_mapping.items():
+                if col_copiada in df.columns:
+                    novo_df[col_trans] = df[col_copiada]
+
+            # Extraindo o mês e o ano da coluna "Data Avaliação"
+            if "Data Avaliação" in df.columns:
+                df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
+                novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
+                novo_df["MONTH/YEAR MEASUREMENT"] = df["Data Avaliação"].dt.strftime('%Y')
+
+            # Gerar o novo arquivo com o nome apropriado
+            nome_base = f"marcar_col_{novo_df['MONTHS'].iloc[0]}_{datetime.now().strftime('%Y%m%d')}"
             contador = 1
             destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
             novo_arquivo = destino(nome_base)
@@ -47,7 +60,11 @@ class farming:
                 contador += 1
                 novo_arquivo = destino(nome_base)
 
+            # Salvando o novo DataFrame em um novo arquivo Excel
+            novo_df.to_excel(novo_arquivo, index=False)
+            print(f"Arquivo salvo como: {novo_arquivo}")
+
 # Exemplo de uso
 fazenda = farming()
-arquivos = [r""]
+arquivos = [r"caminho/para/seu/arquivo.xlsx"]  # Substitua pelo caminho do seu arquivo
 fazenda.trans_colunas(arquivos)
