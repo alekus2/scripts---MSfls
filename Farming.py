@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 from datetime import datetime
@@ -10,8 +11,6 @@ class farming:
             "Height AVG(m)", "PV50(%)", "Pits/ha", "Arrow_survival", "Arrow_stand", "Arrow_height",
             "ID_FARM", "TALHAO"
         ]
-
-        # Mapeamento de colunas em português e inglês
         colunas_map = {
             "cd_talhao2": "INDEX_2",
             "Área(ha)": "ÁREA(HA)",
@@ -54,28 +53,23 @@ class farming:
 
             novo_df = pd.DataFrame(columns=nomes_colunas_trans)
 
-            # Copiando os dados com base no mapeamento
             for col_orig, col_dest in colunas_map.items():
                 if col_orig in df.columns:
                     novo_df[col_dest] = df[col_orig]
 
-            # Processar a coluna "Data Avaliação"
             if "Data Avaliação" in df.columns:
                 df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
                 novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
                 novo_df["MONTH/YEAR MEASUREMENT"] = df["Data Avaliação"].dt.strftime('%Y')
 
-            # Processar a coluna "Data Plantio" e calcular "AGE(DAYS)"
             if "Data Plantio" in df.columns and "Data Avaliação" in df.columns:
                 df["Data Plantio"] = pd.to_datetime(df["Data Plantio"], errors='coerce')
                 novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
 
-            # Formatar colunas de porcentagem
-            for col in ["PV50(%)", "Survival(%)", "Arrow_PV50", "Arrow_Stand", "Arrow_survival"]:
+            for col in ["PV50(%)", "Survival(%)"]:
                 if col in novo_df.columns:
                     novo_df[col] = novo_df[col].map(lambda x: f"{x:.1%}".replace(".", ",") if pd.notnull(x) else "")
 
-            # Gerar o novo arquivo com o nome apropriado
             nome_base = f"marcar_col"
             contador = 1
             destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
@@ -91,3 +85,5 @@ class farming:
 fazenda = farming()
 arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
 fazenda.trans_colunas(arquivos)
+
+TypeError: list indices must be integers or slices, not float
