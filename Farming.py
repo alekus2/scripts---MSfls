@@ -51,6 +51,10 @@ class farming:
                 novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
                 novo_df["MONTH/YEAR MEASUREMENT"] = df["Data Avaliação"].dt.strftime('%Y')
 
+            # Calcular a coluna "AGE(DAYS)"
+            if "Data Plantio" in df.columns and "Data Avaliação" in df.columns:
+                novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
+
             # Gerar o novo arquivo com o nome apropriado
             nome_base = f"marcar_col_{novo_df['MONTHS'].iloc[0]}_{datetime.now().strftime('%Y%m%d')}"
             contador = 1
