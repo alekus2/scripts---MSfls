@@ -7,34 +7,34 @@ class farming:
         nomes_colunas_trans = [
             "INDEX_2", "MONTHS", "MONTH/YEAR MEASUREMENT", "PLANTED DATE", "MEASURING DATE", "AGE(DAYS)",
             "GM", "FARM", "INDEX", "GENETIC MATERIAL", "ÁREA(HA)", "Survival(%)", "Stand (tree/ha)",
-            "Height AVG(m)", "PV50(%)", "Pits/ha", "Arrow_survival", "Arrow_stand", "Arrow_height",
+            "Height AVG(m)", "PV50(%)", "Pits/ha", "Arrow_survival", "Arrow_height","Arrow_PV50","Arrow_stand",
             "ID_FARM", "TALHAO"
         ]
         colunas_map = {
             "cd_talhao2": "INDEX_2",
-            "Área(ha)": "ÁREA(HA)",
             "Data Plantio": "PLANTED DATE",
             "Data Avaliação": "MEASURING DATE",
-            "Avaliação": "FARM",
             "GM": "GM",
-            "Média de PV50 CF": "PV50(%)",
-            "Ht (m)": "Height AVG(m)",
+            "Fazenda": "FARM",
+            "cd_talhao2": "INDEX",
+            "Clone":"GENETIC MATERIAL",
+            "Área (ha)": "ÁREA(HA)",
+            "Média de %_Sobrevivência": "Survival(%)",       
             "Stand (tree/ha)": "Stand (tree/ha)",
+            "Ht (m)": "Height AVG(m)",
+            "Média de PV50 CF": "PV50(%)",
             "Média Pits/ha": "Pits/ha",
-            "Média de %_Sobrevivência": "Survival(%)",
-            "Arrow_PV50": "Arrow_survival",        # atenção ao nome destino
-            "Arrow_Ht": "Arrow_height",
-            "Arrow_Stand (tree/ha)": "Arrow_stand",
             "Arrow_Survival": "Arrow_survival",
+            "Arrow_Ht": "Arrow_height",
+            "Arrow_PV50": "Arrow_PV50",
+            "Arrow_Stand (tree/ha)": "Arrow_stand",
             "Projeto": "ID_FARM",
             "Talhão": "TALHAO",
-            "Mês": "MONTHS"
         }
 
         meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
 
-        # Define pasta de saída
         base_path = os.path.abspath(paths[0])
         if "output" in base_path.lower():
             pasta_output = os.path.dirname(base_path)
@@ -49,24 +49,19 @@ class farming:
             print(f"Processando: {path}")
             df = pd.read_excel(path, sheet_name=17, header=1)
 
-            # Cria DataFrame novo com colunas na ordem desejada
             novo_df = pd.DataFrame(columns=nomes_colunas_trans)
 
-            # Mapeia colunas originais para as novas
             for col_orig, col_dest in colunas_map.items():
                 if col_orig in df.columns:
                     novo_df[col_dest] = df[col_orig]
 
-            # Converte datas
             if "Data Avaliação" in df.columns:
                 df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
-                # MONTHS: converte para int antes de indexar
                 novo_df["MONTHS"] = (
                     df["Data Avaliação"]
                     .dt.month
                     .apply(lambda x: meses[int(x) - 1] if pd.notnull(x) else "")
                 )
-                # YEAR measurement (coluna de ano)
                 novo_df["MONTH/YEAR MEASUREMENT"] = (
                     df["Data Avaliação"]
                     .dt.strftime('%Y')
@@ -79,13 +74,15 @@ class farming:
                 novo_df["PLANTED DATE"] = df["Data Plantio"]
                 novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
 
-            # Formata colunas percentuais como '0,0%'
             for col in ["PV50(%)", "Survival(%)"]:
                 if col in novo_df.columns:
                     novo_df[col] = (
                         pd.to_numeric(novo_df[col], errors='coerce')
                           .map(lambda x: f"{x:.1%}".replace(".", ",") if pd.notnull(x) else "")
                     )
+            for col in ["ÁREA(HA)","Stand (tree/ha)", "Height AVG(m)", "Pits/ha"]:
+                if col in novo_df.columns:
+                    novo_df[col] = novo_df[col](int)
 
             # Gera nome de arquivo único
             nome_base = "marcar_col"
@@ -98,3 +95,7 @@ class farming:
             # Salva
             novo_df.to_excel(novo_arquivo, index=False)
             print(f"Arquivo salvo como: {novo_arquivo}")
+
+fazenda = farming()
+arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
+fazenda.trans_colunas(arquivos)
