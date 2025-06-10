@@ -4,18 +4,38 @@ from datetime import datetime
 
 class farming:
     def trans_colunas(self, paths):
-        nomes_colunas_trans = ["INDEX_2","MONTHS","MONTH/YEAR MEASUREMENT","PLANTED DATE","MEASURING DATE","AGE(DAYS)",
-                               "GM","FARM","INDEX","GENETIC MATERIAL","ÁREA(HA)","Survival(%)","Stand (tree/ha)",
-                               "Height AVG(m)","PV50(%)","Pits/ha","Arrow_survival","Arrow_stand","Arrow_height",
-                               "ID_FARM","TALHAO"
+        nomes_colunas_trans = [
+            "INDEX_2", "MONTHS", "MONTH/YEAR MEASUREMENT", "PLANTED DATE", "MEASURING DATE", "AGE(DAYS)",
+            "GM", "FARM", "INDEX", "GENETIC MATERIAL", "ÁREA(HA)", "Survival(%)", "Stand (tree/ha)",
+            "Height AVG(m)", "PV50(%)", "Pits/ha", "Arrow_survival", "Arrow_stand", "Arrow_height",
+            "ID_FARM", "TALHAO"
         ]
-        colunas_copiadas = ["cd_talhao2","Área(ha)","Data Plantio","Data Avaliação","Avaliação","GM","Média de PV50 CF",
-                            "Ht (m)","Stand (tree/ha)","Média Pits/ha","Média de %_Sobrevivência","Arrow_PV50","Arrow_Ht",
-                            "Arrow_Stand (tree/ha)","Arrow_Survival","Projeto","Talhão","Mês"]
-        
-        meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho",
-                 "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"]
-        
+
+        # Mapeamento de colunas em português e inglês
+        colunas_map = {
+            "cd_talhao2": "INDEX_2",
+            "Área(ha)": "ÁREA(HA)",
+            "Data Plantio": "PLANTED DATE",
+            "Data Avaliação": "MEASURING DATE",
+            "Avaliação": "FARM",
+            "GM": "GM",
+            "Média de PV50 CF": "PV50(%)",
+            "Ht (m)": "Height AVG(m)",
+            "Stand (tree/ha)": "Stand (tree/ha)",
+            "Média Pits/ha": "Pits/ha",
+            "Média de %_Sobrevivência": "Survival(%)",
+            "Arrow_PV50": "Arrow_PV50",
+            "Arrow_Ht": "Arrow_height",
+            "Arrow_Stand (tree/ha)": "Arrow_Stand",
+            "Arrow_Survival": "Arrow_survival",
+            "Projeto": "ID_FARM",
+            "Talhão": "TALHAO",
+            "Mês": "MONTHS"
+        }
+
+        meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+                 "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
+
         base_path = os.path.abspath(paths[0])
         if "output" in base_path.lower():
             parent_dir = os.path.dirname(base_path)
@@ -34,16 +54,10 @@ class farming:
 
             novo_df = pd.DataFrame(columns=nomes_colunas_trans)
 
-            # Verifique se as colunas relevantes estão disponíveis e copie os dados
-            if "Talhão" in df.columns:
-                novo_df["INDEX_2"] = df["Talhão"]
-                novo_df["INDEX"] = df["Talhão"]
-
-            if "Arrow_PV50" in df.columns:
-                novo_df["Arrow_PV50"] = df["Arrow_PV50"]
-
-            if "Arrow_Stand (tree/ha)" in df.columns:
-                novo_df["Arrow_Stand (tree/ha)"] = df["Arrow_Stand (tree/ha)"]
+            # Copiando os dados com base no mapeamento
+            for col_orig, col_dest in colunas_map.items():
+                if col_orig in df.columns:
+                    novo_df[col_dest] = df[col_orig]
 
             # Processar a coluna "Data Avaliação"
             if "Data Avaliação" in df.columns:
