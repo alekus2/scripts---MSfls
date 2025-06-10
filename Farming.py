@@ -1,4 +1,3 @@
-from pickle import TRUE
 import pandas as pd
 import os
 from datetime import datetime
@@ -31,26 +30,33 @@ class farming:
                 print(f"Erro: Arquivo '{path}' não encontrado.")
                 continue
             print(f"Processando: {path}")
-            df = pd.read_excel(path, sheet_name=17,header=1)
+            df = pd.read_excel(path, sheet_name=17, header=1)
 
             novo_df = pd.DataFrame(columns=nomes_colunas_trans)
 
-            print(df.head)
+            # Verifique se as colunas relevantes estão disponíveis e copie os dados
+            if "Talhão" in df.columns:
+                novo_df["INDEX_2"] = df["Talhão"]
+                novo_df["INDEX"] = df["Talhão"]
 
-            novo_df["INDEX_2"] = df["Talhão"] 
-            novo_df["INDEX"] = df["Talhão"]
-            novo_df["Arrow_PV50"] = df["Arrow_PV50"]
-            novo_df["Arrow_Stand (tree/ha)"] = df["Arrow_Stand (tree/ha)"]
+            if "Arrow_PV50" in df.columns:
+                novo_df["Arrow_PV50"] = df["Arrow_PV50"]
 
+            if "Arrow_Stand (tree/ha)" in df.columns:
+                novo_df["Arrow_Stand (tree/ha)"] = df["Arrow_Stand (tree/ha)"]
 
+            # Processar a coluna "Data Avaliação"
             if "Data Avaliação" in df.columns:
                 df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
                 novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
                 novo_df["MONTH/YEAR MEASUREMENT"] = df["Data Avaliação"].dt.strftime('%Y')
-                return True
+
+            # Processar a coluna "Data Plantio" e calcular "AGE(DAYS)"
             if "Data Plantio" in df.columns and "Data Avaliação" in df.columns:
+                df["Data Plantio"] = pd.to_datetime(df["Data Plantio"], errors='coerce')
                 novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
-                return True
+
+            # Gerar o novo arquivo com o nome apropriado
             nome_base = f"marcar_col"
             contador = 1
             destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
@@ -66,5 +72,3 @@ class farming:
 fazenda = farming()
 arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
 fazenda.trans_colunas(arquivos)
-
-TypeError: list indices must be integers or slices, not float
