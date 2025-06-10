@@ -1,3 +1,4 @@
+from pickle import TRUE
 import pandas as pd
 import os
 from datetime import datetime
@@ -9,7 +10,7 @@ class farming:
                                "Height AVG(m)","PV50(%)","Pits/ha","Arrow_survival","Arrow_stand","Arrow_height",
                                "ID_FARM","TALHAO"
         ]
-        colunas_copiadas = ["cd_talhao","Área(ha)","Data Plantio","Data Avaliação","Avaliação","GM","Média de PV50 CF",
+        colunas_copiadas = ["cd_talhao2","Área(ha)","Data Plantio","Data Avaliação","Avaliação","GM","Média de PV50 CF",
                             "Ht (m)","Stand (tree/ha)","Média Pits/ha","Média de %_Sobrevivência","Arrow_PV50","Arrow_Ht",
                             "Arrow_Stand (tree/ha)","Arrow_Survival","Projeto","Talhão","Mês"]
         
@@ -30,33 +31,27 @@ class farming:
                 print(f"Erro: Arquivo '{path}' não encontrado.")
                 continue
             print(f"Processando: {path}")
-            df = pd.read_excel(path, sheet_name=0, header=1)
+            df = pd.read_excel(path, sheet_name=17,header=1)
 
-            # Criar um novo DataFrame com as colunas transformadas
             novo_df = pd.DataFrame(columns=nomes_colunas_trans)
 
-            # Mapeamento das colunas copiadas para as colunas transformadas
-            colunas_mapping = {copiada: trans for copiada, trans in zip(colunas_copiadas, nomes_colunas_trans) if trans in nomes_colunas_trans}
-            colunas_mapping["cd_talhao"] = "INDEX_2"  # Mapeando 'cd_talhao' para 'INDEX_2' e 'INDEX'
-            colunas_mapping["Talhão"] = "INDEX"  # Mapeando 'Talhão' para 'INDEX'
+            print(df.head)
 
-            # Preenchendo o novo DataFrame com os dados mapeados
-            for col_copiada, col_trans in colunas_mapping.items():
-                if col_copiada in df.columns:
-                    novo_df[col_trans] = df[col_copiada]
+            novo_df["INDEX_2"] = df["Talhão"] 
+            novo_df["INDEX"] = df["Talhão"]
+            novo_df["Arrow_PV50"] = df["Arrow_PV50"]
+            novo_df["Arrow_Stand (tree/ha)"] = df["Arrow_Stand (tree/ha)"]
 
-            # Extraindo o mês e o ano da coluna "Data Avaliação"
+
             if "Data Avaliação" in df.columns:
                 df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
                 novo_df["MONTHS"] = df["Data Avaliação"].dt.month.apply(lambda x: meses[x - 1] if pd.notnull(x) else None)
                 novo_df["MONTH/YEAR MEASUREMENT"] = df["Data Avaliação"].dt.strftime('%Y')
-
-            # Calcular a coluna "AGE(DAYS)"
+                return True
             if "Data Plantio" in df.columns and "Data Avaliação" in df.columns:
                 novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
-
-            # Gerar o novo arquivo com o nome apropriado
-            nome_base = f"marcar_col_{novo_df['MONTHS'].iloc[0]}_{datetime.now().strftime('%Y%m%d')}"
+                return True
+            nome_base = f"marcar_col"
             contador = 1
             destino = lambda c: os.path.join(pasta_output, f"{c}_{str(contador).zfill(2)}.xlsx")
             novo_arquivo = destino(nome_base)
@@ -64,11 +59,12 @@ class farming:
                 contador += 1
                 novo_arquivo = destino(nome_base)
 
-            # Salvando o novo DataFrame em um novo arquivo Excel
             novo_df.to_excel(novo_arquivo, index=False)
             print(f"Arquivo salvo como: {novo_arquivo}")
 
 # Exemplo de uso
 fazenda = farming()
-arquivos = [r"caminho/para/seu/arquivo.xlsx"]  # Substitua pelo caminho do seu arquivo
+arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
 fazenda.trans_colunas(arquivos)
+
+TypeError: list indices must be integers or slices, not float
