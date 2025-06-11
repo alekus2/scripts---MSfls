@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 from difflib import get_close_matches
@@ -9,12 +10,6 @@ class MachtCols:
         self.cutoff = cutoff  # sensibilidade da correspondência aproximada
 
     def _achar_coluna(self, df_cols, alvo):
-        """
-        Busca em df_cols algo que case com 'alvo':
-        1) exato ignorando case e espaços
-        2) get_close_matches
-        3) input manual
-        """
         # 1) exato
         for c in df_cols:
             if c.strip().lower() == alvo.strip().lower():
@@ -33,10 +28,10 @@ class MachtCols:
                     return sugestões[i-1]
             except ValueError:
                 pass
-
-        # 3) manual
-        correção = input(f"Digite o nome exato da coluna correspondente a '{alvo}' (ou ENTER para pular): ").strip()
-        return correção if correção in df_cols else None
+        else:
+          #ele deveria printar nome das colunas do arquivo para vermos se há mesmo diferenças.
+          correção = input(f"Digite o nome exato da coluna correspondente a '{alvo}' (ou ENTER para pular): ").strip()
+          return correção if correção in df_cols else None
 
     def trans_colunas(self, paths, nome_saida="Dados_IFC_24-25"):
         # prepara pasta de saída
@@ -67,10 +62,7 @@ class MachtCols:
 
             lista_dfs.append(novo)
 
-        # concatena tudo
         resultado = pd.concat(lista_dfs, ignore_index=True)
-
-        # salva com contador
         cnt = 1
         arquivo = os.path.join(pasta_out, f"{nome_saida}_{cnt:02d}.xlsx")
         while os.path.exists(arquivo):
@@ -80,7 +72,6 @@ class MachtCols:
         resultado.to_excel(arquivo, index=False)
         print(f"\nArquivo unificado salvo em:\n{arquivo}")
 
-# Uso:
 nomes = [
     'FaseID','cd_fazenda','cd_talhao','nm_parcela','dc_tipo_parcela',
     'dc_forma_parcela','nm_area_parcela','nm_larg_parcela','nm_comp_parcela',
@@ -92,9 +83,17 @@ nomes = [
 ]
 
 copiador = MachtCols(nomes_colunas_trans=nomes)
-arquivos = [
-    "/content/Base_Abril_IFC_2024_MS.xlsx",
-    "/content/Base_Agosto_IFC_2024_MS.xlsx",
-    # ... restantes
+arquivos = [r"/content/Base_Abril_IFC_2024_MS.xlsx",
+            r"/content/Base_Agosto_IFC_2024_MS.xlsx",
+            r"/content/Base_Fevereiro_IFC_2024_MS.xlsx",
+            r"/content/Base_IFC_Novembro_MS.xlsx",
+            r"/content/Base_IFC_Outubro_MS.xlsx",
+            r"/content/Base_Janeiro_IFC_2024_MS.xlsx",
+            r"/content/Base_Julho_IFC_2024_MS.xlsx",
+            r"/content/Base_Junho_IFC_2024_MS.xlsx",
+            r"/content/Base_Maio_IFC_2024_MS.xlsx",
+            r"/content/Base_Março_IFC_2024_MS.xlsx",
+            r"/content/Cópia de Base_IFC_Setembro.xlsx",
+            r"/content/Base_IFC_Dezembro_MS_2024.xlsx"
 ]
 copiador.trans_colunas(arquivos)
