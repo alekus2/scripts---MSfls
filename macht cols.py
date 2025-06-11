@@ -1,13 +1,11 @@
-
 import pandas as pd
 import os
 from difflib import get_close_matches
 
 class MachtCols:
     def __init__(self, nomes_colunas_trans, cutoff=0.6):
-        # nomes finais que queremos, na ordem final
         self.nomes_colunas_trans = nomes_colunas_trans
-        self.cutoff = cutoff  # sensibilidade da correspondência aproximada
+        self.cutoff = cutoff
 
     def _achar_coluna(self, df_cols, alvo):
         # 1) exato
@@ -28,16 +26,20 @@ class MachtCols:
                     return sugestões[i-1]
             except ValueError:
                 pass
+
+        # 3) sem sugestões: mostrar todas as colunas existentes
+        print(f"\nAs colunas disponíveis no arquivo são:\n{df_cols}\n")
+        correção = input(f"Digite o nome exato da coluna para corresponder a '{alvo}' (ou ENTER para pular): ").strip()
+        if correção in df_cols:
+            return correção
         else:
-          #ele deveria printar nome das colunas do arquivo para vermos se há mesmo diferenças.
-          correção = input(f"Digite o nome exato da coluna correspondente a '{alvo}' (ou ENTER para pular): ").strip()
-          return correção if correção in df_cols else None
+            print(f"'{correção}' não encontrada na lista de colunas; pulando.")
+            return None
 
     def trans_colunas(self, paths, nome_saida="Dados_IFC_24-25"):
-        # prepara pasta de saída
         base = os.path.abspath(paths[0])
-        pasta_out = (os.path.dirname(base) 
-                     if "output" in base.lower() 
+        pasta_out = (os.path.dirname(base)
+                     if "output" in base.lower()
                      else os.path.join(os.path.dirname(base), "output"))
         os.makedirs(pasta_out, exist_ok=True)
 
@@ -51,7 +53,6 @@ class MachtCols:
             df = pd.read_excel(path, sheet_name=0)
             novo = pd.DataFrame()
 
-            # para cada coluna que queremos
             for alvo in self.nomes_colunas_trans:
                 achada = self._achar_coluna(df.columns.tolist(), alvo)
                 if achada:
@@ -71,29 +72,3 @@ class MachtCols:
 
         resultado.to_excel(arquivo, index=False)
         print(f"\nArquivo unificado salvo em:\n{arquivo}")
-
-nomes = [
-    'FaseID','cd_fazenda','cd_talhao','nm_parcela','dc_tipo_parcela',
-    'dc_forma_parcela','nm_area_parcela','nm_larg_parcela','nm_comp_parcela',
-    'nm_dec_lar_parcela','nm_dec_com_parcela','dt_inicial','dt_final',
-    'cd_equipe','nm_latitude','nm_longitude','nm_altitude','dc_material',
-    'tx_observacao','nm_fila','nm_cova','nm_fuste','nm_dap_ant',
-    'nm_altura_ant','nm_cap_dap1','nm_dap','nm_altura','cd_01',
-    'cd_02','cd_03','nm_nota'
-]
-
-copiador = MachtCols(nomes_colunas_trans=nomes)
-arquivos = [r"/content/Base_Abril_IFC_2024_MS.xlsx",
-            r"/content/Base_Agosto_IFC_2024_MS.xlsx",
-            r"/content/Base_Fevereiro_IFC_2024_MS.xlsx",
-            r"/content/Base_IFC_Novembro_MS.xlsx",
-            r"/content/Base_IFC_Outubro_MS.xlsx",
-            r"/content/Base_Janeiro_IFC_2024_MS.xlsx",
-            r"/content/Base_Julho_IFC_2024_MS.xlsx",
-            r"/content/Base_Junho_IFC_2024_MS.xlsx",
-            r"/content/Base_Maio_IFC_2024_MS.xlsx",
-            r"/content/Base_Março_IFC_2024_MS.xlsx",
-            r"/content/Cópia de Base_IFC_Setembro.xlsx",
-            r"/content/Base_IFC_Dezembro_MS_2024.xlsx"
-]
-copiador.trans_colunas(arquivos)
