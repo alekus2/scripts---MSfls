@@ -18,7 +18,7 @@ class MachtCols:
             print(f"\nSugestões para '{alvo}':")
             for i, s in enumerate(sugestões, start=1):
                 print(f"  {i}. {s}")
-            escolha = input(f"Escolha 1-{len(sugestões)} ou 0 para manual: ").strip()
+            escolha = input(f"Escolha 1-{len(sugestões)} ou 0 para manual: ").strip() #Pq isso n aparece no output?tipo eu n vi isso aparecendo,ent n tem sugestoes?
             try:
                 i = int(escolha)
                 if 1 <= i <= len(sugestões):
@@ -34,8 +34,7 @@ class MachtCols:
             achada = self._achar_coluna_em_lista(cols, alvo)
             if achada:
                 return nome_sheet, achada
-
-        # Não encontrou em nenhuma: mostra todas as sheets e colunas
+        #devera criar outra coluna com o nome do arquivo que é esses dados.
         print(f"\nNão achei '{alvo}' automaticamente em nenhuma sheet.")
         for nome_sheet, df_sheet in sheets_dict.items():
             print(f"  Sheet '{nome_sheet}': {df_sheet.columns.tolist()}")
@@ -49,7 +48,6 @@ class MachtCols:
         return None, None
 
     def trans_colunas(self, paths, nome_saida="Dados_IFC_24-25"):
-        # prepara pasta de saída
         base = os.path.abspath(paths[0])
         pasta_out = (os.path.dirname(base)
                      if "output" in base.lower()
@@ -63,19 +61,12 @@ class MachtCols:
                 continue
 
             print(f"\n=== Processando {os.path.basename(path)} ===")
-            # carrega todas as sheets
             sheets = pd.read_excel(path, sheet_name=None)
-            # novo DF só com as colunas alvo
             novo = pd.DataFrame()
 
             for alvo in self.nomes_colunas_trans:
                 nome_sheet, achada = self._achar_coluna(sheets, alvo)
-                if achada:
-                    novo[alvo] = sheets[nome_sheet][achada]
-                else:
-                    novo[alvo] = pd.NA
-                    print(f"**'{alvo}'** ficará com NaN neste arquivo.")
-
+                novo[alvo] = sheets[nome_sheet][achada]
             acumulados.append(novo)
 
         # concatena tudo e salva
@@ -87,3 +78,29 @@ class MachtCols:
             arquivo = os.path.join(pasta_out, f"{nome_saida}_{cnt:02d}.xlsx")
         resultado.to_excel(arquivo, index=False)
         print(f"\n✅ Arquivo unificado salvo em:\n   {arquivo}")
+
+nomes = [
+    'FaseID','cd_fazenda','cd_talhao','nm_parcela','dc_tipo_parcela',
+    'dc_forma_parcela','nm_area_parcela','nm_larg_parcela','nm_comp_parcela',
+    'nm_dec_lar_parcela','nm_dec_com_parcela','dt_inicial','dt_final',
+    'cd_equipe','nm_latitude','nm_longitude','nm_altitude','dc_material',
+    'tx_observacao','nm_fila','nm_cova','nm_fuste','nm_dap_ant',
+    'nm_altura_ant','nm_cap_dap1','nm_dap','nm_altura','cd_01',
+    'cd_02','cd_03','nm_nota'
+]
+
+copiador = MachtCols(nomes_colunas_trans=nomes)
+arquivos = [r"/content/Base_Abril_IFC_2024_MS.xlsx",
+            r"/content/Base_Agosto_IFC_2024_MS.xlsx",
+            r"/content/Base_Fevereiro_IFC_2024_MS.xlsx",
+            r"/content/Base_IFC_Novembro_MS.xlsx",
+            r"/content/Base_IFC_Outubro_MS.xlsx",
+            r"/content/Base_Janeiro_IFC_2024_MS.xlsx",
+            r"/content/Base_Julho_IFC_2024_MS.xlsx",
+            r"/content/Base_Junho_IFC_2024_MS.xlsx",
+            r"/content/Base_Maio_IFC_2024_MS.xlsx",
+            r"/content/Base_Março_IFC_2024_MS.xlsx",
+            r"/content/Cópia de Base_IFC_Setembro.xlsx",
+            r"/content/Base_IFC_Dezembro_MS_2024.xlsx"
+]
+copiador.trans_colunas(arquivos)
