@@ -2,7 +2,7 @@ import pandas as pd
 import os
 from datetime import datetime
 
-class farming:
+class macht_cols:
     def trans_colunas(self, paths):
         nomes_colunas_trans = [
             'FaseID',	'cd_fazenda',	'cd_talhao',	'nm_parcela',	'dc_tipo_parcela',	'dc_forma_parcela',	'nm_area_parcela',	'nm_larg_parcela',	'nm_comp_parcela',	
@@ -81,6 +81,18 @@ class farming:
             novo_df.to_excel(novo_arquivo, index=False)
             print(f"Arquivo salvo como: {novo_arquivo}")
 
-fazenda = farming()
-arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
-fazenda.trans_colunas(arquivos)
+copiador = macht_cols()
+arquivos = [r"/content/Base_Abril_IFC_2024_MS.xlsx",
+            r"/content/Base_Agosto_IFC_2024_MS.xlsx",
+            r"/content/Base_Fevereiro_IFC_2024_MS.xlsx",
+            r"/content/Base_IFC_Novembro_MS.xlsx",
+            r"/content/Base_IFC_Outubro_MS.xlsx",
+            r"/content/Base_Janeiro_IFC_2024_MS.xlsx",
+            r"/content/Base_Julho_IFC_2024_MS.xlsx",
+            r"/content/Base_Junho_IFC_2024_MS.xlsx",
+            r"/content/Base_Maio_IFC_2024_MS.xlsx",
+            r"/content/Base_Março_IFC_2024_MS.xlsx",
+            r"/content/Cópia de Base_IFC_Setembro.xlsx",
+            r"/content/Base_IFC_Dezembro_MS_2024.xlsx"
+           ]
+copiador.trans_colunas(arquivos)
