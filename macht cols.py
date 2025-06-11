@@ -1,98 +1,100 @@
 import pandas as pd
 import os
-from datetime import datetime
+from difflib import get_close_matches
 
-class macht_cols:
-    def trans_colunas(self, paths):
-        nomes_colunas_trans = [
-            'FaseID',	'cd_fazenda',	'cd_talhao',	'nm_parcela',	'dc_tipo_parcela',	'dc_forma_parcela',	'nm_area_parcela',	'nm_larg_parcela',	'nm_comp_parcela',	
-            'nm_dec_lar_parcela',	'nm_dec_com_parcela',	'dt_inicial',	'dt_final',	'cd_equipe',	'nm_latitude',	'nm_longitude',	'nm_altitude',	'dc_material',	
-            'tx_observacao',	'nm_fila',	'nm_cova',	'nm_fuste',	'nm_dap_ant',	'nm_altura_ant',	'nm_cap_dap1',	'nm_dap',	'nm_altura',	'cd_01',	'cd_02',	'cd_03',	'nm_nota'
-        ]
-        colunas_map = {
-            "coluna 1": "FaseID",
-            "Data Plantio": "cd_fazenda",
-            "Data Avaliação": "cd_talhao",
-            "GM": "nm_parcela",
-            "Fazenda": "dc_tipo_parcela",
-            "cd_talhao2": "dc_forma_parcela",
-            "Clone":"nm_area_parcela",
-            "Área (ha)": "nm_larg_parcela",
-            "Média de %_Sobrevivência": "nm_comp_parcela",       
-            "Stand (tree/ha)": "nm_dec_lar_parcela",
-            "Ht (m)": "nm_dec_com_parcela",
-            "Média de PV50 CF": "dt_inicial",
-            "Média Pits/ha": "dt_final",
-            "Arrow_Survival": "cd_equipe",
-            "Arrow_Ht": "nm_latitude",
-            "Arrow_PV50": "nm_longitude",
-            "Arrow_Stand (tree/ha)": "nm_altitude",
-            "Projeto": "dc_material",
-            "Talhão": "tx_observacao",
-            "coluna 20": "nm_fila",
-            "coluna 21": "nm_cova",
-            "coluna 22": "nm_fuste",
-            "coluna 23": "nm_dap_ant",
-            "coluna 24": "nm_altura_ant",
-            "coluna 25": "nm_cap_dap1",
-            "coluna 26": "nm_dap",
-            "coluna 27": "nm_altura",
-            "coluna 28": "cd_01",
-            "coluna 29": "cd_02",
-            "coluna 30": "cd_03",
-            "coluna 31": "nm_nota"
-        }
-      
-        #o codigo devera fazer meio q um caça tesouro, pois as colunas em colunas_trans em cada arquivo estão organizadas de formas diferentes e com nomes diferentes tipo com um espaço a mais ou em maiusculas, então quero que o codigo tente achar essas colunas por si só dentro de cada arquivo para juntar todas em um arquivo final e unico.
-        #as colunas em que o codigo nao encontrar ele deverá me mostrar as colunas do arquivo q nao encontrou e me dar a opção de escrever o nome da coluna corretamente para o codigo procurar denovo.
-        #unificar todas os dados de cada coluna em um unico arquivo asssim como dito.
-      
-      
-        base_path = os.path.abspath(paths[0])
-        if "output" in base_path.lower():
-            pasta_output = os.path.dirname(base_path)
-        else:
-            pasta_output = os.path.join(os.path.dirname(base_path), 'output')
-        os.makedirs(pasta_output, exist_ok=True)
+class MachtCols:
+    def __init__(self, nomes_colunas_trans, cutoff=0.6):
+        # nomes finais que queremos, na ordem final
+        self.nomes_colunas_trans = nomes_colunas_trans
+        self.cutoff = cutoff  # sensibilidade da correspondência aproximada
 
+    def _achar_coluna(self, df_cols, alvo):
+        """
+        Busca em df_cols algo que case com 'alvo':
+        1) exato ignorando case e espaços
+        2) get_close_matches
+        3) input manual
+        """
+        # 1) exato
+        for c in df_cols:
+            if c.strip().lower() == alvo.strip().lower():
+                return c
+
+        # 2) aproximado
+        sugestões = get_close_matches(alvo, df_cols, n=3, cutoff=self.cutoff)
+        if sugestões:
+            print(f"\nSugestões para '{alvo}':")
+            for i, s in enumerate(sugestões, 1):
+                print(f"  {i}. {s}")
+            escolha = input(f"Escolha 1-{len(sugestões)} ou 0 para digitar manualmente: ")
+            try:
+                i = int(escolha)
+                if 1 <= i <= len(sugestões):
+                    return sugestões[i-1]
+            except ValueError:
+                pass
+
+        # 3) manual
+        correção = input(f"Digite o nome exato da coluna correspondente a '{alvo}' (ou ENTER para pular): ").strip()
+        return correção if correção in df_cols else None
+
+    def trans_colunas(self, paths, nome_saida="Dados_IFC_24-25"):
+        # prepara pasta de saída
+        base = os.path.abspath(paths[0])
+        pasta_out = (os.path.dirname(base) 
+                     if "output" in base.lower() 
+                     else os.path.join(os.path.dirname(base), "output"))
+        os.makedirs(pasta_out, exist_ok=True)
+
+        lista_dfs = []
         for path in paths:
             if not os.path.exists(path):
-                print(f"Erro: Arquivo '{path}' não encontrado.")
+                print(f"Aviso: não encontrou '{path}', pulando.")
                 continue
-            print(f"Processando: {path}")
-            df = pd.read_excel(path, sheet_name=0, header=0)
 
-            novo_df = pd.DataFrame(columns=nomes_colunas_trans)
+            print(f"\n--- Processando {os.path.basename(path)} ---")
+            df = pd.read_excel(path, sheet_name=0)
+            novo = pd.DataFrame()
 
-            for col_orig, col_dest in colunas_map.items():
-                if col_orig in df.columns:
-                    novo_df[col_dest] = df[col_orig]
+            # para cada coluna que queremos
+            for alvo in self.nomes_colunas_trans:
+                achada = self._achar_coluna(df.columns.tolist(), alvo)
+                if achada:
+                    novo[alvo] = df[achada]
                 else:
-                  print(f"A coluna {col_orig} não foi localizada.")
+                    print(f"**Não encontrada** coluna para '{alvo}', será preenchida com NaN.")
+                    novo[alvo] = pd.NA
 
-            nome_base = "Dados_IFC_24-25"
-            contador = 1
-            novo_arquivo = os.path.join(pasta_output, f"{nome_base}_{contador:02d}.xlsx")
-            while os.path.exists(novo_arquivo):
-                contador += 1
-                novo_arquivo = os.path.join(pasta_output, f"{nome_base}_{contador:02d}.xlsx")
+            lista_dfs.append(novo)
 
-            # Salva
-            novo_df.to_excel(novo_arquivo, index=False)
-            print(f"Arquivo salvo como: {novo_arquivo}")
+        # concatena tudo
+        resultado = pd.concat(lista_dfs, ignore_index=True)
 
-copiador = macht_cols()
-arquivos = [r"/content/Base_Abril_IFC_2024_MS.xlsx",
-            r"/content/Base_Agosto_IFC_2024_MS.xlsx",
-            r"/content/Base_Fevereiro_IFC_2024_MS.xlsx",
-            r"/content/Base_IFC_Novembro_MS.xlsx",
-            r"/content/Base_IFC_Outubro_MS.xlsx",
-            r"/content/Base_Janeiro_IFC_2024_MS.xlsx",
-            r"/content/Base_Julho_IFC_2024_MS.xlsx",
-            r"/content/Base_Junho_IFC_2024_MS.xlsx",
-            r"/content/Base_Maio_IFC_2024_MS.xlsx",
-            r"/content/Base_Março_IFC_2024_MS.xlsx",
-            r"/content/Cópia de Base_IFC_Setembro.xlsx",
-            r"/content/Base_IFC_Dezembro_MS_2024.xlsx"
-           ]
+        # salva com contador
+        cnt = 1
+        arquivo = os.path.join(pasta_out, f"{nome_saida}_{cnt:02d}.xlsx")
+        while os.path.exists(arquivo):
+            cnt += 1
+            arquivo = os.path.join(pasta_out, f"{nome_saida}_{cnt:02d}.xlsx")
+
+        resultado.to_excel(arquivo, index=False)
+        print(f"\nArquivo unificado salvo em:\n{arquivo}")
+
+# Uso:
+nomes = [
+    'FaseID','cd_fazenda','cd_talhao','nm_parcela','dc_tipo_parcela',
+    'dc_forma_parcela','nm_area_parcela','nm_larg_parcela','nm_comp_parcela',
+    'nm_dec_lar_parcela','nm_dec_com_parcela','dt_inicial','dt_final',
+    'cd_equipe','nm_latitude','nm_longitude','nm_altitude','dc_material',
+    'tx_observacao','nm_fila','nm_cova','nm_fuste','nm_dap_ant',
+    'nm_altura_ant','nm_cap_dap1','nm_dap','nm_altura','cd_01',
+    'cd_02','cd_03','nm_nota'
+]
+
+copiador = MachtCols(nomes_colunas_trans=nomes)
+arquivos = [
+    "/content/Base_Abril_IFC_2024_MS.xlsx",
+    "/content/Base_Agosto_IFC_2024_MS.xlsx",
+    # ... restantes
+]
 copiador.trans_colunas(arquivos)
