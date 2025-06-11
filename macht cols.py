@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 from difflib import get_close_matches
@@ -50,7 +51,7 @@ class MachtCols:
                 continue
 
             print(f"\n--- Processando {os.path.basename(path)} ---")
-            df = pd.read_excel(path, sheet_name=0)
+            df = pd.read_excel(path, sheet_name=0) #alguns arquivos tem mais de 1 sheet,ent o codigo devera contar a quantidade de sheets e verificar em cada um deles antes de dar a correção manual.
             novo = pd.DataFrame()
 
             for alvo in self.nomes_colunas_trans:
@@ -72,3 +73,28 @@ class MachtCols:
 
         resultado.to_excel(arquivo, index=False)
         print(f"\nArquivo unificado salvo em:\n{arquivo}")
+nomes = [
+    'FaseID','cd_fazenda','cd_talhao','nm_parcela','dc_tipo_parcela',
+    'dc_forma_parcela','nm_area_parcela','nm_larg_parcela','nm_comp_parcela',
+    'nm_dec_lar_parcela','nm_dec_com_parcela','dt_inicial','dt_final',
+    'cd_equipe','nm_latitude','nm_longitude','nm_altitude','dc_material',
+    'tx_observacao','nm_fila','nm_cova','nm_fuste','nm_dap_ant',
+    'nm_altura_ant','nm_cap_dap1','nm_dap','nm_altura','cd_01',
+    'cd_02','cd_03','nm_nota'
+]
+
+copiador = MachtCols(nomes_colunas_trans=nomes)
+arquivos = [r"/content/Base_Abril_IFC_2024_MS.xlsx",
+            r"/content/Base_Agosto_IFC_2024_MS.xlsx",
+            r"/content/Base_Fevereiro_IFC_2024_MS.xlsx",
+            r"/content/Base_IFC_Novembro_MS.xlsx",
+            r"/content/Base_IFC_Outubro_MS.xlsx",
+            r"/content/Base_Janeiro_IFC_2024_MS.xlsx",
+            r"/content/Base_Julho_IFC_2024_MS.xlsx",
+            r"/content/Base_Junho_IFC_2024_MS.xlsx",
+            r"/content/Base_Maio_IFC_2024_MS.xlsx",
+            r"/content/Base_Março_IFC_2024_MS.xlsx",
+            r"/content/Cópia de Base_IFC_Setembro.xlsx",
+            r"/content/Base_IFC_Dezembro_MS_2024.xlsx"
+]
+copiador.trans_colunas(arquivos)
