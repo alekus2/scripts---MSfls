@@ -53,9 +53,12 @@ class Farming:
                         pd.to_numeric(novo_df[col], errors='coerce')
                         .map(lambda x: f"{x:.1%}".replace(".", ",") if pd.notnull(x) else "")
                     )
-            for col in ["Stand (tree/ha)", "Pits/ha","Accumulated Rainfall (mm)*""Survival (%) * Area", "Heigth Avg (m) * Area",	"PV50      (%) * Area"]:
+
+            # Ajustar para ter duas casas decimais
+            for col in ["Stand (tree/ha)", "Pits/ha", "Accumulated Rainfall (mm)*",
+                         "Survival (%) * Area", "Heigth Avg (m) * Area", "PV50      (%) * Area"]:
                 if col in novo_df.columns:
-                    novo_df[col] = novo_df[col].round() #quero que tenha apenas 2 numeros apos a virgula e nao que seja inteiro.
+                    novo_df[col] = novo_df[col].round(2)
 
             mes_atual = meses[datetime.now().month - 1]
             nome_base = f"IFQ6_{mes_atual}"
