@@ -1,3 +1,4 @@
+
 import pandas as pd
 import os
 from datetime import datetime
@@ -46,6 +47,15 @@ class Farming:
                     colunas_encontradas.append(col)
                 else:
                     print(f"A coluna '{col}' não foi encontrada.")
+            if "Final classification" in novo_df.columns:
+              if novo_df["Final classification"] == "Bad":
+                novo_df["Ordem Class"] = 1
+              elif novo_df["Final classification"] == "Weak":
+                novo_df["Ordem Class"] = 2
+              elif novo_df["Final classification"] == "Good":
+                novo_df["Ordem Class"] = 3  
+              elif novo_df["Final classification"] == "Great":
+                novo_df["Ordem Class"] = 4
 
             for col in ["PV50 (%)", "Survival (%)"]:
                 if col in novo_df.columns:
@@ -53,8 +63,6 @@ class Farming:
                         pd.to_numeric(novo_df[col], errors='coerce')
                         .map(lambda x: f"{x:.1%}".replace(".", ",") if pd.notnull(x) else "")
                     )
-
-            # Ajustar para ter duas casas decimais
             for col in ["Stand (tree/ha)", "Pits/ha", "Accumulated Rainfall (mm)*",
                          "Survival (%) * Area", "Heigth Avg (m) * Area", "PV50      (%) * Area"]:
                 if col in novo_df.columns:
