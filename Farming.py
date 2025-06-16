@@ -14,12 +14,10 @@ class Farming:
             "EPS", "num talhão", "ID_Farm", "Stand inicial", "INDEX", "Final classification", "Trim",
             "Ano medição", "Stand inicial 2", "Stand inicial -ajustado"
         ]
-
         meses = [
             "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
             "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
         ]
-
         base_path = os.path.abspath(paths[0])
         if "output" in base_path.lower():
             pasta_output = os.path.dirname(base_path)
@@ -33,7 +31,6 @@ class Farming:
                 continue
             print(f"Processando: {path}")
             xls = pd.ExcelFile(path)
-            # Encontrar o sheet com o nome "IFQ6"
             if "IFQ6" in xls.sheet_names:
                 df = pd.read_excel(path, sheet_name="IFQ6", header=1)
             else:
@@ -50,18 +47,16 @@ class Farming:
                 else:
                     print(f"A coluna '{col}' não foi encontrada.")
 
-            # Converter colunas específicas
             for col in ["PV50 (%)", "Survival (%)"]:
                 if col in novo_df.columns:
                     novo_df[col] = (
                         pd.to_numeric(novo_df[col], errors='coerce')
                         .map(lambda x: f"{x:.1%}".replace(".", ",") if pd.notnull(x) else "")
                     )
-            for col in ["Area (ha)", "Stand (tree/ha)", "Height Avg (m)", "Pits/ha"]:
+            for col in ["Stand (tree/ha)", "Pits/ha","Accumulated Rainfall (mm)*""Survival (%) * Area", "Heigth Avg (m) * Area",	"PV50      (%) * Area"]:
                 if col in novo_df.columns:
-                    novo_df[col] = novo_df[col].astype(int)
+                    novo_df[col] = novo_df[col].round() #quero que tenha apenas 2 numeros apos a virgula e nao que seja inteiro.
 
-            # Adicionar o mês atual ao nome do arquivo
             mes_atual = meses[datetime.now().month - 1]
             nome_base = f"IFQ6_{mes_atual}"
             contador = 1
@@ -70,7 +65,6 @@ class Farming:
                 contador += 1
                 novo_arquivo = os.path.join(pasta_output, f"{nome_base}_{contador:02d}.xlsx")
 
-            # Salvar o novo DataFrame
             novo_df.to_excel(novo_arquivo, index=False)
             print(f"Arquivo salvo como: {novo_arquivo}")
 
