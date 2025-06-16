@@ -1,36 +1,16 @@
+
 import pandas as pd
 import os
 from datetime import datetime
 
 class farming:
-    def trans_colunas(self, paths):
+    def copiar_dados_especificos(self, paths):
         nomes_colunas_trans = [
             "INDEX_2", "MONTHS", "MONTH/YEAR MEASUREMENT", "PLANTED DATE", "MEASURING DATE", "AGE(DAYS)",
             "GM", "FARM", "INDEX", "GENETIC MATERIAL", "ÁREA(HA)", "Survival(%)", "Stand (tree/ha)",
             "Height AVG(m)", "PV50(%)", "Pits/ha", "Arrow_survival", "Arrow_height","Arrow_PV50","Arrow_stand",
             "ID_FARM", "TALHAO"
         ]
-        colunas_map = {
-            "cd_talhao2": "INDEX_2",
-            "Data Plantio": "PLANTED DATE",
-            "Data Avaliação": "MEASURING DATE",
-            "GM": "GM",
-            "Fazenda": "FARM",
-            "cd_talhao2": "INDEX",
-            "Clone":"GENETIC MATERIAL",
-            "Área (ha)": "ÁREA(HA)",
-            "Média de %_Sobrevivência": "Survival(%)",       
-            "Stand (tree/ha)": "Stand (tree/ha)",
-            "Ht (m)": "Height AVG(m)",
-            "Média de PV50 CF": "PV50(%)",
-            "Média Pits/ha": "Pits/ha",
-            "Arrow_Survival": "Arrow_survival",
-            "Arrow_Ht": "Arrow_height",
-            "Arrow_PV50": "Arrow_PV50",
-            "Arrow_Stand (tree/ha)": "Arrow_stand",
-            "Projeto": "ID_FARM",
-            "Talhão": "TALHAO",
-        }
 
         meses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
                  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"]
@@ -47,32 +27,11 @@ class farming:
                 print(f"Erro: Arquivo '{path}' não encontrado.")
                 continue
             print(f"Processando: {path}")
-            df = pd.read_excel(path, sheet_name=17, header=1)
+            df = pd.read_excel(path, sheet_name=17, header=1) #quero que ele caçe o sheet com o nome "IFQ6" dentro do arquivo do excel q mandei,ja que existe varias planilhas dentro dele.
 
-            novo_df = pd.DataFrame(columns=nomes_colunas_trans)
-
-            for col_orig, col_dest in colunas_map.items():
-                if col_orig in df.columns:
-                    novo_df[col_dest] = df[col_orig]
-
-            if "Data Avaliação" in df.columns:
-                df["Data Avaliação"] = pd.to_datetime(df["Data Avaliação"], errors='coerce')
-                novo_df["MONTHS"] = (
-                    df["Data Avaliação"]
-                    .dt.month
-                    .apply(lambda x: meses[int(x) - 1] if pd.notnull(x) else "")
-                )
-                novo_df["MONTH/YEAR MEASUREMENT"] = (
-                    df["Data Avaliação"]
-                    .dt.strftime('%Y')
-                    .fillna('')
-                )
-                novo_df["MEASURING DATE"] = df["Data Avaliação"]
-
-            if "Data Plantio" in df.columns and "Data Avaliação" in df.columns:
-                df["Data Plantio"] = pd.to_datetime(df["Data Plantio"], errors='coerce')
-                novo_df["PLANTED DATE"] = df["Data Plantio"]
-                novo_df["AGE(DAYS)"] = (df["Data Avaliação"] - df["Data Plantio"]).dt.days
+            novo_df = pd.DataFrame(columns=nomes_colunas_trans) #Como agora ele so vai copiar dados especificos quero que ele copie so aqls colunas que estao em nomes_colunas de dentro do arquivo q esta inserido, assim criando um arquivo separado so para ele.
+            if nomes_colunas_trans in df.columns:
+               novo_df = df
 
             for col in ["PV50(%)", "Survival(%)"]:
                 if col in novo_df.columns:
@@ -84,13 +43,12 @@ class farming:
                 if col in novo_df.columns:
                     novo_df[col] = novo_df[col](int)
 
-            # Gera nome de arquivo único
-            nome_base = "marcar_col"
+            nome_base = "IFQ6"
             contador = 1
             novo_arquivo = os.path.join(pasta_output, f"{nome_base}_{contador:02d}.xlsx")
             while os.path.exists(novo_arquivo):
                 contador += 1
-                novo_arquivo = os.path.join(pasta_output, f"{nome_base}_{contador:02d}.xlsx")
+                novo_arquivo = os.path.join(pasta_output, f"{nome_base}_{contador:02d}.xlsx") #quero que coloque o nome do mes atual no arquivo final tb
 
             # Salva
             novo_df.to_excel(novo_arquivo, index=False)
@@ -98,4 +56,4 @@ class farming:
 
 fazenda = farming()
 arquivos = [r"/content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx"] 
-fazenda.trans_colunas(arquivos)
+fazenda.copiar_dados_especificos(arquivos)
