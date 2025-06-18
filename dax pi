@@ -12,3 +12,20 @@ RETURN
       BLANK()                         // oculta demais registros
     )
   )
+
+
+
+SuaTabela[AxisSort] =
+VAR AnoDetalhe = 2025
+VAR AnoAtual   = SuaTabela[Year]
+VAR MesAtual   = SuaTabela[MonthNumber]
+RETURN
+  IF(
+    AnoAtual < AnoDetalhe,
+    AnoAtual * 100,                   // 2022→202200, 2023→202300…
+    IF(
+      AnoAtual = AnoDetalhe,
+      AnoAtual * 100 + MesAtual,      // 2025‑01→202501, 2025‑02→202502…
+      BLANK()
+    )
+  )
