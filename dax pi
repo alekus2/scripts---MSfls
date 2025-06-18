@@ -1,0 +1,14 @@
+SuaTabela[AxisLabel] =
+VAR AnoDetalhe = 2025      // ou SELECTEDVALUE('AnoDetalhe'[Ano]) se usar What‑If
+VAR AnoAtual   = SuaTabela[Year]
+VAR MesAtual   = SuaTabela[MonthNumber]
+RETURN
+  IF(
+    AnoAtual < AnoDetalhe,
+    FORMAT( AnoAtual, "0" ),          // exibe “2022”, “2023”, “2024”
+    IF(
+      AnoAtual = AnoDetalhe,
+      FORMAT( MesAtual, "0" ),        // exibe “1”, “2”, “3”, “4” para 2025
+      BLANK()                         // oculta demais registros
+    )
+  )
