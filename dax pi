@@ -1,33 +1,9 @@
-SuaTabela[AxisSortDate] =
-VAR AnoDetalhe = 2025
-VAR AnoAtual   = SuaTabela[Year]
-VAR MesNum     = VALUE( SuaTabela[MonthNumber] )   // converte o texto em inteiro
+Meses 2025 =
+VAR Ano = YEAR('SuaTabela'[DataCompleta])
+VAR Mes = MONTH('SuaTabela'[DataCompleta])
 RETURN
-  IF(
-    AnoAtual < AnoDetalhe,
-    // para anos anteriores, joga tudo em Jan 1 daquele ano
-    DATE( AnoAtual, 1, 1 ),
-    IF(
-      AnoAtual = AnoDetalhe,
-      // para o ano de detalhe (2025), usa o mês correto
-      DATE( AnoAtual, MesNum, 1 ),
-      BLANK()
+    IF (
+        Ano = 2025,
+        FORMAT('SuaTabela'[DataCompleta], "MMM YYYY"), // Ex: "Jan 2025", "Fev 2025"
+        BLANK() // Não mostre meses para outros anos no slicer
     )
-  )
-
-
-SuaTabela[AxisLabel] =
-VAR AnoDetalhe = 2025
-VAR AnoAtual   = SuaTabela[Year]
-VAR MesAtual   = VALUE( SuaTabela[MonthNumber] )
-RETURN
-  IF(
-    AnoAtual < AnoDetalhe,
-    FORMAT( AnoAtual, "0" ),       // “2022”, “2023”, “2024”
-    IF(
-      AnoAtual = AnoDetalhe,
-      FORMAT( MesAtual, "0" ),     // “1”, “2”, “3”, “4”
-      BLANK()
-    )
-  )
-
