@@ -26,12 +26,15 @@ if ano_atual in novo_df["Year/Month Measurement"].values:
         "December":  12
     }
     
+    # Filtrar o DataFrame para incluir apenas o ano atual
+    novo_df_atual = novo_df[novo_df["Year/Month Measurement"] == ano_atual]
+
     # Extrair o mês do formato "June/2025"
-    novo_df["Month"] = novo_df["Months"].str.split('/').str[0]  # Pega a parte do mês
-    novo_df["Ordem Mês"] = novo_df["Month"].map(mapeamento)  # Mapeia para o número do mês
+    novo_df_atual["Month"] = novo_df_atual["Months"].str.split('/').str[0]  # Pega a parte do mês
+    novo_df_atual["Ordem Mês"] = novo_df_atual["Month"].map(mapeamento)  # Mapeia para o número do mês
     
-    # Limpar a coluna "Month" se necessário
-    novo_df.drop(columns=["Month"], inplace=True)
+    # Atualizar o DataFrame original com os valores da versão filtrada
+    novo_df.loc[novo_df["Year/Month Measurement"] == ano_atual, "Ordem Mês"] = novo_df_atual["Ordem Mês"]
 
     print(novo_df[["Months", "Ordem Mês"]].head())
 else:
