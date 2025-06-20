@@ -1,4 +1,5 @@
 
+
 import pandas as pd
 import os
 from datetime import datetime
@@ -61,9 +62,9 @@ class Farming:
                     "Fevereiro":  2,
                     "Março":  3,
                     "Abril": 4
-                    #continuamente mas o mes que nao aparecer ele deixa em branco 
+                    #continuamente mas o mes que nao aparecer ele n faz nd so continua msm
                 }
-                novo_df["Ordem Mês"] = novo_df["Months"].map(mapeamento) #essa coluna está em formato de data, mas eu só quero que ele mapeie do an atual, dos outros anos ele deixa em branco ou sla                
+                novo_df["Ordem Mês"] = novo_df["Months"].map(mapeamento) #essa coluna está em formato de data, mas eu só quero que ele mapeie do ano atual, dos outros anos ele deixa em branco                
             for col in ["PV50 (%)", "Survival (%)"]:
                 if col in novo_df.columns:
                     novo_df[col] = (
