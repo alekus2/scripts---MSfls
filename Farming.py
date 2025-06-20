@@ -1,22 +1,14 @@
-# Adicione isso antes da linha que mapeia os meses
-ano_atual = datetime.now().year
-
-# Atualize essa parte do código
-if ano_atual in novo_df["Year/Month Measurement"].values:  # Verifique se o ano atual está na coluna
-    mapeamento = {
-        "Janeiro":   1,
-        "Fevereiro": 2,
-        "Março":     3,
-        "Abril":     4,
-        "Maio":      5,
-        "Junho":     6,
-        "Julho":     7,
-        "Agosto":    8,
-        "Setembro":  9,
-        "Outubro":   10,
-        "Novembro":  11,
-        "Dezembro":  12
-    }
-    novo_df["Ordem Mês"] = novo_df["Months"].map(mapeamento)
-else:
-    novo_df["Ordem Mês"] = ""  # Deixa em branco se o ano não for o atual
+Processando: /content/04_Base IFQ6_APRIL_Ht3_2025copia.xlsx
+2025
+0       2022
+1       2022
+2       2022
+3       2022
+4       2022
+        ... 
+2568    2025
+2569    2025
+2570    2025
+2571    2025
+2572    2025
+Name: Year/Month Measurement, Length: 2573, dtype: int64
