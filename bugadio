@@ -1,20 +1,13 @@
-sgf_info <- sgf %>%
-  filter(CD_PROJETO == projeto & CD_TALHAO == talhao)
-
-data_medicao <- if (nrow(sgf_info) > 0 && any(!is.na(sgf_info$DT_MEDICAO))) {
-  min(sgf_info$DT_MEDICAO, na.rm = TRUE)
-} else {
-  NA
-}
-
-material_genetico <- if (nrow(sgf_info) > 0 && any(!is.na(sgf_info$NM_MATERIAL_GENETICO))) {
-  unique(na.omit(sgf_info$NM_MATERIAL_GENETICO))
-} else {
-  NA
-}
-
-equipe <- if (nrow(sgf_info) > 0 && any(!is.na(sgf_info$NM_EQUIPE))) {
-  unique(na.omit(sgf_info$NM_EQUIPE))
-} else {
-  NA
-}
+Seta PV50 = 
+VAR pv = 'Tabela'[PV50 (%)]
+VAR semestre = 'Tabela'[Semestre]
+RETURN
+    SWITCH(TRUE(),
+        semestre = "1S" && pv < 29, "Baixo",
+        semestre = "1S" && pv >= 29 && pv <= 31, "Médio",
+        semestre = "1S" && pv > 31, "Alto",
+        semestre = "2S" && pv < 32, "Baixo",
+        semestre = "2S" && pv >= 32 && pv <= 34, "Médio",
+        semestre = "2S" && pv > 34, "Alto",
+        BLANK()
+    )
